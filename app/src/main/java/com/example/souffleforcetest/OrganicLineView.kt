@@ -27,7 +27,7 @@ class OrganicLineView @JvmOverloads constructor(
     
     // Configuration de croissance
     private val forceThreshold = 0.08f // Seuil anti-parasite à 8%
-    private val growthRate = 5.4f // Pixels par frame pour 15 sec max
+    private val growthRate = 6.2f // Pixels par frame (15% plus rapide)
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
