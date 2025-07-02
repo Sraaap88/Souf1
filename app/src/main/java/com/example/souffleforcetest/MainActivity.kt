@@ -17,7 +17,7 @@ class MainActivity : AppCompatActivity() {
     private var recorder: MediaRecorder? = null
     private lateinit var indicator: View
     private val handler = Handler(Looper.getMainLooper())
-    private val updateInterval = 33L // milliseconds
+    private val updateInterval = 33L // 30 FPS pour meilleure réactivité
     private val PERMISSION_REQUEST_CODE = 200
 
     private val updateTask = object : Runnable {
