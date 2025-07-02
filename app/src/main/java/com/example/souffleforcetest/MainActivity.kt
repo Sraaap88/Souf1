@@ -1,71 +1,63 @@
 package com.example.souffleforcetest
 
-import android.Manifest
 import android.app.Activity
-import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.Bundle
 import android.os.Handler
-import android.os.Looper
-import android.view.View
-import android.widget.Toast
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : Activity() {
 
-    private var recorder: MediaRecorder? = null
-    private lateinit var indicator: View
-    private val handler = Handler(Looper.getMainLooper())
-    private val updateInterval = 33L
-    private val PERMISSION_REQUEST_CODE = 200
+    private var mediaRecorder: MediaRecorder? = null
+    private var handler: Handler? = null
+    private var organicLineView: OrganicLineView? = null
     private var isRecording = false
-
-    private val updateTask = object : Runnable {
-        override fun run() {
-            try {
-                if (isRecording && recorder != null) {
-                    val maxAmplitude = recorder!!.maxAmplitude
-                    val height = kotlin.math.min((maxAmplitude / 32767.0 * 800).toInt(), 800)
-                    val layoutParams = indicator.layoutParams
-                    layoutParams.height = if (height < 10) 10 else height
-                    indicator.layoutParams = layoutParams
-                    indicator.requestLayout()
-                }
-            } catch (e: Exception) {
-                // Ignore errors silently
-            }
-            if (isRecording) {
-                handler.postDelayed(this, updateInterval)
-            }
-        }
+    
+    companion object {
+        private const val PERMISSION_REQUEST_CODE = 1
+        private const val UPDATE_INTERVAL = 33L // 30 FPS
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        indicator = findViewById(R.id.indicator)
         
-        // Vérifier permissions
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
-        } else {
+        organicLineView = findViewById(R.id.organicLineView)
+        handler = Handler()
+        
+        // Vérifier et demander les permissions
+        if (checkPermissions()) {
             startRecording()
+        } else {
+            requestPermissions()
         }
     }
-
+    
+    private fun checkPermissions(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED &&
+               ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    }
+    
+    private fun requestPermissions() {
+        ActivityCompat.requestPermissions(this, 
+            arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE), 
+            PERMISSION_REQUEST_CODE)
+    }
+    
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startRecording()
-            } else {
-                Toast.makeText(this, "Permission micro requise", Toast.LENGTH_SHORT).show()
             }
         }
     }
-
+    
     private fun startRecording() {
         try {
-            recorder = MediaRecorder().apply {
+            mediaRecorder = MediaRecorder().apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
@@ -74,24 +66,45 @@ class MainActivity : Activity() {
                 start()
             }
             isRecording = true
-            handler.post(updateTask)
+            
+            // Démarrer la mise à jour périodique
+            updateAmplitude()
+            
         } catch (e: Exception) {
-            Toast.makeText(this, "Erreur micro", Toast.LENGTH_SHORT).show()
+            e.printStackTrace()
         }
     }
-
+    
+    private fun updateAmplitude() {
+        if (isRecording && mediaRecorder != null) {
+            try {
+                val amplitude = mediaRecorder?.maxAmplitude ?: 0
+                
+                // Normaliser l'amplitude (0-1)
+                val normalizedAmplitude = minOf(amplitude / 32767.0f, 1.0f)
+                
+                // Mettre à jour la vue
+                organicLineView?.updateForce(normalizedAmplitude)
+                
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        
+        // Programmer la prochaine mise à jour
+        handler?.postDelayed({ updateAmplitude() }, UPDATE_INTERVAL)
+    }
+    
     override fun onDestroy() {
         super.onDestroy()
-        isRecording = false
-        handler.removeCallbacks(updateTask)
-        recorder?.let {
+        mediaRecorder?.let {
             try {
                 it.stop()
                 it.release()
             } catch (e: Exception) {
-                // Ignore
+                e.printStackTrace()
             }
         }
-        recorder = null
+        handler?.removeCallbacksAndMessages(null)
     }
 }
