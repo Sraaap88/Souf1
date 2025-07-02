@@ -187,52 +187,52 @@ class OrganicLineView @JvmOverloads constructor(
         }
         
         invalidate() // Redessiner pour nouveau point
-        
-        // FORCER redessinage continu pour animation
-        postInvalidateDelayed(33) // Redessiner dans 33ms même sans nouveau point
     }
     
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        // Dessiner le tracé avec courbes naturelles
-        if (tracedPath.size > 1) {
-            val path = Path()
-            val firstPoint = tracedPath[0]
-            path.moveTo(firstPoint.x, firstPoint.y)
+        val time = System.currentTimeMillis() * 0.002f // Temps pour animation
+        
+        // Dessiner le tracé avec courbes naturelles, épaisseurs variables ET oscillation
+        for (i in 1 until tracedPath.size) {
+            val prevPoint = tracedPath[i - 1]
+            val currentPoint = tracedPath[i]
             
-            for (i in 1 until tracedPath.size) {
-                val prevPoint = tracedPath[i - 1]
-                val currentPoint = tracedPath[i]
-                
-                // Calculer le point de contrôle pour la courbe Bézier
-                val midX = (prevPoint.x + currentPoint.x) / 2f
-                val midY = (prevPoint.y + currentPoint.y) / 2f
-                
-                // Ajouter la courbure perpendiculaire au segment
-                val dx = currentPoint.x - prevPoint.x
-                val dy = currentPoint.y - prevPoint.y
-                val length = kotlin.math.sqrt(dx * dx + dy * dy)
-                
-                val controlX = if (length > 0) {
-                    midX + (-dy / length) * currentPoint.curvature
-                } else midX
-                
-                val controlY = if (length > 0) {
-                    midY + (dx / length) * currentPoint.curvature
-                } else midY
-                
-                // Créer courbe quadratique
-                basePaint.strokeWidth = currentPoint.strokeWidth
-                path.quadTo(controlX, controlY, currentPoint.x, currentPoint.y)
-            }
+            // Oscillation pour ce segment
+            val oscillation = kotlin.math.sin(time + currentPoint.y * 0.01f) * 8f
             
-            canvas.drawPath(path, basePaint)
+            // Calculer le point de contrôle pour la courbe Bézier (avec oscillation)
+            val midX = (prevPoint.x + currentPoint.x) / 2f + oscillation
+            val midY = (prevPoint.y + currentPoint.y) / 2f
+            
+            // Ajouter la courbure perpendiculaire au segment
+            val dx = currentPoint.x - prevPoint.x
+            val dy = currentPoint.y - prevPoint.y
+            val length = kotlin.math.sqrt(dx * dx + dy * dy)
+            
+            val controlX = if (length > 0) {
+                midX + (-dy / length) * currentPoint.curvature
+            } else midX
+            
+            val controlY = if (length > 0) {
+                midY + (dx / length) * currentPoint.curvature
+            } else midY
+            
+            // Créer Path pour ce segment avec SON épaisseur (et oscillation)
+            val segmentPath = Path()
+            segmentPath.moveTo(prevPoint.x + oscillation * 0.7f, prevPoint.y)
+            segmentPath.quadTo(controlX, controlY, currentPoint.x + oscillation, currentPoint.y)
+            
+            // Appliquer l'épaisseur spécifique à ce segment
+            basePaint.strokeWidth = currentPoint.strokeWidth
+            canvas.drawPath(segmentPath, basePaint)
         }
         
-        // Dessiner le point actuel
+        // Dessiner le point actuel (avec léger mouvement aussi)
         val currentY = baseY - currentHeight
-        val currentX = baseX + offsetX
+        val pointOscillation = kotlin.math.sin(time * 1.5f) * 3f
+        val currentX = baseX + offsetX + pointOscillation
         basePaint.style = Paint.Style.FILL
         canvas.drawCircle(currentX, currentY, 8f, basePaint)
         basePaint.style = Paint.Style.STROKE
