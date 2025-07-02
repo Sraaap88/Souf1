@@ -2,6 +2,8 @@
     package="com.example.souffleforcetest">
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     
     <!-- Indiquer que l'app nécessite un microphone -->
     <uses-feature 
@@ -12,6 +14,7 @@
         android:allowBackup="true"
         android:label="SouffleForceTest"
         android:supportsRtl="true"
+        android:requestLegacyExternalStorage="true"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
         <activity android:name=".MainActivity"
             android:exported="true"
