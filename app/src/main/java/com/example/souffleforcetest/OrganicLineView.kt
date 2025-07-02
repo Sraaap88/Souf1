@@ -3,7 +3,9 @@ package com.example.souffleforcetest
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 
 class OrganicLineView @JvmOverloads constructor(
@@ -20,6 +22,18 @@ class OrganicLineView @JvmOverloads constructor(
         style = Paint.Style.STROKE
     }
     
+    private val resetButtonPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+    }
+    
+    private val resetTextPaint = Paint().apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = 24f
+        isAntiAlias = true
+        textAlign = Paint.Align.CENTER
+    }
+    
     private var currentForce = 0.0f
     private var previousForce = 0.0f
     private var currentHeight = 0f // Position actuelle du point
@@ -28,6 +42,10 @@ class OrganicLineView @JvmOverloads constructor(
     private var maxHeight = 0f
     private var baseX = 0f
     private var baseY = 0f
+    private var showResetButton = false
+    private var resetButtonX = 0f
+    private var resetButtonY = 0f
+    private val resetButtonRadius = 35f
     
     // Stockage du tracé
     private data class TracePoint(
@@ -57,6 +75,10 @@ class OrganicLineView @JvmOverloads constructor(
         baseX = w / 2.0f
         baseY = h - 50f
         maxHeight = h - 100f
+        
+        // Position du bouton reset (en haut à droite)
+        resetButtonX = w - resetButtonRadius - 30f
+        resetButtonY = resetButtonRadius + 50f
         
         // Point de départ
         if (tracedPath.isEmpty()) {
@@ -116,6 +138,11 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
         
+        // Montrer le bouton reset après le premier souffle
+        if (!showResetButton && currentHeight > 50f) {
+            showResetButton = true
+        }
+        
         invalidate()
     }
     
@@ -164,5 +191,26 @@ class OrganicLineView @JvmOverloads constructor(
         basePaint.style = Paint.Style.FILL // Point plein
         canvas.drawCircle(currentX, currentY, 8f, basePaint) // Point plus gros aussi
         basePaint.style = Paint.Style.STROKE // Remettre pour les lignes
+        
+        // Dessiner le bouton reset si disponible
+        if (showResetButton) {
+            // Ombre douce
+            resetButtonPaint.color = 0x40000000.toInt() // Noir transparent
+            canvas.drawCircle(resetButtonX + 3f, resetButtonY + 3f, resetButtonRadius, resetButtonPaint)
+            
+            // Bouton principal rouge
+            resetButtonPaint.color = 0xFFE53E3E.toInt() // Rouge joli
+            canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
+            
+            // Bordure plus foncée
+            resetButtonPaint.color = 0xFFC53030.toInt() // Rouge plus foncé
+            resetButtonPaint.style = Paint.Style.STROKE
+            resetButtonPaint.strokeWidth = 3f
+            canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
+            resetButtonPaint.style = Paint.Style.FILL
+            
+            // Texte "↻"
+            canvas.drawText("↻", resetButtonX, resetButtonY + 8f, resetTextPaint)
+        }
     }
 }
