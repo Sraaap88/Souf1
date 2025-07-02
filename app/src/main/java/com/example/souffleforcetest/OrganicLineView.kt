@@ -182,73 +182,53 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        val time = System.currentTimeMillis() * 0.001f // Temps pour animation (plus lent)
+        val time = System.currentTimeMillis() * 0.003f // Temps pour animation visible
         
-        // Vent de base qui affecte toute la plante (plus prononcé)
-        val baseWind = kotlin.math.sin(time * 0.8f) * 12f // Amplitude plus forte
+        // OSCILLATION FORCÉE pour toute la ligne (test)
+        val globalWind = kotlin.math.sin(time) * 20f // Oscillation très visible
         
-        // Dessiner le tracé avec balancement global + danse locale
+        // Dessiner le tracé avec oscillation FORCÉE
         for (i in 1 until tracedPath.size) {
             val prevPoint = tracedPath[i - 1]
             val currentPoint = tracedPath[i]
             
-            // Mouvement global (balancement de toute la plante) plus visible
-            val heightFactor = (maxHeight - currentPoint.y) / maxHeight // Inverse : plus bas = moins de mouvement
-            val globalSway = baseWind * heightFactor * 1.5f // Facteur multiplicateur
-            
-            // Mouvement local (danse selon la mémoire du segment)
-            val localDance = if (currentPoint.waveAmplitude > 0) {
-                kotlin.math.sin(currentPoint.y * currentPoint.waveFrequency * 0.02f + time * 3f) * 
-                currentPoint.waveAmplitude // Amplitude complète
-            } else 0f
-            
-            // Mouvement total = global + local
-            val prevHeightFactor = (maxHeight - prevPoint.y) / maxHeight
-            val prevGlobalSway = baseWind * prevHeightFactor * 1.5f
-            
-            val prevTotalOffset = prevGlobalSway + 
-                if (prevPoint.waveAmplitude > 0) {
-                    kotlin.math.sin(prevPoint.y * prevPoint.waveFrequency * 0.02f + time * 3f) * 
-                    prevPoint.waveAmplitude
-                } else 0f
-                
-            val currentTotalOffset = globalSway + localDance
+            // Oscillation simple mais VISIBLE
+            val oscillation = kotlin.math.sin(time + currentPoint.y * 0.01f) * 15f
             
             basePaint.strokeWidth = currentPoint.strokeWidth
             canvas.drawLine(
-                prevPoint.x + prevTotalOffset, prevPoint.y,
-                currentPoint.x + currentTotalOffset, currentPoint.y,
+                prevPoint.x + oscillation, prevPoint.y,
+                currentPoint.x + oscillation, currentPoint.y,
                 basePaint
             )
         }
         
-        // Dessiner le point actuel (qui trace) avec déplacement et vent
+        // Dessiner le point actuel
         val currentY = baseY - currentHeight
-        val pointHeightFactor = (maxHeight - currentHeight) / maxHeight
-        val currentX = baseX + offsetX + baseWind * pointHeightFactor * 1.5f
-        basePaint.style = Paint.Style.FILL // Point plein
-        canvas.drawCircle(currentX, currentY, 8f, basePaint) // Point plus gros aussi
-        basePaint.style = Paint.Style.STROKE // Remettre pour les lignes
+        val currentX = baseX + offsetX + globalWind * 0.3f
+        basePaint.style = Paint.Style.FILL
+        canvas.drawCircle(currentX, currentY, 8f, basePaint)
+        basePaint.style = Paint.Style.STROKE
         
         // Dessiner le bouton reset si disponible
         if (showResetButton) {
             // Ombre douce
-            resetButtonPaint.color = 0x40000000.toInt() // Noir transparent
-            canvas.drawCircle(resetButtonX + 3f, resetButtonY + 3f, resetButtonRadius, resetButtonPaint)
+            resetButtonPaint.color = 0x40000000.toInt()
+            canvas.drawCircle(resetButtonX + 8f, resetButtonY + 8f, resetButtonRadius, resetButtonPaint)
             
             // Bouton principal rouge
-            resetButtonPaint.color = 0xFFE53E3E.toInt() // Rouge joli
+            resetButtonPaint.color = 0xFFE53E3E.toInt()
             canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
             
             // Bordure plus foncée
-            resetButtonPaint.color = 0xFFC53030.toInt() // Rouge plus foncé
+            resetButtonPaint.color = 0xFFC53030.toInt()
             resetButtonPaint.style = Paint.Style.STROKE
-            resetButtonPaint.strokeWidth = 8f // Plus épais pour gros bouton
+            resetButtonPaint.strokeWidth = 8f
             canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
             resetButtonPaint.style = Paint.Style.FILL
             
             // Texte "↻" plus gros
-            canvas.drawText("↻", resetButtonX, resetButtonY + 40f, resetTextPaint) // Ajustement vertical
+            canvas.drawText("↻", resetButtonX, resetButtonY + 40f, resetTextPaint)
         }
     }
 }
