@@ -30,6 +30,80 @@ class OrganicLineView @JvmOverloads constructor(
         textAlign = Paint.Align.LEFT
     }
     
+    private val resetButtonPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+    }
+    
+    private val resetTextPaint = Paint().apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = 120f
+        isAntiAlias = true
+        textAlign = Paint.Align.CENTER
+    }
+    
+    private var currentForce = 0.0f
+    private var previousForce = 0.0f
+    private var currentHeight = 0f
+    private var currentStrokeWidth = 4f
+    private var offsetX = 0f
+    private var maxHeight = 0f
+    private var baseX = 0f
+    private var baseY = 0f
+    private var showResetButton = false
+    private var resetButtonX = 0f
+    private var resetButtonY = 0f
+    private val resetButtonRadius = 175f
+    
+    // Variables pour les nouveaux éléments
+    private var uIntensity = 0f // Intensité du U pour bourgeons
+    private var aIntensity = 0f // Intensité du A pour feuilles
+    private var iIntensity = 0f // Intensité du I pour feuilles
+    private var oIntensity = 0f // Intensité du O pour fleur
+    
+    // États du système en 6 étapes maintenant
+    private var lightState = LightState.YELLOW
+    private var stateStartTime = 0L
+    private var canGrow = false
+    
+    enum class LightState {
+        YELLOW,        // 2s - Inspirez + timer au centre
+        GREEN_GROW,    // 3s - Croissance tige + timer
+        GREEN_BUDS,    // 3s - Bourgeons avec U + timer
+        GREEN_LEAVES,  // 3s - Feuilles avec A/I + timer
+        GREEN_FLOWER,  // 3s - Fleur avec O + timer
+        RED            // Infini - Recommencer
+    }
+    
+    private data class TracePoint(
+        val x: Float,
+        val y: Float,
+        val strokeWidth: Float,
+        val waveFrequency: Float,
+        val waveAmplitude: Float,
+        val curvature: Float
+    )
+    
+    // Nouveaux éléments visuels
+    data class Bourgeon(val x: Float, val y: Float, var taille: Float)
+    data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float)
+    data class Fleur(val x: Float, val y: Float, var taille: Float, var petalCount: Int)
+    
+    private val tracedPath = mutableListOf<TracePoint>()
+    private val bourgeons = mutableListOf<Bourgeon>()
+    private val feuilles = mutableListOf<Feuille>()
+    private var fleur: Fleur? = null
+    
+    private val forceThreshold = 0.08f
+    private val growthRate = 174.6f
+    private val baseStrokeWidth = 4f
+    private val maxStrokeWidth = 96f
+    private val strokeDecayRate = 0.2f
+    private val abruptThreshold = 0.15f
+    private val centeringRate = 0.92f
+    private val waveThreshold = 0.03f
+    private val maxWaveAmplitude = 15f
+    
     private fun drawTrafficLight(canvas: Canvas) {
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
@@ -109,80 +183,6 @@ class OrganicLineView @JvmOverloads constructor(
         // Remettre taille normale
         resetTextPaint.textSize = 120f
     }
-    
-    private val resetButtonPaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.FILL
-    }
-    
-    private val resetTextPaint = Paint().apply {
-        color = 0xFFFFFFFF.toInt()
-        textSize = 120f
-        isAntiAlias = true
-        textAlign = Paint.Align.CENTER
-    }
-    
-    private var currentForce = 0.0f
-    private var previousForce = 0.0f
-    private var currentHeight = 0f
-    private var currentStrokeWidth = 4f
-    private var offsetX = 0f
-    private var maxHeight = 0f
-    private var baseX = 0f
-    private var baseY = 0f
-    private var showResetButton = false
-    private var resetButtonX = 0f
-    private var resetButtonY = 0f
-    private val resetButtonRadius = 175f
-    
-    // Variables pour les nouveaux éléments
-    private var uIntensity = 0f // Intensité du U pour bourgeons
-    private var aIntensity = 0f // Intensité du A pour feuilles
-    private var iIntensity = 0f // Intensité du I pour feuilles
-    private var oIntensity = 0f // Intensité du O pour fleur
-    
-    // États du système en 6 étapes maintenant
-    private var lightState = LightState.YELLOW
-    private var stateStartTime = 0L
-    private var canGrow = false
-    
-    enum class LightState {
-        YELLOW,        // 2s - Inspirez + timer au centre
-        GREEN_GROW,    // 3s - Croissance tige + timer
-        GREEN_BUDS,    // 3s - Bourgeons avec U + timer
-        GREEN_LEAVES,  // 3s - Feuilles avec A/I + timer
-        GREEN_FLOWER,  // 3s - Fleur avec O + timer
-        RED            // Infini - Recommencer
-    }
-    
-    private data class TracePoint(
-        val x: Float,
-        val y: Float,
-        val strokeWidth: Float,
-        val waveFrequency: Float,
-        val waveAmplitude: Float,
-        val curvature: Float
-    )
-    
-    // Nouveaux éléments visuels
-    data class Bourgeon(val x: Float, val y: Float, var taille: Float)
-    data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float)
-    data class Fleur(val x: Float, val y: Float, var taille: Float, var petalCount: Int)
-    
-    private val tracedPath = mutableListOf<TracePoint>()
-    private val bourgeons = mutableListOf<Bourgeon>()
-    private val feuilles = mutableListOf<Feuille>()
-    private var fleur: Fleur? = null
-    
-    private val forceThreshold = 0.08f
-    private val growthRate = 174.6f
-    private val baseStrokeWidth = 4f
-    private val maxStrokeWidth = 96f
-    private val strokeDecayRate = 0.2f
-    private val abruptThreshold = 0.15f
-    private val centeringRate = 0.92f
-    private val waveThreshold = 0.03f
-    private val maxWaveAmplitude = 15f
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
