@@ -3,10 +3,8 @@ package com.example.souffleforcetest
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
 import android.util.AttributeSet
 import android.view.View
-import kotlin.collections.mutableListOf
 
 class OrganicLineView @JvmOverloads constructor(
     context: Context,
@@ -25,7 +23,7 @@ class OrganicLineView @JvmOverloads constructor(
     private var currentForce = 0.0f
     private var previousForce = 0.0f
     private var currentHeight = 0f // Position actuelle du point
-    private var currentStrokeWidth = 1f // Épaisseur actuelle
+    private var currentStrokeWidth = 2f // Épaisseur actuelle
     private var offsetX = 0f // Déplacement horizontal
     private var maxHeight = 0f
     private var baseX = 0f
@@ -46,6 +44,8 @@ class OrganicLineView @JvmOverloads constructor(
     private val baseStrokeWidth = 2f // 2x plus épais
     private val maxStrokeWidth = 24f // 2x plus épais aussi
     private val strokeDecayRate = 0.2f
+    private val abruptThreshold = 0.15f // Seuil pour détecter coup de vent
+    private val centeringRate = 0.92f // Vitesse de retour au centre
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
