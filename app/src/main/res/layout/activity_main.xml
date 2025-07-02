@@ -4,12 +4,9 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <View
-        android:id="@+id/indicator"
-        android:layout_width="4dp"
-        android:layout_height="10dp"
-        android:layout_gravity="center_horizontal|bottom"
-        android:layout_marginBottom="100dp"
-        android:background="#FFFFFF"/>
+    <com.example.souffleforcetest.OrganicLineView
+        android:id="@+id/organicLineView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
 </FrameLayout>
