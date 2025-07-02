@@ -23,33 +23,73 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun drawTrafficLight(canvas: Canvas) {
+        val currentTime = System.currentTimeMillis()
+        val elapsedTime = currentTime - stateStartTime
+        
+        // Calculer la taille selon l'étape
+        val lightRadius = when (lightState) {
+            LightState.YELLOW -> width * 0.4f // Presque plein écran
+            else -> resetButtonRadius // Taille normale
+        }
+        
+        // Position ajustée pour grande lumière jaune
+        val lightX = if (lightState == LightState.YELLOW) width / 2f else resetButtonX
+        val lightY = if (lightState == LightState.YELLOW) height / 2f else resetButtonY
+        
         // Ombre
         resetButtonPaint.color = 0x40000000.toInt()
-        canvas.drawCircle(resetButtonX + 8f, resetButtonY + 8f, resetButtonRadius, resetButtonPaint)
+        canvas.drawCircle(lightX + 8f, lightY + 8f, lightRadius, resetButtonPaint)
         
-        // Couleur selon l'état
+        // Couleur selon l'étape
         when (lightState) {
             LightState.YELLOW -> resetButtonPaint.color = 0xFFFFD700.toInt() // Jaune
-            LightState.GREEN -> resetButtonPaint.color = 0xFF00FF00.toInt()  // Vert
+            LightState.GREEN_GROW -> resetButtonPaint.color = 0xFF00FF00.toInt()  // Vert clair
+            LightState.GREEN_LEAVES -> resetButtonPaint.color = 0xFF228B22.toInt() // Vert foncé
+            LightState.GREEN_FLOWER -> resetButtonPaint.color = 0xFF32CD32.toInt()  // Vert moyen
             LightState.RED -> resetButtonPaint.color = 0xFFFF0000.toInt()    // Rouge
         }
-        canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
+        canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
         
         // Bordure
         resetButtonPaint.color = 0xFF333333.toInt()
         resetButtonPaint.style = Paint.Style.STROKE
         resetButtonPaint.strokeWidth = 12f
-        canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
+        canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
         resetButtonPaint.style = Paint.Style.FILL
         
-        // Texte selon l'état
-        val text = when (lightState) {
-            LightState.YELLOW -> "PRÊT"
-            LightState.GREEN -> "GO!"
+        // Calculer timer et texte
+        val timeRemaining = when (lightState) {
+            LightState.YELLOW -> kotlin.math.max(0, 2 - (elapsedTime / 1000))
+            LightState.GREEN_GROW -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
+            LightState.GREEN_LEAVES -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
+            LightState.GREEN_FLOWER -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
+            LightState.RED -> 0
+        }
+        
+        val mainText = when (lightState) {
+            LightState.YELLOW -> "INSPIREZ"
+            LightState.GREEN_GROW -> "SOUFFLEZ"
+            LightState.GREEN_LEAVES -> "VOYELLES"
+            LightState.GREEN_FLOWER -> "FLEUR"
             LightState.RED -> "↻"
         }
-        resetTextPaint.color = 0xFF000000.toInt() // Noir pour lisibilité
-        canvas.drawText(text, resetButtonX, resetButtonY + 40f, resetTextPaint)
+        
+        // Ajuster taille du texte selon la lumière
+        val textSize = if (lightState == LightState.YELLOW) 180f else 120f
+        resetTextPaint.textSize = textSize
+        resetTextPaint.color = 0xFF000000.toInt()
+        
+        // Dessiner texte principal
+        canvas.drawText(mainText, lightX, lightY, resetTextPaint)
+        
+        // Dessiner timer si applicable
+        if (lightState != LightState.RED && timeRemaining > 0) {
+            resetTextPaint.textSize = textSize * 0.6f
+            canvas.drawText(timeRemaining.toString(), lightX, lightY + textSize * 0.8f, resetTextPaint)
+        }
+        
+        // Remettre taille normale
+        resetTextPaint.textSize = 120f
     }
     
     private val resetButtonPaint = Paint().apply {
@@ -77,15 +117,17 @@ class OrganicLineView @JvmOverloads constructor(
     private var resetButtonY = 0f
     private val resetButtonRadius = 175f
     
-    // États du feu de circulation
+    // États du système en 5 étapes
     private var lightState = LightState.YELLOW
     private var stateStartTime = 0L
     private var canGrow = false
     
     enum class LightState {
-        YELLOW,  // 2s - Préparez-vous
-        GREEN,   // 2s - Soufflez !
-        RED      // Infini - Cliquez pour recommencer
+        YELLOW,      // 2s - Inspirez + timer
+        GREEN_GROW,  // 3s - Croissance tige + timer
+        GREEN_LEAVES, // 3s - Forme feuilles avec voyelles + timer
+        GREEN_FLOWER, // 3s - Création fleur + timer
+        RED          // Infini - Admirez et recommencez
     }
     
     private data class TracePoint(
@@ -128,11 +170,18 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     fun updateForce(force: Float) {
-        // Gérer le feu de circulation
+        // Gérer le système en 5 étapes
         updateLightState()
         
-        // Ne grandir que pendant l'état vert
-        if (!canGrow) return
+        // Ne grandir que pendant l'étape de croissance
+        if (lightState != LightState.GREEN_GROW) {
+            if (lightState == LightState.GREEN_LEAVES) {
+                // TODO: Analyser voyelles pour feuilles
+            } else if (lightState == LightState.GREEN_FLOWER) {
+                // TODO: Analyser son pour fleurs
+            }
+            return
+        }
         
         previousForce = currentForce
         currentForce = force
@@ -202,16 +251,30 @@ class OrganicLineView @JvmOverloads constructor(
             LightState.YELLOW -> {
                 canGrow = false
                 if (elapsedTime >= 2000) { // 2 secondes
-                    lightState = LightState.GREEN
+                    lightState = LightState.GREEN_GROW
                     stateStartTime = currentTime
                 }
             }
-            LightState.GREEN -> {
+            LightState.GREEN_GROW -> {
                 canGrow = true
-                if (elapsedTime >= 2000) { // 2 secondes
-                    lightState = LightState.RED
+                if (elapsedTime >= 3000) { // 3 secondes
+                    lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                     canGrow = false
+                }
+            }
+            LightState.GREEN_LEAVES -> {
+                canGrow = false
+                if (elapsedTime >= 3000) { // 3 secondes
+                    lightState = LightState.GREEN_FLOWER
+                    stateStartTime = currentTime
+                }
+            }
+            LightState.GREEN_FLOWER -> {
+                canGrow = false
+                if (elapsedTime >= 3000) { // 3 secondes
+                    lightState = LightState.RED
+                    stateStartTime = currentTime
                 }
             }
             LightState.RED -> {
@@ -268,12 +331,16 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN) {
-            val dx = event.x - resetButtonX
-            val dy = event.y - resetButtonY
+        if (event.action == MotionEvent.ACTION_DOWN && lightState == LightState.RED) {
+            val lightX = resetButtonX
+            val lightY = resetButtonY
+            val lightRadius = resetButtonRadius
+            
+            val dx = event.x - lightX
+            val dy = event.y - lightY
             val distance = kotlin.math.sqrt(dx * dx + dy * dy)
             
-            if (distance <= resetButtonRadius && lightState == LightState.RED) {
+            if (distance <= lightRadius) {
                 resetPlant()
                 return true
             }
@@ -288,7 +355,7 @@ class OrganicLineView @JvmOverloads constructor(
         offsetX = 0f
         showResetButton = false
         
-        // Redémarrer le cycle
+        // Redémarrer le cycle complet
         lightState = LightState.YELLOW
         stateStartTime = System.currentTimeMillis()
         canGrow = false
