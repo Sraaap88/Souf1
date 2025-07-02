@@ -42,7 +42,7 @@ class OrganicLineView @JvmOverloads constructor(
     
     // Configuration
     private val forceThreshold = 0.08f
-    private val growthRate = 19.4f // Pixels par frame (30% plus rapide)
+    private val growthRate = 38.8f // Pixels par frame (2x plus rapide encore)
     private val baseStrokeWidth = 2f // 2x plus épais
     private val maxStrokeWidth = 24f // 2x plus épais aussi
     private val strokeDecayRate = 0.2f
