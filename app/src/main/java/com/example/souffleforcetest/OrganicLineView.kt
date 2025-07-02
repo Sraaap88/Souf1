@@ -176,7 +176,10 @@ class OrganicLineView @JvmOverloads constructor(
             showResetButton = true
         }
         
-        invalidate()
+        invalidate() // Redessiner pour nouveau point
+        
+        // FORCER redessinage continu pour animation
+        postInvalidateDelayed(33) // Redessiner dans 33ms même sans nouveau point
     }
     
     override fun onDraw(canvas: Canvas) {
