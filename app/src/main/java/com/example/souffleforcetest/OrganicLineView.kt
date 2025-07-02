@@ -16,6 +16,7 @@ class OrganicLineView @JvmOverloads constructor(
     
     private val basePaint = Paint().apply {
         color = 0xFFFFFFFF.toInt() // Blanc
+        strokeWidth = 2f // 2x plus épais de base
         isAntiAlias = true
         strokeCap = Paint.Cap.ROUND
         style = Paint.Style.STROKE
@@ -25,6 +26,7 @@ class OrganicLineView @JvmOverloads constructor(
     private var previousForce = 0.0f
     private var currentHeight = 0f // Position actuelle du point
     private var currentStrokeWidth = 1f // Épaisseur actuelle
+    private var offsetX = 0f // Déplacement horizontal
     private var maxHeight = 0f
     private var baseX = 0f
     private var baseY = 0f
@@ -40,9 +42,9 @@ class OrganicLineView @JvmOverloads constructor(
     
     // Configuration
     private val forceThreshold = 0.08f
-    private val growthRate = 14.9f // Pixels par frame (20% plus rapide)
-    private val baseStrokeWidth = 1f
-    private val maxStrokeWidth = 12f
+    private val growthRate = 19.4f // Pixels par frame (30% plus rapide)
+    private val baseStrokeWidth = 2f // 2x plus épais
+    private val maxStrokeWidth = 24f // 2x plus épais aussi
     private val strokeDecayRate = 0.2f
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -54,7 +56,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Point de départ
         if (tracedPath.isEmpty()) {
-            tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth))
+            tracedPath.add(TracePoint(baseX + offsetX, baseY, baseStrokeWidth))
         }
     }
     
@@ -69,25 +71,34 @@ class OrganicLineView @JvmOverloads constructor(
             currentHeight = kotlin.math.min(currentHeight, maxHeight)
         }
         
-        // Calcul de l'épaisseur selon le rythme
+        // Calcul des variations
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
-        if (rhythmIntensity > 0.02f) {
+        // Détecter coup de vent (variation brusque)
+        if (rhythmIntensity > abruptThreshold) {
+            // Déplacement horizontal instantané ±20px
+            val displacement = if (kotlin.random.Random.nextBoolean()) 20f else -20f
+            offsetX += displacement
+        } else if (rhythmIntensity > 0.02f) {
+            // Variation rythmée normale - épaisseur
             val thicknessIncrease = rhythmIntensity * 40f
             currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
         }
         
-        // Retour graduel à l'épaisseur de base
+        // Retours graduels
         if (currentStrokeWidth > baseStrokeWidth) {
             currentStrokeWidth = kotlin.math.max(baseStrokeWidth, currentStrokeWidth - strokeDecayRate)
         }
+        offsetX *= centeringRate // Retour graduel au centre
         
-        // Ajouter le nouveau point au tracé
+        // Ajouter le nouveau point au tracé (avec déplacement)
         val currentY = baseY - currentHeight
+        val currentX = baseX + offsetX
+        
         if (tracedPath.isNotEmpty()) {
             val lastPoint = tracedPath.last()
             if (currentY < lastPoint.y) { // Seulement si on monte
-                tracedPath.add(TracePoint(baseX, currentY, currentStrokeWidth))
+                tracedPath.add(TracePoint(currentX, currentY, currentStrokeWidth))
             }
         }
         
@@ -110,9 +121,10 @@ class OrganicLineView @JvmOverloads constructor(
             )
         }
         
-        // Dessiner le point actuel (qui trace)
+        // Dessiner le point actuel (qui trace) avec déplacement
         val currentY = baseY - currentHeight
-        basePaint.strokeWidth = 1f
-        canvas.drawCircle(baseX, currentY, 6f, basePaint)
+        val currentX = baseX + offsetX
+        basePaint.strokeWidth = 2f // Point 2x plus épais
+        canvas.drawCircle(currentX, currentY, 6f, basePaint)
     }
 }
