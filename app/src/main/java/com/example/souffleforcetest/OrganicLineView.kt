@@ -3,8 +3,10 @@ package com.example.souffleforcetest
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.util.AttributeSet
 import android.view.View
+import kotlin.collections.mutableListOf
 
 class OrganicLineView @JvmOverloads constructor(
     context: Context,
@@ -12,59 +14,66 @@ class OrganicLineView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
     
-    private val paint = Paint().apply {
+    private val basePaint = Paint().apply {
         color = 0xFFFFFFFF.toInt() // Blanc
-        strokeWidth = 1f // Épaisseur de base
         isAntiAlias = true
         strokeCap = Paint.Cap.ROUND
+        style = Paint.Style.STROKE
     }
     
     private var currentForce = 0.0f
     private var previousForce = 0.0f
-    private var currentHeight = 0f // Hauteur cumulative
-    private var currentStrokeWidth = 1f // Épaisseur dynamique
+    private var currentHeight = 0f // Position actuelle du point
+    private var currentStrokeWidth = 1f // Épaisseur actuelle
     private var maxHeight = 0f
     private var baseX = 0f
     private var baseY = 0f
     
-    // Configuration de croissance
-    private val forceThreshold = 0.08f // Seuil anti-parasite à 8%
-    private val growthRate = 12.4f // Pixels par frame (2x plus rapide)
+    // Stockage du tracé
+    private data class TracePoint(
+        val x: Float,
+        val y: Float,
+        val strokeWidth: Float
+    )
     
-    // Configuration du rythme
+    private val tracedPath = mutableListOf<TracePoint>()
+    
+    // Configuration
+    private val forceThreshold = 0.08f
+    private val growthRate = 14.9f // Pixels par frame (20% plus rapide)
     private val baseStrokeWidth = 1f
     private val maxStrokeWidth = 12f
-    private val strokeDecayRate = 0.2f // Retour graduel épaisseur
+    private val strokeDecayRate = 0.2f
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         
-        // Position de base : en bas au centre
         baseX = w / 2.0f
-        baseY = h - 50f // 50px du bas
-        maxHeight = h - 100f // Hauteur maximale disponible
+        baseY = h - 50f
+        maxHeight = h - 100f
+        
+        // Point de départ
+        if (tracedPath.isEmpty()) {
+            tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth))
+        }
     }
     
     fun updateForce(force: Float) {
-        // Sauvegarder la force précédente pour détecter les variations
         previousForce = currentForce
         currentForce = force
         
-        // Croissance cumulative seulement si au-dessus du seuil
+        // Croissance de la position du point
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
             currentHeight += adjustedForce * growthRate
-            
-            // Limiter à la hauteur maximale
             currentHeight = kotlin.math.min(currentHeight, maxHeight)
         }
         
-        // Détecter les variations pour l'épaisseur
+        // Calcul de l'épaisseur selon le rythme
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
-        // Augmenter l'épaisseur selon l'intensité du rythme
-        if (rhythmIntensity > 0.02f) { // Seuil minimal pour variation
-            val thicknessIncrease = rhythmIntensity * 40f // Facteur de multiplication
+        if (rhythmIntensity > 0.02f) {
+            val thicknessIncrease = rhythmIntensity * 40f
             currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
         }
         
@@ -73,21 +82,37 @@ class OrganicLineView @JvmOverloads constructor(
             currentStrokeWidth = kotlin.math.max(baseStrokeWidth, currentStrokeWidth - strokeDecayRate)
         }
         
-        invalidate() // Redessiner
+        // Ajouter le nouveau point au tracé
+        val currentY = baseY - currentHeight
+        if (tracedPath.isNotEmpty()) {
+            val lastPoint = tracedPath.last()
+            if (currentY < lastPoint.y) { // Seulement si on monte
+                tracedPath.add(TracePoint(baseX, currentY, currentStrokeWidth))
+            }
+        }
+        
+        invalidate()
     }
     
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        // Mettre à jour l'épaisseur du pinceau
-        paint.strokeWidth = currentStrokeWidth
-        
-        // Dessiner la ligne verticale cumulative
-        if (currentHeight > 0) {
-            canvas.drawLine(baseX, baseY, baseX, baseY - currentHeight, paint)
+        // Dessiner le tracé avec les épaisseurs variables
+        for (i in 1 until tracedPath.size) {
+            val prevPoint = tracedPath[i - 1]
+            val currentPoint = tracedPath[i]
+            
+            basePaint.strokeWidth = currentPoint.strokeWidth
+            canvas.drawLine(
+                prevPoint.x, prevPoint.y,
+                currentPoint.x, currentPoint.y,
+                basePaint
+            )
         }
         
-        // Dessiner le point de base
-        canvas.drawCircle(baseX, baseY, 6f, paint)
+        // Dessiner le point actuel (qui trace)
+        val currentY = baseY - currentHeight
+        basePaint.strokeWidth = 1f
+        canvas.drawCircle(baseX, currentY, 6f, basePaint)
     }
 }
