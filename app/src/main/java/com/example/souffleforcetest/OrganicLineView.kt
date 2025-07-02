@@ -144,14 +144,20 @@ class OrganicLineView @JvmOverloads constructor(
         }
         offsetX *= centeringRate // Retour graduel au centre
         
-        // Calcul des ondulations selon micro-variations
+        // Calcul des ondulations selon micro-variations (seuils ajustés)
         var waveFreq = 0f
         var waveAmp = 0f
         
-        if (rhythmIntensity > waveThreshold && rhythmIntensity < abruptThreshold) {
-            // Micro-variations = ondulations
-            waveFreq = (rhythmIntensity * 20f) + 2f // Fréquence 2-6
-            waveAmp = (rhythmIntensity * 100f).coerceAtMost(maxWaveAmplitude)
+        if (rhythmIntensity > 0.01f && rhythmIntensity < abruptThreshold) {
+            // Micro-variations = ondulations (seuil plus bas)
+            waveFreq = (rhythmIntensity * 15f) + 1f // Fréquence 1-3.25
+            waveAmp = (rhythmIntensity * 200f).coerceAtMost(maxWaveAmplitude) // Plus sensible
+        }
+        
+        // FORCER des ondulations pour test si aucune variation
+        if (waveAmp == 0f && currentHeight > 0f) {
+            waveFreq = 2f // Fréquence de base
+            waveAmp = 3f // Amplitude de base pour voir le mouvement
         }
         
         // Ajouter le nouveau point au tracé (avec déplacement et ondulations)
