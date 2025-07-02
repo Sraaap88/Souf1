@@ -22,6 +22,33 @@ class OrganicLineView @JvmOverloads constructor(
         style = Paint.Style.STROKE
     }
     
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_DOWN && showResetButton) {
+            val dx = event.x - resetButtonX
+            val dy = event.y - resetButtonY
+            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+            
+            if (distance <= resetButtonRadius) {
+                // Reset la plante
+                resetPlant()
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+    
+    private fun resetPlant() {
+        tracedPath.clear()
+        currentHeight = 0f
+        currentStrokeWidth = baseStrokeWidth
+        offsetX = 0f
+        showResetButton = false
+        
+        // Remettre le point de départ
+        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f))
+        invalidate()
+    }
+    
     private val resetButtonPaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.FILL
@@ -29,7 +56,7 @@ class OrganicLineView @JvmOverloads constructor(
     
     private val resetTextPaint = Paint().apply {
         color = 0xFFFFFFFF.toInt()
-        textSize = 24f
+        textSize = 120f // 5x plus gros aussi
         isAntiAlias = true
         textAlign = Paint.Align.CENTER
     }
@@ -45,7 +72,7 @@ class OrganicLineView @JvmOverloads constructor(
     private var showResetButton = false
     private var resetButtonX = 0f
     private var resetButtonY = 0f
-    private val resetButtonRadius = 35f
+    private val resetButtonRadius = 175f // 5x plus gros (35f * 5)
     
     // Stockage du tracé
     private data class TracePoint(
@@ -77,8 +104,8 @@ class OrganicLineView @JvmOverloads constructor(
         maxHeight = h - 100f
         
         // Position du bouton reset (en haut à droite)
-        resetButtonX = w - resetButtonRadius - 30f
-        resetButtonY = resetButtonRadius + 50f
+        resetButtonX = w - resetButtonRadius - 50f // Plus d'espace pour le gros bouton
+        resetButtonY = resetButtonRadius + 80f
         
         // Point de départ
         if (tracedPath.isEmpty()) {
@@ -149,30 +176,34 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        val time = System.currentTimeMillis() * 0.003f // Temps pour animation
+        val time = System.currentTimeMillis() * 0.001f // Temps pour animation (plus lent)
         
-        // Vent de base qui affecte toute la plante
-        val baseWind = kotlin.math.sin(time * 0.4f) * 3f
+        // Vent de base qui affecte toute la plante (plus prononcé)
+        val baseWind = kotlin.math.sin(time * 0.8f) * 12f // Amplitude plus forte
         
         // Dessiner le tracé avec balancement global + danse locale
         for (i in 1 until tracedPath.size) {
             val prevPoint = tracedPath[i - 1]
             val currentPoint = tracedPath[i]
             
-            // Mouvement global (balancement de toute la plante)
-            val globalSway = baseWind * (currentPoint.y / maxHeight) // Plus fort vers le haut
+            // Mouvement global (balancement de toute la plante) plus visible
+            val heightFactor = (maxHeight - currentPoint.y) / maxHeight // Inverse : plus bas = moins de mouvement
+            val globalSway = baseWind * heightFactor * 1.5f // Facteur multiplicateur
             
             // Mouvement local (danse selon la mémoire du segment)
             val localDance = if (currentPoint.waveAmplitude > 0) {
-                kotlin.math.sin(currentPoint.y * currentPoint.waveFrequency * 0.01f + time * 1.5f) * 
-                (currentPoint.waveAmplitude * 0.7f) // 70% de l'amplitude originale
+                kotlin.math.sin(currentPoint.y * currentPoint.waveFrequency * 0.02f + time * 3f) * 
+                currentPoint.waveAmplitude // Amplitude complète
             } else 0f
             
             // Mouvement total = global + local
-            val prevTotalOffset = globalSway + 
+            val prevHeightFactor = (maxHeight - prevPoint.y) / maxHeight
+            val prevGlobalSway = baseWind * prevHeightFactor * 1.5f
+            
+            val prevTotalOffset = prevGlobalSway + 
                 if (prevPoint.waveAmplitude > 0) {
-                    kotlin.math.sin(prevPoint.y * prevPoint.waveFrequency * 0.01f + time * 1.5f) * 
-                    (prevPoint.waveAmplitude * 0.7f)
+                    kotlin.math.sin(prevPoint.y * prevPoint.waveFrequency * 0.02f + time * 3f) * 
+                    prevPoint.waveAmplitude
                 } else 0f
                 
             val currentTotalOffset = globalSway + localDance
@@ -185,9 +216,10 @@ class OrganicLineView @JvmOverloads constructor(
             )
         }
         
-        // Dessiner le point actuel (qui trace) avec déplacement
+        // Dessiner le point actuel (qui trace) avec déplacement et vent
         val currentY = baseY - currentHeight
-        val currentX = baseX + offsetX + baseWind * (currentHeight / maxHeight)
+        val pointHeightFactor = (maxHeight - currentHeight) / maxHeight
+        val currentX = baseX + offsetX + baseWind * pointHeightFactor * 1.5f
         basePaint.style = Paint.Style.FILL // Point plein
         canvas.drawCircle(currentX, currentY, 8f, basePaint) // Point plus gros aussi
         basePaint.style = Paint.Style.STROKE // Remettre pour les lignes
@@ -205,12 +237,12 @@ class OrganicLineView @JvmOverloads constructor(
             // Bordure plus foncée
             resetButtonPaint.color = 0xFFC53030.toInt() // Rouge plus foncé
             resetButtonPaint.style = Paint.Style.STROKE
-            resetButtonPaint.strokeWidth = 3f
+            resetButtonPaint.strokeWidth = 8f // Plus épais pour gros bouton
             canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
             resetButtonPaint.style = Paint.Style.FILL
             
-            // Texte "↻"
-            canvas.drawText("↻", resetButtonX, resetButtonY + 8f, resetTextPaint)
+            // Texte "↻" plus gros
+            canvas.drawText("↻", resetButtonX, resetButtonY + 40f, resetTextPaint) // Ajustement vertical
         }
     }
 }
