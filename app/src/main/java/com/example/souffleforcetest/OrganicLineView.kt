@@ -59,9 +59,9 @@ class OrganicLineView @JvmOverloads constructor(
     private val tracedPath = mutableListOf<TracePoint>()
     
     private val forceThreshold = 0.08f
-    private val growthRate = 58.2f
+    private val growthRate = 116.4f // 2x plus rapide
     private val baseStrokeWidth = 4f
-    private val maxStrokeWidth = 48f
+    private val maxStrokeWidth = 96f // Différence d'épaisseur plus visible
     private val strokeDecayRate = 0.2f
     private val abruptThreshold = 0.15f
     private val centeringRate = 0.92f
@@ -96,10 +96,10 @@ class OrganicLineView @JvmOverloads constructor(
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
         if (rhythmIntensity > abruptThreshold) {
-            val displacement = if ((0..1).random() == 0) 40f else -40f
+            val displacement = if ((0..1).random() == 0) 80f else -80f // Changements plus gros
             offsetX += displacement
         } else if (rhythmIntensity > 0.02f) {
-            val thicknessIncrease = rhythmIntensity * 80f
+            val thicknessIncrease = rhythmIntensity * 160f // Plus de variation d'épaisseur
             currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
         }
         
@@ -153,7 +153,8 @@ class OrganicLineView @JvmOverloads constructor(
             val prevPoint = tracedPath[i - 1]
             val currentPoint = tracedPath[i]
             
-            val oscillation = kotlin.math.sin(time + currentPoint.y * 0.01f) * 8f
+            // Oscillation TRÈS VISIBLE
+            val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f // Beaucoup plus d'amplitude
             
             val midX = (prevPoint.x + currentPoint.x) / 2f + oscillation
             val midY = (prevPoint.y + currentPoint.y) / 2f
@@ -171,7 +172,7 @@ class OrganicLineView @JvmOverloads constructor(
             } else midY
             
             val segmentPath = Path()
-            segmentPath.moveTo(prevPoint.x + oscillation * 0.7f, prevPoint.y)
+            segmentPath.moveTo(prevPoint.x + oscillation * 0.8f, prevPoint.y) // Plus d'oscillation
             segmentPath.quadTo(controlX, controlY, currentPoint.x + oscillation, currentPoint.y)
             
             basePaint.strokeWidth = currentPoint.strokeWidth
@@ -179,7 +180,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
         
         val currentY = baseY - currentHeight
-        val pointOscillation = kotlin.math.sin(time * 1.5f) * 3f
+        val pointOscillation = kotlin.math.sin(time * 2f) * 15f // Point oscille beaucoup plus
         val currentX = baseX + offsetX + pointOscillation
         basePaint.style = Paint.Style.FILL
         canvas.drawCircle(currentX, currentY, 8f, basePaint)
