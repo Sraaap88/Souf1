@@ -3,6 +3,7 @@ package com.example.souffleforcetest
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -45,7 +46,7 @@ class OrganicLineView @JvmOverloads constructor(
         showResetButton = false
         
         // Remettre le point de départ
-        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f))
+        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
         invalidate()
     }
     
@@ -80,7 +81,8 @@ class OrganicLineView @JvmOverloads constructor(
         val y: Float,
         val strokeWidth: Float,
         val waveFrequency: Float, // Fréquence d'ondulation figée
-        val waveAmplitude: Float  // Amplitude d'ondulation figée
+        val waveAmplitude: Float, // Amplitude d'ondulation figée
+        val curvature: Float      // Courbure pour les courbes naturelles
     )
     
     private val tracedPath = mutableListOf<TracePoint>()
@@ -109,7 +111,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Point de départ
         if (tracedPath.isEmpty()) {
-            tracedPath.add(TracePoint(baseX + offsetX, baseY, baseStrokeWidth, 0f, 0f))
+            tracedPath.add(TracePoint(baseX + offsetX, baseY, baseStrokeWidth, 0f, 0f, 0f))
         }
     }
     
@@ -144,6 +146,14 @@ class OrganicLineView @JvmOverloads constructor(
         }
         offsetX *= centeringRate // Retour graduel au centre
         
+        // Calcul de la courbure selon les variations
+        var curvature = 0f
+        if (rhythmIntensity > 0.05f) {
+            // Plus de variation = plus de courbure naturelle
+            curvature = (rhythmIntensity * 60f).coerceAtMost(30f) // Max 30px de courbure
+            if ((0..1).random() == 0) curvature = -curvature // Direction aléatoire
+        }
+        
         // Calcul des ondulations selon micro-variations (seuils ajustés)
         var waveFreq = 0f
         var waveAmp = 0f
@@ -160,14 +170,14 @@ class OrganicLineView @JvmOverloads constructor(
             waveAmp = 3f // Amplitude de base pour voir le mouvement
         }
         
-        // Ajouter le nouveau point au tracé (avec déplacement et ondulations)
+        // Ajouter le nouveau point au tracé (avec déplacement, ondulations et courbure)
         val currentY = baseY - currentHeight
         val currentX = baseX + offsetX
         
         if (tracedPath.isNotEmpty()) {
             val lastPoint = tracedPath.last()
             if (currentY < lastPoint.y) { // Seulement si on monte
-                tracedPath.add(TracePoint(currentX, currentY, currentStrokeWidth, waveFreq, waveAmp))
+                tracedPath.add(TracePoint(currentX, currentY, currentStrokeWidth, waveFreq, waveAmp, curvature))
             }
         }
         
@@ -185,30 +195,44 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        val time = System.currentTimeMillis() * 0.003f // Temps pour animation visible
-        
-        // OSCILLATION FORCÉE pour toute la ligne (test)
-        val globalWind = kotlin.math.sin(time) * 20f // Oscillation très visible
-        
-        // Dessiner le tracé avec oscillation FORCÉE
-        for (i in 1 until tracedPath.size) {
-            val prevPoint = tracedPath[i - 1]
-            val currentPoint = tracedPath[i]
+        // Dessiner le tracé avec courbes naturelles
+        if (tracedPath.size > 1) {
+            val path = Path()
+            val firstPoint = tracedPath[0]
+            path.moveTo(firstPoint.x, firstPoint.y)
             
-            // Oscillation simple mais VISIBLE
-            val oscillation = kotlin.math.sin(time + currentPoint.y * 0.01f) * 15f
+            for (i in 1 until tracedPath.size) {
+                val prevPoint = tracedPath[i - 1]
+                val currentPoint = tracedPath[i]
+                
+                // Calculer le point de contrôle pour la courbe Bézier
+                val midX = (prevPoint.x + currentPoint.x) / 2f
+                val midY = (prevPoint.y + currentPoint.y) / 2f
+                
+                // Ajouter la courbure perpendiculaire au segment
+                val dx = currentPoint.x - prevPoint.x
+                val dy = currentPoint.y - prevPoint.y
+                val length = kotlin.math.sqrt(dx * dx + dy * dy)
+                
+                val controlX = if (length > 0) {
+                    midX + (-dy / length) * currentPoint.curvature
+                } else midX
+                
+                val controlY = if (length > 0) {
+                    midY + (dx / length) * currentPoint.curvature
+                } else midY
+                
+                // Créer courbe quadratique
+                basePaint.strokeWidth = currentPoint.strokeWidth
+                path.quadTo(controlX, controlY, currentPoint.x, currentPoint.y)
+            }
             
-            basePaint.strokeWidth = currentPoint.strokeWidth
-            canvas.drawLine(
-                prevPoint.x + oscillation, prevPoint.y,
-                currentPoint.x + oscillation, currentPoint.y,
-                basePaint
-            )
+            canvas.drawPath(path, basePaint)
         }
         
         // Dessiner le point actuel
         val currentY = baseY - currentHeight
-        val currentX = baseX + offsetX + globalWind * 0.3f
+        val currentX = baseX + offsetX
         basePaint.style = Paint.Style.FILL
         canvas.drawCircle(currentX, currentY, 8f, basePaint)
         basePaint.style = Paint.Style.STROKE
