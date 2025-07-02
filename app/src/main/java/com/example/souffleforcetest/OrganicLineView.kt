@@ -77,7 +77,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Détecter coup de vent (variation brusque)
         if (rhythmIntensity > abruptThreshold) {
             // Déplacement horizontal instantané ±20px
-            val displacement = if (Math.random() < 0.5) 20f else -20f
+            val displacement = if ((0..1).random() == 0) 20f else -20f
             offsetX += displacement
         } else if (rhythmIntensity > 0.02f) {
             // Variation rythmée normale - épaisseur
