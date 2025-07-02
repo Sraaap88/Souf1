@@ -20,9 +20,14 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private var currentForce = 0.0f
+    private var currentHeight = 0f // Hauteur cumulative
     private var maxHeight = 0f
     private var baseX = 0f
     private var baseY = 0f
+    
+    // Configuration de croissance
+    private val forceThreshold = 0.08f // Seuil anti-parasite à 8%
+    private val growthRate = 5.4f // Pixels par frame pour 15 sec max
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -35,18 +40,25 @@ class OrganicLineView @JvmOverloads constructor(
     
     fun updateForce(force: Float) {
         this.currentForce = force
+        
+        // Croissance cumulative seulement si au-dessus du seuil
+        if (force > forceThreshold) {
+            val adjustedForce = force - forceThreshold
+            currentHeight += adjustedForce * growthRate
+            
+            // Limiter à la hauteur maximale
+            currentHeight = kotlin.math.min(currentHeight, maxHeight)
+        }
+        
         invalidate() // Redessiner
     }
     
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        // Calculer la hauteur de la ligne selon la force
-        val lineHeight = currentForce * maxHeight
-        
-        // Dessiner la ligne verticale depuis le bas vers le haut
-        if (lineHeight > 0) {
-            canvas.drawLine(baseX, baseY, baseX, baseY - lineHeight, paint)
+        // Dessiner la ligne verticale cumulative
+        if (currentHeight > 0) {
+            canvas.drawLine(baseX, baseY, baseX, baseY - currentHeight, paint)
         }
         
         // Dessiner le point de base
