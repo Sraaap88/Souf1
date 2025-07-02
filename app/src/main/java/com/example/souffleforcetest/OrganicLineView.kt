@@ -22,6 +22,36 @@ class OrganicLineView @JvmOverloads constructor(
         style = Paint.Style.STROKE
     }
     
+    private fun drawTrafficLight(canvas: Canvas) {
+        // Ombre
+        resetButtonPaint.color = 0x40000000.toInt()
+        canvas.drawCircle(resetButtonX + 8f, resetButtonY + 8f, resetButtonRadius, resetButtonPaint)
+        
+        // Couleur selon l'état
+        when (lightState) {
+            LightState.YELLOW -> resetButtonPaint.color = 0xFFFFD700.toInt() // Jaune
+            LightState.GREEN -> resetButtonPaint.color = 0xFF00FF00.toInt()  // Vert
+            LightState.RED -> resetButtonPaint.color = 0xFFFF0000.toInt()    // Rouge
+        }
+        canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
+        
+        // Bordure
+        resetButtonPaint.color = 0xFF333333.toInt()
+        resetButtonPaint.style = Paint.Style.STROKE
+        resetButtonPaint.strokeWidth = 12f
+        canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
+        resetButtonPaint.style = Paint.Style.FILL
+        
+        // Texte selon l'état
+        val text = when (lightState) {
+            LightState.YELLOW -> "PRÊT"
+            LightState.GREEN -> "GO!"
+            LightState.RED -> "↻"
+        }
+        resetTextPaint.color = 0xFF000000.toInt() // Noir pour lisibilité
+        canvas.drawText(text, resetButtonX, resetButtonY + 40f, resetTextPaint)
+    }
+    
     private val resetButtonPaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.FILL
@@ -47,6 +77,17 @@ class OrganicLineView @JvmOverloads constructor(
     private var resetButtonY = 0f
     private val resetButtonRadius = 175f
     
+    // États du feu de circulation
+    private var lightState = LightState.YELLOW
+    private var stateStartTime = 0L
+    private var canGrow = false
+    
+    enum class LightState {
+        YELLOW,  // 2s - Préparez-vous
+        GREEN,   // 2s - Soufflez !
+        RED      // Infini - Cliquez pour recommencer
+    }
+    
     private data class TracePoint(
         val x: Float,
         val y: Float,
@@ -59,7 +100,7 @@ class OrganicLineView @JvmOverloads constructor(
     private val tracedPath = mutableListOf<TracePoint>()
     
     private val forceThreshold = 0.08f
-    private val growthRate = 116.4f // 2x plus rapide
+    private val growthRate = 174.6f // 50% plus rapide encore
     private val baseStrokeWidth = 4f
     private val maxStrokeWidth = 96f // Différence d'épaisseur plus visible
     private val strokeDecayRate = 0.2f
@@ -80,10 +121,19 @@ class OrganicLineView @JvmOverloads constructor(
         
         if (tracedPath.isEmpty()) {
             tracedPath.add(TracePoint(baseX + offsetX, baseY, baseStrokeWidth, 0f, 0f, 0f))
+            // Démarrer le cycle du feu
+            stateStartTime = System.currentTimeMillis()
+            lightState = LightState.YELLOW
         }
     }
     
     fun updateForce(force: Float) {
+        // Gérer le feu de circulation
+        updateLightState()
+        
+        // Ne grandir que pendant l'état vert
+        if (!canGrow) return
+        
         previousForce = currentForce
         currentForce = force
         
@@ -96,10 +146,10 @@ class OrganicLineView @JvmOverloads constructor(
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
         if (rhythmIntensity > abruptThreshold) {
-            val displacement = if ((0..1).random() == 0) 80f else -80f // Changements plus gros
+            val displacement = if ((0..1).random() == 0) 120f else -120f // 50% plus grand déplacement
             offsetX += displacement
         } else if (rhythmIntensity > 0.02f) {
-            val thicknessIncrease = rhythmIntensity * 160f // Plus de variation d'épaisseur
+            val thicknessIncrease = rhythmIntensity * 160f
             currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
         }
         
@@ -110,7 +160,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         var curvature = 0f
         if (rhythmIntensity > 0.05f) {
-            curvature = (rhythmIntensity * 60f).coerceAtMost(30f)
+            curvature = (rhythmIntensity * 40f).coerceAtMost(20f) // Zigzags plus arrondis
             if ((0..1).random() == 0) curvature = -curvature
         }
         
@@ -142,6 +192,33 @@ class OrganicLineView @JvmOverloads constructor(
         }
         
         invalidate()
+    }
+    
+    private fun updateLightState() {
+        val currentTime = System.currentTimeMillis()
+        val elapsedTime = currentTime - stateStartTime
+        
+        when (lightState) {
+            LightState.YELLOW -> {
+                canGrow = false
+                if (elapsedTime >= 2000) { // 2 secondes
+                    lightState = LightState.GREEN
+                    stateStartTime = currentTime
+                }
+            }
+            LightState.GREEN -> {
+                canGrow = true
+                if (elapsedTime >= 2000) { // 2 secondes
+                    lightState = LightState.RED
+                    stateStartTime = currentTime
+                    canGrow = false
+                }
+            }
+            LightState.RED -> {
+                canGrow = false
+                // Reste rouge jusqu'au clic
+            }
+        }
     }
     
     override fun onDraw(canvas: Canvas) {
@@ -186,30 +263,17 @@ class OrganicLineView @JvmOverloads constructor(
         canvas.drawCircle(currentX, currentY, 8f, basePaint)
         basePaint.style = Paint.Style.STROKE
         
-        if (showResetButton) {
-            resetButtonPaint.color = 0x40000000.toInt()
-            canvas.drawCircle(resetButtonX + 8f, resetButtonY + 8f, resetButtonRadius, resetButtonPaint)
-            
-            resetButtonPaint.color = 0xFFE53E3E.toInt()
-            canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
-            
-            resetButtonPaint.color = 0xFFC53030.toInt()
-            resetButtonPaint.style = Paint.Style.STROKE
-            resetButtonPaint.strokeWidth = 8f
-            canvas.drawCircle(resetButtonX, resetButtonY, resetButtonRadius, resetButtonPaint)
-            resetButtonPaint.style = Paint.Style.FILL
-            
-            canvas.drawText("↻", resetButtonX, resetButtonY + 40f, resetTextPaint)
-        }
+        // Dessiner le feu de circulation
+        drawTrafficLight(canvas)
     }
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN && showResetButton) {
+        if (event.action == MotionEvent.ACTION_DOWN) {
             val dx = event.x - resetButtonX
             val dy = event.y - resetButtonY
             val distance = kotlin.math.sqrt(dx * dx + dy * dy)
             
-            if (distance <= resetButtonRadius) {
+            if (distance <= resetButtonRadius && lightState == LightState.RED) {
                 resetPlant()
                 return true
             }
@@ -223,6 +287,11 @@ class OrganicLineView @JvmOverloads constructor(
         currentStrokeWidth = baseStrokeWidth
         offsetX = 0f
         showResetButton = false
+        
+        // Redémarrer le cycle
+        lightState = LightState.YELLOW
+        stateStartTime = System.currentTimeMillis()
+        canGrow = false
         
         tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
         invalidate()
