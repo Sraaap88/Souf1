@@ -77,7 +77,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Détecter coup de vent (variation brusque)
         if (rhythmIntensity > abruptThreshold) {
             // Déplacement horizontal instantané ±20px
-            val displacement = if (kotlin.random.Random.nextBoolean()) 20f else -20f
+            val displacement = if (Math.random() < 0.5) 20f else -20f
             offsetX += displacement
         } else if (rhythmIntensity > 0.02f) {
             // Variation rythmée normale - épaisseur
@@ -124,7 +124,8 @@ class OrganicLineView @JvmOverloads constructor(
         // Dessiner le point actuel (qui trace) avec déplacement
         val currentY = baseY - currentHeight
         val currentX = baseX + offsetX
-        basePaint.strokeWidth = 2f // Point 2x plus épais
+        basePaint.style = Paint.Style.FILL // Point plein
         canvas.drawCircle(currentX, currentY, 6f, basePaint)
+        basePaint.style = Paint.Style.STROKE // Remettre pour les lignes
     }
 }
