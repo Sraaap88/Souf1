@@ -42,14 +42,14 @@ class OrganicLineView @JvmOverloads constructor(
     
     // Configuration
     private val forceThreshold = 0.08f
-    private val growthRate = 38.8f // Pixels par frame (2x plus rapide encore)
+    private val growthRate = 58.2f // Pixels par frame (50% plus rapide encore)
     private val baseStrokeWidth = 2f // 2x plus épais
     private val maxStrokeWidth = 24f // 2x plus épais aussi
     private val strokeDecayRate = 0.2f
     private val abruptThreshold = 0.15f // Seuil pour détecter coup de vent
     private val centeringRate = 0.92f // Vitesse de retour au centre
     private val waveThreshold = 0.03f // Seuil pour déclencher ondulations
-    private val maxWaveAmplitude = 8f // Amplitude max des ondulations
+    private val maxWaveAmplitude = 15f // Amplitude max des ondulations (plus visible)
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -84,8 +84,8 @@ class OrganicLineView @JvmOverloads constructor(
             val displacement = if ((0..1).random() == 0) 40f else -40f
             offsetX += displacement
         } else if (rhythmIntensity > 0.02f) {
-            // Variation rythmée normale - épaisseur
-            val thicknessIncrease = rhythmIntensity * 40f
+            // Variation rythmée normale - épaisseur plus prononcée
+            val thicknessIncrease = rhythmIntensity * 80f // Doublé pour plus de variation
             currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
         }
         
@@ -122,7 +122,7 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        val time = System.currentTimeMillis() * 0.002f // Temps pour animation
+        val time = System.currentTimeMillis() * 0.003f // Temps plus rapide pour respiration visible
         
         // Dessiner le tracé avec les épaisseurs et ondulations variables
         for (i in 1 until tracedPath.size) {
