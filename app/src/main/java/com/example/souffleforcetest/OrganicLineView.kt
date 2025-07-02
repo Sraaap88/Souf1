@@ -14,20 +14,27 @@ class OrganicLineView @JvmOverloads constructor(
     
     private val paint = Paint().apply {
         color = 0xFFFFFFFF.toInt() // Blanc
-        strokeWidth = 4f // Même épaisseur que l'ancienne barre
+        strokeWidth = 1f // Épaisseur de base
         isAntiAlias = true
         strokeCap = Paint.Cap.ROUND
     }
     
     private var currentForce = 0.0f
+    private var previousForce = 0.0f
     private var currentHeight = 0f // Hauteur cumulative
+    private var currentStrokeWidth = 1f // Épaisseur dynamique
     private var maxHeight = 0f
     private var baseX = 0f
     private var baseY = 0f
     
     // Configuration de croissance
     private val forceThreshold = 0.08f // Seuil anti-parasite à 8%
-    private val growthRate = 6.2f // Pixels par frame (15% plus rapide)
+    private val growthRate = 12.4f // Pixels par frame (2x plus rapide)
+    
+    // Configuration du rythme
+    private val baseStrokeWidth = 1f
+    private val maxStrokeWidth = 12f
+    private val strokeDecayRate = 0.2f // Retour graduel épaisseur
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -39,7 +46,9 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     fun updateForce(force: Float) {
-        this.currentForce = force
+        // Sauvegarder la force précédente pour détecter les variations
+        previousForce = currentForce
+        currentForce = force
         
         // Croissance cumulative seulement si au-dessus du seuil
         if (force > forceThreshold) {
@@ -50,11 +59,28 @@ class OrganicLineView @JvmOverloads constructor(
             currentHeight = kotlin.math.min(currentHeight, maxHeight)
         }
         
+        // Détecter les variations pour l'épaisseur
+        val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
+        
+        // Augmenter l'épaisseur selon l'intensité du rythme
+        if (rhythmIntensity > 0.02f) { // Seuil minimal pour variation
+            val thicknessIncrease = rhythmIntensity * 40f // Facteur de multiplication
+            currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
+        }
+        
+        // Retour graduel à l'épaisseur de base
+        if (currentStrokeWidth > baseStrokeWidth) {
+            currentStrokeWidth = kotlin.math.max(baseStrokeWidth, currentStrokeWidth - strokeDecayRate)
+        }
+        
         invalidate() // Redessiner
     }
     
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        
+        // Mettre à jour l'épaisseur du pinceau
+        paint.strokeWidth = currentStrokeWidth
         
         // Dessiner la ligne verticale cumulative
         if (currentHeight > 0) {
