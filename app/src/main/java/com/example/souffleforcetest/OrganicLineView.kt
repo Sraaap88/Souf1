@@ -33,7 +33,9 @@ class OrganicLineView @JvmOverloads constructor(
     private data class TracePoint(
         val x: Float,
         val y: Float,
-        val strokeWidth: Float
+        val strokeWidth: Float,
+        val waveFrequency: Float, // Fréquence d'ondulation figée
+        val waveAmplitude: Float  // Amplitude d'ondulation figée
     )
     
     private val tracedPath = mutableListOf<TracePoint>()
@@ -46,6 +48,8 @@ class OrganicLineView @JvmOverloads constructor(
     private val strokeDecayRate = 0.2f
     private val abruptThreshold = 0.15f // Seuil pour détecter coup de vent
     private val centeringRate = 0.92f // Vitesse de retour au centre
+    private val waveThreshold = 0.03f // Seuil pour déclencher ondulations
+    private val maxWaveAmplitude = 8f // Amplitude max des ondulations
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -56,7 +60,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Point de départ
         if (tracedPath.isEmpty()) {
-            tracedPath.add(TracePoint(baseX + offsetX, baseY, baseStrokeWidth))
+            tracedPath.add(TracePoint(baseX + offsetX, baseY, baseStrokeWidth, 0f, 0f))
         }
     }
     
@@ -76,8 +80,8 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Détecter coup de vent (variation brusque)
         if (rhythmIntensity > abruptThreshold) {
-            // Déplacement horizontal instantané ±20px
-            val displacement = if ((0..1).random() == 0) 20f else -20f
+            // Déplacement horizontal instantané ±40px (doublé)
+            val displacement = if ((0..1).random() == 0) 40f else -40f
             offsetX += displacement
         } else if (rhythmIntensity > 0.02f) {
             // Variation rythmée normale - épaisseur
@@ -91,14 +95,24 @@ class OrganicLineView @JvmOverloads constructor(
         }
         offsetX *= centeringRate // Retour graduel au centre
         
-        // Ajouter le nouveau point au tracé (avec déplacement)
+        // Calcul des ondulations selon micro-variations
+        var waveFreq = 0f
+        var waveAmp = 0f
+        
+        if (rhythmIntensity > waveThreshold && rhythmIntensity < abruptThreshold) {
+            // Micro-variations = ondulations
+            waveFreq = (rhythmIntensity * 20f) + 2f // Fréquence 2-6
+            waveAmp = (rhythmIntensity * 100f).coerceAtMost(maxWaveAmplitude)
+        }
+        
+        // Ajouter le nouveau point au tracé (avec déplacement et ondulations)
         val currentY = baseY - currentHeight
         val currentX = baseX + offsetX
         
         if (tracedPath.isNotEmpty()) {
             val lastPoint = tracedPath.last()
             if (currentY < lastPoint.y) { // Seulement si on monte
-                tracedPath.add(TracePoint(currentX, currentY, currentStrokeWidth))
+                tracedPath.add(TracePoint(currentX, currentY, currentStrokeWidth, waveFreq, waveAmp))
             }
         }
         
@@ -108,15 +122,26 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        // Dessiner le tracé avec les épaisseurs variables
+        val time = System.currentTimeMillis() * 0.002f // Temps pour animation
+        
+        // Dessiner le tracé avec les épaisseurs et ondulations variables
         for (i in 1 until tracedPath.size) {
             val prevPoint = tracedPath[i - 1]
             val currentPoint = tracedPath[i]
             
+            // Calculer ondulation pour chaque point selon sa fréquence propre
+            val prevWaveOffset = if (prevPoint.waveAmplitude > 0) {
+                kotlin.math.sin(prevPoint.y * prevPoint.waveFrequency * 0.01f + time) * prevPoint.waveAmplitude
+            } else 0f
+            
+            val currentWaveOffset = if (currentPoint.waveAmplitude > 0) {
+                kotlin.math.sin(currentPoint.y * currentPoint.waveFrequency * 0.01f + time) * currentPoint.waveAmplitude
+            } else 0f
+            
             basePaint.strokeWidth = currentPoint.strokeWidth
             canvas.drawLine(
-                prevPoint.x, prevPoint.y,
-                currentPoint.x, currentPoint.y,
+                prevPoint.x + prevWaveOffset, prevPoint.y,
+                currentPoint.x + currentWaveOffset, currentPoint.y,
                 basePaint
             )
         }
