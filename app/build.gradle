@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace 'com.example.souffleforcetest'
-    compileSdk 34
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.example.souffleforcetest"
-        minSdk 28  // Compatible avec Huawei P30 Pro
-        targetSdk 34
+        minSdk 28
+        targetSdk 33
         versionCode 1
         versionName "1.0"
     }
@@ -33,6 +33,7 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.10"
+    implementation 'androidx.core:core-ktx:1.9.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
 }
