@@ -253,21 +253,17 @@ class OrganicLineView @JvmOverloads constructor(
         
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
-        // Gestion des mouvements brusques - coups de vent plus forts
+        // Gestion des mouvements brusques - créer des points d'attache pour futures feuilles
         if (rhythmIntensity > abruptThreshold) {
-            val displacement = if ((0..1).random() == 0) 60f else -60f // Plus fort : 30f -> 60f
+            val displacement = if ((0..1).random() == 0) 60f else -60f
             offsetX += displacement
             
-            // Créer des feuilles directement sur la tige (sans bourgeons)
+            // Créer des points d'attache (petits bourgeons) pendant la croissance
             if (currentHeight > 80f && tracedPath.size > 3) {
                 val recentPoint = tracedPath[tracedPath.size - (2..4).random()]
-                val leafX = recentPoint.x + ((-25..25).random()).toFloat()
-                val leafY = recentPoint.y + ((-15..15).random()).toFloat()
-                // Créer un bourgeon factice juste pour porter la feuille
-                val fakeBourgeon = Bourgeon(leafX, leafY, 15f) // Déjà mature
-                val angle = (0..360).random().toFloat()
-                val feuille = Feuille(fakeBourgeon, 20f, 10f, angle) // Commence plus petite
-                feuilles.add(feuille)
+                val attachX = recentPoint.x + ((-25..25).random()).toFloat()
+                val attachY = recentPoint.y + ((-15..15).random()).toFloat()
+                bourgeons.add(Bourgeon(attachX, attachY, 3f)) // Petit point d'attache
             }
         } else if (rhythmIntensity > 0.02f) {
             // Augmenter l'épaisseur
@@ -292,14 +288,36 @@ class OrganicLineView @JvmOverloads constructor(
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.05f // Plus lent : 0.1f -> 0.05f
+            val growthIncrement = adjustedForce * growthRate * 0.05f
             
-            // Faire grandir les feuilles existantes
-            for (feuille in feuilles) {
-                feuille.longueur += growthIncrement * 0.15f // Plus lent : 0.2f -> 0.15f
-                feuille.largeur += growthIncrement * 0.08f // Plus lent : 0.1f -> 0.08f
-                feuille.longueur = kotlin.math.min(feuille.longueur, 80f) // Plus petites : 120f -> 80f
-                feuille.largeur = kotlin.math.min(feuille.largeur, 40f) // Plus petites : 60f -> 40f
+            // Créer des feuilles à partir des points d'attache
+            for (bourgeon in bourgeons) {
+                if (bourgeon.taille > 2f) { // Point d'attache mature
+                    var feuille = feuilles.find { it.bourgeon == bourgeon }
+                    if (feuille == null) {
+                        // Calculer l'angle du pétiole vers la tige la plus proche
+                        val stemX = tracedPath.minByOrNull { 
+                            val dx = it.x - bourgeon.x
+                            val dy = it.y - bourgeon.y
+                            dx * dx + dy * dy
+                        }?.x ?: bourgeon.x
+                        
+                        // Angle pour que le pétiole pointe vers la tige
+                        val angleToStem = kotlin.math.atan2(
+                            (stemX - bourgeon.x).toDouble(),
+                            (0f - 0f).toDouble() // Vertical reference
+                        ) * 180.0 / kotlin.math.PI
+                        
+                        feuille = Feuille(bourgeon, 0f, 0f, angleToStem.toFloat())
+                        feuilles.add(feuille)
+                    }
+                    
+                    // Faire grandir la feuille
+                    feuille.longueur += growthIncrement * 0.15f
+                    feuille.largeur += growthIncrement * 0.08f
+                    feuille.longueur = kotlin.math.min(feuille.longueur, 80f)
+                    feuille.largeur = kotlin.math.min(feuille.largeur, 40f)
+                }
             }
         }
     }
@@ -422,21 +440,34 @@ class OrganicLineView @JvmOverloads constructor(
             canvas.drawCircle(topPoint.x + pointOscillation, topPoint.y, 4f, basePaint)
         }
 
-        // Bourgeons supprimés - plus besoin
+        // Points d'attache (petits bourgeons bruns)
+        basePaint.color = 0xFF8B4513.toInt()
+        basePaint.style = Paint.Style.FILL
+        for (bourgeon in bourgeons) {
+            if (bourgeon.taille > 1f) {
+                val oscillation = kotlin.math.sin(time + bourgeon.y * 0.01f) * 1f
+                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, 2f, basePaint) // Petit point discret
+            }
+        }
 
-        // FEUILLES - plus petites et mieux orientées
+        // FEUILLES - attachées par le pétiole
         for (feuille in feuilles) {
             if (feuille.longueur > 5 && ::leafBitmap.isInitialized) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
-                canvas.save()
-                canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
-                // Orientation corrigée pour pétiole vers la tige
-                canvas.rotate(feuille.angle + 90f + leafOscillation * 0.5f)
-                
-                // 30% plus petites qu'avant : 0.08f -> 0.055f
+                // Calculer la position de la feuille : décalée pour que le pétiole touche le point d'attache
                 val scale = kotlin.math.min(feuille.longueur / 400f, 0.055f)
                 val leafW = leafBitmap.width.toFloat() * scale
+                val petioleOffset = leafW * 0.3f // Distance du pétiole depuis le centre de l'image
+                
+                // Position de la feuille décalée
+                val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(kotlin.math.toRadians(feuille.angle.toDouble())).toFloat() * petioleOffset
+                val leafY = feuille.bourgeon.y + kotlin.math.sin(kotlin.math.toRadians(feuille.angle.toDouble())).toFloat() * petioleOffset
+                
+                canvas.save()
+                canvas.translate(leafX, leafY)
+                canvas.rotate(feuille.angle + leafOscillation * 0.5f)
+                
                 val leafH = leafBitmap.height.toFloat() * scale
                 
                 val paint = Paint().apply {
@@ -507,6 +538,7 @@ class OrganicLineView @JvmOverloads constructor(
     
     private fun resetPlant() {
         tracedPath.clear()
+        bourgeons.clear()
         feuilles.clear()
         fleur = null
         
