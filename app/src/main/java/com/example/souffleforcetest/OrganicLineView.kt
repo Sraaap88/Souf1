@@ -106,6 +106,11 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
+    // Fonction utilitaire pour interpolation linéaire
+    private fun lerp(start: Float, end: Float, fraction: Float): Float {
+        return start + fraction * (end - start)
+    }
+    
     private fun drawTrafficLight(canvas: Canvas) {
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
@@ -249,8 +254,8 @@ class OrganicLineView @JvmOverloads constructor(
             if (currentHeight > 80f) {
                 val currentY = baseY - currentHeight
                 val currentX = baseX + offsetX
-                val budX = currentX + ((-15..15).random())
-                val budY = currentY + ((-20..20).random())
+                val budX = currentX + ((-15..15).random()).toFloat()
+                val budY = currentY + ((-20..20).random()).toFloat()
                 bourgeons.add(Bourgeon(budX, budY, 0f))
             }
         } else if (rhythmIntensity > 0.02f) {
@@ -373,11 +378,11 @@ class OrganicLineView @JvmOverloads constructor(
             val currentX = baseX + offsetX
             
             // Calculer le nombre de segments nécessaires
-            val segmentHeight = 30f // Hauteur de chaque segment
+            val segmentHeight = 30f
             val totalSegments = (currentHeight / segmentHeight).toInt() + 1
             
             for (i in 0 until totalSegments) {
-                val segmentY = baseY - (i * segmentHeight)
+                val segmentY = baseY - (i.toFloat() * segmentHeight)
                 
                 // Ne dessiner que si le segment est dans la zone de croissance
                 if (segmentY >= stemTop) {
@@ -386,11 +391,11 @@ class OrganicLineView @JvmOverloads constructor(
                     
                     // Calculer l'épaisseur basée sur la position (plus épais en bas)
                     val positionRatio = (baseY - segmentY) / currentHeight
-                    val thickness = kotlin.math.lerp(currentStrokeWidth, baseStrokeWidth, positionRatio)
+                    val thickness = lerp(currentStrokeWidth, baseStrokeWidth, positionRatio)
                     val scale = (thickness / 50f).coerceIn(0.05f, 0.15f)
                     
-                    val stemW = stemBitmap.width * scale
-                    val stemH = stemBitmap.height * scale
+                    val stemW = stemBitmap.width.toFloat() * scale
+                    val stemH = stemBitmap.height.toFloat() * scale
                     
                     canvas.save()
                     canvas.translate(adjustedX, segmentY)
@@ -443,8 +448,8 @@ class OrganicLineView @JvmOverloads constructor(
                 canvas.rotate(feuille.angle + leafOscillation * 0.5f)
                 
                 val scale = kotlin.math.min(feuille.longueur / 400f, 0.12f)
-                val leafW = leafBitmap.width * scale
-                val leafH = leafBitmap.height * scale
+                val leafW = leafBitmap.width.toFloat() * scale
+                val leafH = leafBitmap.height.toFloat() * scale
                 
                 val paint = Paint().apply {
                     isAntiAlias = true
@@ -464,8 +469,8 @@ class OrganicLineView @JvmOverloads constructor(
                 val flowerOscillation = kotlin.math.sin(time * 0.8f) * 5f
                 
                 val scale = kotlin.math.min(flower.taille / 100f, 0.6f)
-                val w = flowerBitmap.width * scale
-                val h = flowerBitmap.height * scale
+                val w = flowerBitmap.width.toFloat() * scale
+                val h = flowerBitmap.height.toFloat() * scale
                 
                 val maxSize = 250f
                 val finalW = kotlin.math.min(w, maxSize)
