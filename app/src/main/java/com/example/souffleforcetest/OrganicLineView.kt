@@ -175,8 +175,8 @@ class OrganicLineView @JvmOverloads constructor(
         super.onSizeChanged(w, h, oldw, oldh)
         
         baseX = w / 2.0f
-        baseY = h - 50f
-        maxHeight = h - 100f
+        baseY = h - 100f // Environ 1cm du bas (était à h - 50f)
+        maxHeight = h - 150f // Ajusté aussi pour garder de l'espace
         
         resetButtonX = w - resetButtonRadius - 50f
         resetButtonY = resetButtonRadius + 80f
@@ -416,13 +416,13 @@ class OrganicLineView @JvmOverloads constructor(
             canvas.drawCircle(currentX + pointOscillation, stemTop, 4f, basePaint)
         }
 
-        // Bourgeons
+        // Bourgeons - plus visibles
         basePaint.color = 0xFF8B4513.toInt()
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
-            if (bourgeon.taille > 2) {
+            if (bourgeon.taille > 0.5f) { // Seuil plus bas : 2f -> 0.5f
                 val oscillation = kotlin.math.sin(time + bourgeon.y * 0.01f) * 2f
-                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, bourgeon.taille * 0.5f, basePaint)
+                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, bourgeon.taille * 2f, basePaint) // Plus gros : 0.5f -> 2f
             }
         }
 
