@@ -527,3 +527,4 @@ class OrganicLineView @JvmOverloads constructor(
         currentStrokeWidth = baseStrokeWidth
         offsetX = 0f
         s
+    }
