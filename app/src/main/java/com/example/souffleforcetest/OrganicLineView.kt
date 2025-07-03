@@ -293,7 +293,10 @@ class OrganicLineView @JvmOverloads constructor(
             val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
             if (rhythmIntensity > abruptThreshold && tracedPath.size > 5) {
                 // Prendre un point aléatoire sur la tige existante
-                val randomPoint = tracedPath[(tracedPath.size * 0.3f).toInt()..(tracedPath.size - 1)].random()
+                val startIndex = (tracedPath.size * 0.3f).toInt()
+                val endIndex = tracedPath.size - 1
+                val randomIndex = (startIndex..endIndex).random()
+                val randomPoint = tracedPath[randomIndex]
                 val angle = (0..360).random().toFloat()
                 
                 // Créer une feuille directement
