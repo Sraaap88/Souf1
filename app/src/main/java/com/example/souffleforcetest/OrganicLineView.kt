@@ -403,29 +403,32 @@ class OrganicLineView @JvmOverloads constructor(
 
         val time = System.currentTimeMillis() * 0.002f
 
-        // TIGE avec votre image - suivant intelligemment les courbes
+        // TIGE avec votre image - optimisée pour éviter la répétition excessive
         if (::stemBitmap.isInitialized && tracedPath.size > 1) {
-            for (i in 1 until tracedPath.size) {
-                val prevPoint = tracedPath[i - 1]
+            // Dessiner seulement tous les 3-4 points pour éviter la surcharge
+            for (i in 1 until tracedPath.size step 4) {
                 val currentPoint = tracedPath[i]
                 
                 // Oscillations comme votre tige originale
                 val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f
                 val adjustedX = currentPoint.x + oscillation
                 
-                // Calculer l'angle de rotation pour suivre la courbe
-                val dx = currentPoint.x - prevPoint.x
-                val dy = currentPoint.y - prevPoint.y
-                val angle = kotlin.math.atan2(dy.toDouble(), dx.toDouble()) * 180.0 / kotlin.math.PI
-                
-                // Scaling selon l'épaisseur de la tige (votre strokeWidth)
-                val scale = currentPoint.strokeWidth / 20f // Ajustez selon vos besoins
+                // Scaling beaucoup plus petit pour votre belle image
+                val scale = 0.1f // Très petit pour éviter les gros rectangles
                 val stemW = stemBitmap.width * scale
                 val stemH = stemBitmap.height * scale
                 
+                // Rotation selon la direction de croissance
+                val angle = if (i > 1) {
+                    val prevPoint = tracedPath[i - 1]
+                    val dx = currentPoint.x - prevPoint.x
+                    val dy = currentPoint.y - prevPoint.y
+                    kotlin.math.atan2(dy.toDouble(), dx.toDouble()) * 180.0 / kotlin.math.PI
+                } else 0.0
+                
                 canvas.save()
                 canvas.translate(adjustedX, currentPoint.y)
-                canvas.rotate(angle.toFloat() + 90f) // +90 pour orienter correctement
+                canvas.rotate(angle.toFloat() + 90f)
                 canvas.drawBitmap(
                     stemBitmap, 
                     -stemW / 2f, 
@@ -440,47 +443,65 @@ class OrganicLineView @JvmOverloads constructor(
         val pointOscillation = kotlin.math.sin(time * 2f) * 15f
         val currentX = baseX + offsetX + pointOscillation
 
-        // Dessiner les bourgeons (petits points bruns sur la tige)
-        basePaint.color = 0xFF654321.toInt() // Brun foncé
+        // Dessiner les bourgeons (plus petits et discrets)
+        basePaint.color = 0xFF8B4513.toInt() // Brun plus naturel
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
-            if (bourgeon.taille > 0) {
-                canvas.drawCircle(bourgeon.x, bourgeon.y, bourgeon.taille, basePaint)
+            if (bourgeon.taille > 2) { // Seuil plus élevé
+                canvas.drawCircle(bourgeon.x, bourgeon.y, bourgeon.taille * 0.5f, basePaint) // Plus petits
             }
         }
 
-        // FEUILLES avec votre image leaf
+        // FEUILLES avec votre belle image - scaling optimisé
         for (feuille in feuilles) {
-            if (feuille.longueur > 5 && feuille.largeur > 2 && ::leafBitmap.isInitialized) {
+            if (feuille.longueur > 10 && ::leafBitmap.isInitialized) {
                 canvas.save()
                 canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
                 canvas.rotate(feuille.angle)
                 
-                // Scaling basé sur la longueur de la feuille
-                val scale = feuille.longueur / 100f
+                // Scaling plus réaliste basé sur votre image
+                val scale = kotlin.math.min(feuille.longueur / 200f, 0.3f) // Max 30% de la taille originale
                 val leafW = leafBitmap.width * scale
                 val leafH = leafBitmap.height * scale
                 
+                // Filtrage pour améliorer la qualité
+                val paint = Paint().apply {
+                    isAntiAlias = true
+                    isFilterBitmap = true
+                }
+                
                 val dstRect = RectF(-leafW/2, -leafH/2, leafW/2, leafH/2)
-                canvas.drawBitmap(leafBitmap, null, dstRect, null)
+                canvas.drawBitmap(leafBitmap, null, dstRect, paint)
                 canvas.restore()
             }
         }
 
-        // FLEUR avec votre image flower
+        // FLEUR avec votre belle image - taille fixe raisonnable
         fleur?.let { flower ->
-            if (flower.taille > 5 && ::flowerBitmap.isInitialized) {
-                val scale = flower.taille / 150f
+            if (flower.taille > 10 && ::flowerBitmap.isInitialized) {
+                // Taille fixe raisonnable au lieu de scaling variable
+                val maxSize = 150f // Taille maximum en pixels
+                val scale = kotlin.math.min(flower.taille / 100f, 1.0f) * 0.4f // Max 40% de la taille
                 val w = flowerBitmap.width * scale
                 val h = flowerBitmap.height * scale
                 
+                // Limiter la taille finale
+                val finalW = kotlin.math.min(w, maxSize)
+                val finalH = kotlin.math.min(h, maxSize)
+                
+                // Filtrage pour améliorer la qualité
+                val paint = Paint().apply {
+                    isAntiAlias = true
+                    isFilterBitmap = true
+                }
+                
                 val rect = RectF(
-                    flower.x - w / 2,
-                    flower.y - h / 2,
-                    flower.x + w / 2,
-                    flower.y + h / 2
+                    flower.x - finalW / 2,
+                    flower.y - finalH / 2,
+                    flower.x + finalW / 2,
+                    flower.y + finalH / 2
                 )
-                canvas.drawBitmap(flowerBitmap, null, rect, null)
+                canvas.drawBitmap(flowerBitmap, null, rect, paint)
             }
         }
 
@@ -493,39 +514,4 @@ class OrganicLineView @JvmOverloads constructor(
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN && lightState == LightState.RED) {
-            val lightX = resetButtonX
-            val lightY = resetButtonY
-            val lightRadius = resetButtonRadius
-            
-            val dx = event.x - lightX
-            val dy = event.y - lightY
-            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
-            
-            if (distance <= lightRadius) {
-                resetPlant()
-                return true
-            }
-        }
-        return super.onTouchEvent(event)
-    }
-    
-    private fun resetPlant() {
-        tracedPath.clear()
-        bourgeons.clear()
-        feuilles.clear()
-        fleur = null
-        
-        currentHeight = 0f
-        currentStrokeWidth = baseStrokeWidth
-        offsetX = 0f
-        showResetButton = false
-        
-        // Redémarrer le cycle complet
-        lightState = LightState.YELLOW
-        stateStartTime = System.currentTimeMillis()
-        canGrow = false
-        
-        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
-        invalidate()
-    }
-}
+            val lightX =
