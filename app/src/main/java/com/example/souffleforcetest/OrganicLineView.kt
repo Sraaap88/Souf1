@@ -1,4 +1,6 @@
-package com.example.souffleforcetest
+Paint.style = Paint.Style.STROKE
+
+   package com.example.souffleforcetest
 
 import android.content.Context
 import android.graphics.Canvas
@@ -403,18 +405,18 @@ class OrganicLineView @JvmOverloads constructor(
 
         val time = System.currentTimeMillis() * 0.002f
 
-        // TIGE avec votre image - mieux visible
+        // TIGE avec votre image - suit la croissance en temps réel
         if (::stemBitmap.isInitialized && tracedPath.size > 1) {
-            // Dessiner plus souvent pour voir la tige grandir
-            for (i in 1 until tracedPath.size step 2) { // Tous les 2 points au lieu de 4
+            // Dessiner toute la tige qui a poussé jusqu'à maintenant
+            for (i in 1 until tracedPath.size) {
                 val currentPoint = tracedPath[i]
                 
                 // Oscillations comme votre tige originale
                 val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f
                 val adjustedX = currentPoint.x + oscillation
                 
-                // Scaling plus visible mais pas trop gros
-                val scale = 0.15f // Un peu plus gros pour être visible
+                // Scaling selon l'épaisseur de la tige
+                val scale = (currentPoint.strokeWidth / 50f).coerceIn(0.05f, 0.2f)
                 val stemW = stemBitmap.width * scale
                 val stemH = stemBitmap.height * scale
                 
@@ -424,7 +426,7 @@ class OrganicLineView @JvmOverloads constructor(
                     val dx = currentPoint.x - prevPoint.x
                     val dy = currentPoint.y - prevPoint.y
                     kotlin.math.atan2(dy.toDouble(), dx.toDouble()) * 180.0 / kotlin.math.PI
-                } else 0.0
+                } else -90.0 // Vertical par défaut
                 
                 canvas.save()
                 canvas.translate(adjustedX, currentPoint.y)
@@ -433,7 +435,7 @@ class OrganicLineView @JvmOverloads constructor(
                 // Paint avec transparence pour éviter surcharge visuelle
                 val paint = Paint().apply {
                     isAntiAlias = true
-                    alpha = 200 // Légèrement transparent
+                    alpha = 180
                 }
                 
                 canvas.drawBitmap(
@@ -483,17 +485,18 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FLEUR avec votre belle image - plus grande
+        // FLEUR avec votre belle image - taille limitée
         fleur?.let { flower ->
             if (flower.taille > 10 && ::flowerBitmap.isInitialized) {
-                // Taille plus grande pour la fleur
-                val scale = kotlin.math.min(flower.taille / 80f, 1.2f) // Plus grande, max 120%
+                // Taille limitée pour éviter fleur géante
+                val scale = kotlin.math.min(flower.taille / 100f, 0.8f) // Max 80% de la taille originale
                 val w = flowerBitmap.width * scale
                 val h = flowerBitmap.height * scale
                 
-                // Pas de limite artificielle - laissons la fleur grandir
-                val finalW = w
-                val finalH = h
+                // Limite absolue pour éviter monstruosité
+                val maxSize = 300f
+                val finalW = kotlin.math.min(w, maxSize)
+                val finalH = kotlin.math.min(h, maxSize)
                 
                 // Filtrage pour améliorer la qualité
                 val paint = Paint().apply {
@@ -556,3 +559,4 @@ class OrganicLineView @JvmOverloads constructor(
         invalidate()
     }
 }
+   
