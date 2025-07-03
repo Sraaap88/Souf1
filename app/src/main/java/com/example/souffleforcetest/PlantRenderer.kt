@@ -101,6 +101,25 @@ class PlantRenderer(private val context: Context) {
                     )
                 }
                 
+                // NOUVEAU : Texture velue (petits poils)
+                if (i % 2 == 0) { // Tous les 2 points pour éviter la surcharge
+                    stemPaint.strokeWidth = 1.5f
+                    stemPaint.color = android.graphics.Color.rgb(baseGreen + 15, 89, baseGreen + 15)
+                    
+                    for (j in 0..6) {
+                        val hairAngle = (j * 60f) + (time * 15f + point.y * 0.1f) % 360f
+                        val hairLength = thickness * 0.12f
+                        val hairX = kotlin.math.cos(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength
+                        val hairY = kotlin.math.sin(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength * 0.4f
+                        
+                        canvas.drawLine(
+                            adjustedX, point.y,
+                            adjustedX + hairX, point.y + hairY,
+                            stemPaint
+                        )
+                    }
+                }
+                
                 // Ombre (côté sombre)
                 stemPaint.strokeWidth = thickness * 0.6f
                 stemPaint.color = android.graphics.Color.rgb(baseGreen - 15, 79, baseGreen - 15)
