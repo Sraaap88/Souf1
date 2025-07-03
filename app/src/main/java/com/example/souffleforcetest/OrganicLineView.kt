@@ -55,12 +55,6 @@ class OrganicLineView @JvmOverloads constructor(
     private var resetButtonY = 0f
     private val resetButtonRadius = 175f
     
-    // Variables pour les voyelles
-    private var uIntensity = 0f
-    private var aIntensity = 0f
-    private var iIntensity = 0f
-    private var oIntensity = 0f
-    
     // États du système en 6 étapes maintenant
     private var lightState = LightState.YELLOW
     private var stateStartTime = 0L
@@ -69,9 +63,9 @@ class OrganicLineView @JvmOverloads constructor(
     enum class LightState {
         YELLOW,       // 2s - Inspirez + timer
         GREEN_GROW,   // 3s - Croissance tige + timer
-        GREEN_BUDS,   // 3s - Bourgeons avec U + timer
-        GREEN_LEAVES, // 3s - Feuilles avec A/I + timer
-        GREEN_FLOWER, // 3s - Fleur avec O + timer
+        GREEN_BUDS,   // 3s - Bourgeons avec souffle + timer
+        GREEN_LEAVES, // 3s - Feuilles avec souffle + timer
+        GREEN_FLOWER, // 3s - Fleur avec souffle + timer
         RED           // Infini - Admirez et recommencez
     }
     
@@ -171,9 +165,9 @@ class OrganicLineView @JvmOverloads constructor(
         if (lightState != LightState.YELLOW) {
             val instructionText = when (lightState) {
                 LightState.GREEN_GROW -> "SOUFFLEZ"
-                LightState.GREEN_BUDS -> "DITES U"
-                LightState.GREEN_LEAVES -> "DITES A et I"
-                LightState.GREEN_FLOWER -> "DITES O"
+                LightState.GREEN_BUDS -> "SOUFFLEZ"
+                LightState.GREEN_LEAVES -> "SOUFFLEZ"
+                LightState.GREEN_FLOWER -> "SOUFFLEZ"
                 LightState.RED -> ""
                 else -> ""
             }
@@ -206,21 +200,39 @@ class OrganicLineView @JvmOverloads constructor(
         // Gérer le système en 6 étapes
         updateLightState()
         
-        // Ne grandir que pendant l'étape de croissance
-        if (lightState != LightState.GREEN_GROW) {
-            if (lightState == LightState.GREEN_BUDS) {
-                // Faire grandir les bourgeons selon U
-                updateBuds()
-            } else if (lightState == LightState.GREEN_LEAVES) {
-                // Créer/grandir les feuilles selon A/I
-                updateLeaves()
-            } else if (lightState == LightState.GREEN_FLOWER) {
-                // Créer/grandir la fleur selon O
-                updateFlower()
+        // Appliquer le souffle selon l'étape
+        when (lightState) {
+            LightState.YELLOW -> {
+                // Phase d'inspiration - pas de croissance
+                return
             }
-            return
+            LightState.GREEN_GROW -> {
+                // Phase de souffle - croissance de la tige
+                growStem(force)
+            }
+            LightState.GREEN_BUDS -> {
+                // Phase souffle - croissance des bourgeons
+                growBuds(force)
+            }
+            LightState.GREEN_LEAVES -> {
+                // Phase souffle - croissance des feuilles
+                growLeaves(force)
+            }
+            LightState.GREEN_FLOWER -> {
+                // Phase souffle - croissance de la fleur
+                growFlower(force)
+            }
+            LightState.RED -> {
+                // Phase finale - admirer
+                return
+            }
         }
         
+        invalidate()
+    }
+    
+    // Fonction pour croissance tige (étape GREEN_GROW)
+    private fun growStem(force: Float) {
         previousForce = currentForce
         currentForce = force
         
@@ -284,25 +296,67 @@ class OrganicLineView @JvmOverloads constructor(
         if (!showResetButton && currentHeight > 50f) {
             showResetButton = true
         }
-        
-        invalidate()
     }
     
-    // Fonctions publiques pour recevoir les données audio
-    fun updateVowelU(intensity: Float) {
-        uIntensity = intensity.coerceIn(0f, 1f)
+    // Fonction pour croissance bourgeons (étape GREEN_BUDS)
+    private fun growBuds(force: Float) {
+        if (force > forceThreshold) {
+            val adjustedForce = force - forceThreshold
+            val growthIncrement = adjustedForce * growthRate * 0.2f // Plus lent que la tige
+            
+            for (bourgeon in bourgeons) {
+                bourgeon.taille += growthIncrement
+                bourgeon.taille = kotlin.math.min(bourgeon.taille, 30f) // Taille max 30px
+            }
+        }
     }
     
-    fun updateVowelA(intensity: Float) {
-        aIntensity = intensity.coerceIn(0f, 1f)
+    // Fonction pour croissance feuilles (étape GREEN_LEAVES)
+    private fun growLeaves(force: Float) {
+        if (force > forceThreshold) {
+            val adjustedForce = force - forceThreshold
+            val growthIncrement = adjustedForce * growthRate * 0.3f
+            
+            // Créer grandes feuilles depuis bourgeons assez gros
+            for (bourgeon in bourgeons) {
+                if (bourgeon.taille > 15f) { // Si bourgeon assez grand
+                    var feuille = feuilles.find { it.bourgeon == bourgeon }
+                    if (feuille == null) {
+                        val angle = (0..360).random().toFloat()
+                        feuille = Feuille(bourgeon, 0f, 0f, angle)
+                        feuilles.add(feuille)
+                    }
+                    
+                    // Faire grandir la feuille
+                    feuille.longueur += growthIncrement * 0.8f
+                    feuille.largeur += growthIncrement * 0.4f
+                    feuille.longueur = kotlin.math.min(feuille.longueur, 60f) // Max 60px
+                    feuille.largeur = kotlin.math.min(feuille.largeur, 30f)   // Max 30px
+                }
+            }
+        }
     }
     
-    fun updateVowelI(intensity: Float) {
-        iIntensity = intensity.coerceIn(0f, 1f)
-    }
-    
-    fun updateVowelO(intensity: Float) {
-        oIntensity = intensity.coerceIn(0f, 1f)
+    // Fonction pour croissance fleur (étape GREEN_FLOWER)
+    private fun growFlower(force: Float) {
+        if (force > forceThreshold) {
+            val adjustedForce = force - forceThreshold
+            val growthIncrement = adjustedForce * growthRate * 0.25f
+            
+            if (tracedPath.isNotEmpty()) {
+                val topPoint = tracedPath.minByOrNull { it.y }
+                if (topPoint != null) {
+                    if (fleur == null) {
+                        fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
+                    }
+                    fleur?.let {
+                        it.taille += growthIncrement
+                        it.taille = kotlin.math.min(it.taille, 50f) // Taille max 50px
+                        it.petalCount = kotlin.math.max(5, (it.taille * 0.15f).toInt()) // 5-7 pétales
+                    }
+                }
+            }
+        }
     }
     
     // Fonction pour redémarrer le cycle proprement après permissions
@@ -310,46 +364,6 @@ class OrganicLineView @JvmOverloads constructor(
         lightState = LightState.YELLOW
         stateStartTime = System.currentTimeMillis()
         invalidate()
-    }
-    
-    // Fonction pour mettre à jour les bourgeons (étape GREEN_BUDS)
-    private fun updateBuds() {
-        for (bourgeon in bourgeons) {
-            bourgeon.taille = uIntensity * 30f
-        }
-    }
-    
-    // Fonction pour mettre à jour les feuilles (étape GREEN_LEAVES)
-    private fun updateLeaves() {
-        for (bourgeon in bourgeons) {
-            if (bourgeon.taille > 5f) {
-                var feuille = feuilles.find { it.bourgeon == bourgeon }
-                if (feuille == null) {
-                    val angle = (0..360).random().toFloat()
-                    feuille = Feuille(bourgeon, 0f, 0f, angle)
-                    feuilles.add(feuille)
-                }
-                
-                feuille.longueur = aIntensity * 50f
-                feuille.largeur = iIntensity * 20f
-            }
-        }
-    }
-    
-    // Fonction pour mettre à jour la fleur (étape GREEN_FLOWER)
-    private fun updateFlower() {
-        if (tracedPath.isNotEmpty()) {
-            val topPoint = tracedPath.minByOrNull { it.y }
-            if (topPoint != null) {
-                if (fleur == null) {
-                    fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
-                }
-                fleur?.let {
-                    it.taille = oIntensity * 40f
-                    it.petalCount = kotlin.math.max(3, (oIntensity * 8).toInt())
-                }
-            }
-        }
     }
     
     private fun updateLightState() {
@@ -512,18 +526,4 @@ class OrganicLineView @JvmOverloads constructor(
         currentHeight = 0f
         currentStrokeWidth = baseStrokeWidth
         offsetX = 0f
-        showResetButton = false
-        
-        uIntensity = 0f
-        aIntensity = 0f
-        iIntensity = 0f
-        oIntensity = 0f
-        
-        lightState = LightState.YELLOW
-        stateStartTime = System.currentTimeMillis()
-        canGrow = false
-        
-        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
-        invalidate()
-    }
-}
+        s
