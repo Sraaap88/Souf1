@@ -14,7 +14,7 @@ class MainActivity : Activity() {
 
     private var mediaRecorder: MediaRecorder? = null
     private var handler: Handler? = null
-    private var animationHandler: Handler? = null
+    private var animationHandler: Handler? = null // Handler séparé pour animation
     private var organicLineView: OrganicLineView? = null
     private var isRecording = false
     
@@ -29,7 +29,7 @@ class MainActivity : Activity() {
         
         organicLineView = findViewById(R.id.organicLineView)
         handler = Handler(Looper.getMainLooper())
-        animationHandler = Handler(Looper.getMainLooper())
+        animationHandler = Handler(Looper.getMainLooper()) // Handler pour animation continue
         
         // Démarrer l'animation continue
         startContinuousAnimation()
@@ -57,8 +57,6 @@ class MainActivity : Activity() {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startRecording()
-                // Redémarrer le timer jaune proprement après permission
-                organicLineView?.restartCycle()
             }
         }
     }
@@ -75,7 +73,7 @@ class MainActivity : Activity() {
             }
             isRecording = true
             
-            // Démarrer la mise à jour périodique pour le souffle
+            // Démarrer la mise à jour périodique
             updateAmplitude()
             
         } catch (e: Exception) {
@@ -91,7 +89,7 @@ class MainActivity : Activity() {
                 // Normaliser l'amplitude (0-1)
                 val normalizedAmplitude = minOf(amplitude / 32767.0f, 1.0f)
                 
-                // Mettre à jour la vue avec le souffle SEULEMENT
+                // Mettre à jour la vue
                 organicLineView?.updateForce(normalizedAmplitude)
                 
             } catch (e: Exception) {
@@ -116,8 +114,6 @@ class MainActivity : Activity() {
     
     override fun onDestroy() {
         super.onDestroy()
-        
-        // Arrêter l'enregistrement MediaRecorder
         mediaRecorder?.let {
             try {
                 it.stop()
@@ -126,8 +122,6 @@ class MainActivity : Activity() {
                 e.printStackTrace()
             }
         }
-        
         handler?.removeCallbacksAndMessages(null)
-        animationHandler?.removeCallbacksAndMessages(null)
     }
 }
