@@ -37,6 +37,8 @@ class MainActivity : Activity() {
         // Vérifier et demander les permissions
         if (checkPermissions()) {
             startRecording()
+            // Démarrer le cycle si permissions déjà accordées
+            organicLineView?.startCycle()
         } else {
             requestPermissions()
         }
@@ -57,6 +59,8 @@ class MainActivity : Activity() {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startRecording()
+                // DÉMARRER le timer maintenant que les permissions sont accordées
+                organicLineView?.startCycle()
             }
         }
     }
