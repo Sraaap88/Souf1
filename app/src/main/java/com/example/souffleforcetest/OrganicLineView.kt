@@ -403,57 +403,45 @@ class OrganicLineView @JvmOverloads constructor(
 
         val time = System.currentTimeMillis() * 0.002f
 
-        // TIGE avec image (si bitmap chargé, sinon fallback)
-        if (::stemBitmap.isInitialized) {
-            for (i in 1 until tracedPath.size) {
-                val point = tracedPath[i]
-                val bmpX = point.x - stemBitmap.width / 2f
-                val bmpY = point.y - stemBitmap.height / 2f
-                canvas.drawBitmap(stemBitmap, bmpX, bmpY, null)
-            }
-        } else {
-            // Fallback - dessiner avec les courbes originales
+        // TIGE avec votre image - suivant intelligemment les courbes
+        if (::stemBitmap.isInitialized && tracedPath.size > 1) {
             for (i in 1 until tracedPath.size) {
                 val prevPoint = tracedPath[i - 1]
                 val currentPoint = tracedPath[i]
                 
+                // Oscillations comme votre tige originale
                 val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f
+                val adjustedX = currentPoint.x + oscillation
                 
-                val midX = (prevPoint.x + currentPoint.x) / 2f + oscillation
-                val midY = (prevPoint.y + currentPoint.y) / 2f
-                
+                // Calculer l'angle de rotation pour suivre la courbe
                 val dx = currentPoint.x - prevPoint.x
                 val dy = currentPoint.y - prevPoint.y
-                val length = kotlin.math.sqrt(dx * dx + dy * dy)
+                val angle = kotlin.math.atan2(dy.toDouble(), dx.toDouble()) * 180.0 / kotlin.math.PI
                 
-                val controlX = if (length > 0) {
-                    midX + (-dy / length) * currentPoint.curvature
-                } else midX
+                // Scaling selon l'épaisseur de la tige (votre strokeWidth)
+                val scale = currentPoint.strokeWidth / 20f // Ajustez selon vos besoins
+                val stemW = stemBitmap.width * scale
+                val stemH = stemBitmap.height * scale
                 
-                val controlY = if (length > 0) {
-                    midY + (dx / length) * currentPoint.curvature
-                } else midY
-                
-                val segmentPath = Path()
-                segmentPath.moveTo(prevPoint.x + oscillation * 0.8f, prevPoint.y)
-                segmentPath.quadTo(controlX, controlY, currentPoint.x + oscillation, currentPoint.y)
-                
-                basePaint.strokeWidth = currentPoint.strokeWidth
-                canvas.drawPath(segmentPath, basePaint)
+                canvas.save()
+                canvas.translate(adjustedX, currentPoint.y)
+                canvas.rotate(angle.toFloat() + 90f) // +90 pour orienter correctement
+                canvas.drawBitmap(
+                    stemBitmap, 
+                    -stemW / 2f, 
+                    -stemH / 2f, 
+                    null
+                )
+                canvas.restore()
             }
         }
 
         val currentY = baseY - currentHeight
         val pointOscillation = kotlin.math.sin(time * 2f) * 15f
         val currentX = baseX + offsetX + pointOscillation
-        
-        // Point au sommet de la tige
-        basePaint.style = Paint.Style.FILL
-        canvas.drawCircle(currentX, currentY, 8f, basePaint)
-        basePaint.style = Paint.Style.STROKE
 
-        // Dessiner les bourgeons (cercles verts - fallback)
-        basePaint.color = 0xFF32CD32.toInt()
+        // Dessiner les bourgeons (petits points bruns sur la tige)
+        basePaint.color = 0xFF654321.toInt() // Brun foncé
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
             if (bourgeon.taille > 0) {
@@ -461,63 +449,42 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FEUILLES avec image (si bitmap chargé, sinon fallback)
+        // FEUILLES avec votre image leaf
         for (feuille in feuilles) {
-            if (feuille.longueur > 0 && feuille.largeur > 0) {
-                if (::leafBitmap.isInitialized) {
-                    canvas.save()
-                    canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
-                    canvas.rotate(feuille.angle)
-                    val scale = feuille.longueur / leafBitmap.height
-                    val leafW = leafBitmap.width * scale
-                    val leafH = leafBitmap.height * scale
-                    val dstRect = RectF(-leafW/2, -leafH/2, leafW/2, leafH/2)
-                    canvas.drawBitmap(leafBitmap, null, dstRect, null)
-                    canvas.restore()
-                } else {
-                    // Fallback - ellipses vertes
-                    canvas.save()
-                    canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
-                    canvas.rotate(feuille.angle)
-                    basePaint.color = 0xFF228B22.toInt()
-                    canvas.drawOval(-feuille.largeur/2, -feuille.longueur/2, 
-                                  feuille.largeur/2, feuille.longueur/2, basePaint)
-                    canvas.restore()
-                }
+            if (feuille.longueur > 5 && feuille.largeur > 2 && ::leafBitmap.isInitialized) {
+                canvas.save()
+                canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
+                canvas.rotate(feuille.angle)
+                
+                // Scaling basé sur la longueur de la feuille
+                val scale = feuille.longueur / 100f
+                val leafW = leafBitmap.width * scale
+                val leafH = leafBitmap.height * scale
+                
+                val dstRect = RectF(-leafW/2, -leafH/2, leafW/2, leafH/2)
+                canvas.drawBitmap(leafBitmap, null, dstRect, null)
+                canvas.restore()
             }
         }
 
-        // FLEUR avec image (si bitmap chargé, sinon fallback)
+        // FLEUR avec votre image flower
         fleur?.let { flower ->
-            if (flower.taille > 0) {
-                if (::flowerBitmap.isInitialized) {
-                    val scale = flower.taille / flowerBitmap.width
-                    val w = flowerBitmap.width * scale
-                    val h = flowerBitmap.height * scale
-                    val rect = RectF(
-                        flower.x - w / 2,
-                        flower.y - h,
-                        flower.x + w / 2,
-                        flower.y
-                    )
-                    canvas.drawBitmap(flowerBitmap, null, rect, null)
-                } else {
-                    // Fallback - cercles colorés
-                    basePaint.color = 0xFFFFB6C1.toInt()
-                    val angleStep = 360f / flower.petalCount
-                    for (i in 0 until flower.petalCount) {
-                        val angle = i * angleStep
-                        val petalX = flower.x + kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat() * flower.taille * 0.5f
-                        val petalY = flower.y + kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat() * flower.taille * 0.5f
-                        canvas.drawCircle(petalX, petalY, flower.taille * 0.3f, basePaint)
-                    }
-                    basePaint.color = 0xFFFFD700.toInt()
-                    canvas.drawCircle(flower.x, flower.y, flower.taille * 0.2f, basePaint)
-                }
+            if (flower.taille > 5 && ::flowerBitmap.isInitialized) {
+                val scale = flower.taille / 150f
+                val w = flowerBitmap.width * scale
+                val h = flowerBitmap.height * scale
+                
+                val rect = RectF(
+                    flower.x - w / 2,
+                    flower.y - h / 2,
+                    flower.x + w / 2,
+                    flower.y + h / 2
+                )
+                canvas.drawBitmap(flowerBitmap, null, rect, null)
             }
         }
 
-        // Remettre la couleur blanche pour la tige
+        // Remettre les paramètres par défaut
         basePaint.color = 0xFFFFFFFF.toInt()
         basePaint.style = Paint.Style.STROKE
 
