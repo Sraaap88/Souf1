@@ -475,7 +475,7 @@ class OrganicLineView @JvmOverloads constructor(
                 val petioleOffset = leafW * 0.3f // Distance du pétiole depuis le centre de l'image
                 
                 // Position de la feuille décalée
-                val angleRad = kotlin.math.toRadians(feuille.angle.toDouble())
+                val angleRad = feuille.angle * kotlin.math.PI / 180.0 // Conversion manuelle
                 val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleOffset
                 val leafY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * petioleOffset
                 
