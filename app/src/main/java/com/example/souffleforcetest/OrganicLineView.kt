@@ -22,6 +22,73 @@ class OrganicLineView @JvmOverloads constructor(
         style = Paint.Style.STROKE
     }
     
+    private val resetButtonPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+    }
+    
+    private val resetTextPaint = Paint().apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = 120f
+        isAntiAlias = true
+        textAlign = Paint.Align.CENTER
+    }
+    
+    private var currentForce = 0.0f
+    private var previousForce = 0.0f
+    private var currentHeight = 0f
+    private var currentStrokeWidth = 4f
+    private var offsetX = 0f
+    private var maxHeight = 0f
+    private var baseX = 0f
+    private var baseY = 0f
+    private var showResetButton = false
+    private var resetButtonX = 0f
+    private var resetButtonY = 0f
+    private val resetButtonRadius = 175f
+    
+    // États du système en 4 étapes
+    private var lightState = LightState.YELLOW
+    private var stateStartTime = 0L
+    private var canGrow = false
+    
+    enum class LightState {
+        YELLOW,      // 2s - Inspirez + timer
+        GREEN_GROW,  // 3s - Croissance tige + timer
+        GREEN_LEAVES, // 3s - Croissance feuilles + timer
+        GREEN_FLOWER, // 3s - Création fleur + timer
+        RED          // Infini - Admirez et recommencez
+    }
+    
+    private data class TracePoint(
+        val x: Float,
+        val y: Float,
+        val strokeWidth: Float,
+        val waveFrequency: Float,
+        val waveAmplitude: Float,
+        val curvature: Float
+    )
+    
+    // Éléments visuels
+    data class Bourgeon(val x: Float, val y: Float, var taille: Float)
+    data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float)
+    data class Fleur(val x: Float, val y: Float, var taille: Float, var petalCount: Int)
+    
+    private val tracedPath = mutableListOf<TracePoint>()
+    private val bourgeons = mutableListOf<Bourgeon>()
+    private val feuilles = mutableListOf<Feuille>()
+    private var fleur: Fleur? = null
+    
+    private val forceThreshold = 0.08f
+    private val growthRate = 174.6f
+    private val baseStrokeWidth = 4f
+    private val maxStrokeWidth = 96f
+    private val strokeDecayRate = 0.2f
+    private val abruptThreshold = 0.15f
+    private val centeringRate = 0.92f
+    private val waveThreshold = 0.03f
+    private val maxWaveAmplitude = 15f
+    
     private fun drawTrafficLight(canvas: Canvas) {
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
@@ -57,7 +124,7 @@ class OrganicLineView @JvmOverloads constructor(
         canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
         resetButtonPaint.style = Paint.Style.FILL
         
-        // Calculer timer et texte
+        // Calculer timer uniquement
         val timeRemaining = when (lightState) {
             LightState.YELLOW -> kotlin.math.max(0, 2 - (elapsedTime / 1000))
             LightState.GREEN_GROW -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
@@ -92,73 +159,6 @@ class OrganicLineView @JvmOverloads constructor(
         resetTextPaint.textSize = 120f
     }
     
-    private val resetButtonPaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.FILL
-    }
-    
-    private val resetTextPaint = Paint().apply {
-        color = 0xFFFFFFFF.toInt()
-        textSize = 120f
-        isAntiAlias = true
-        textAlign = Paint.Align.CENTER
-    }
-    
-    private var currentForce = 0.0f
-    private var previousForce = 0.0f
-    private var currentHeight = 0f
-    private var currentStrokeWidth = 4f
-    private var offsetX = 0f
-    private var maxHeight = 0f
-    private var baseX = 0f
-    private var baseY = 0f
-    private var showResetButton = false
-    private var resetButtonX = 0f
-    private var resetButtonY = 0f
-    private val resetButtonRadius = 175f
-    
-    // États du système en 5 étapes
-    private var lightState = LightState.YELLOW
-    private var stateStartTime = 0L
-    private var canGrow = false
-    
-    enum class LightState {
-        YELLOW,      // 2s - Inspirez + timer
-        GREEN_GROW,  // 3s - Croissance tige + timer
-        GREEN_LEAVES, // 3s - Forme feuilles avec voyelles + timer
-        GREEN_FLOWER, // 3s - Création fleur + timer
-        RED          // Infini - Admirez et recommencez
-    }
-    
-    private data class TracePoint(
-        val x: Float,
-        val y: Float,
-        val strokeWidth: Float,
-        val waveFrequency: Float,
-        val waveAmplitude: Float,
-        val curvature: Float
-    )
-    
-    // Éléments visuels
-    data class Bourgeon(val x: Float, val y: Float, var taille: Float)
-    data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float)
-    data class Fleur(val x: Float, val y: Float, var taille: Float, var petalCount: Int)
-    
-    private val tracedPath = mutableListOf<TracePoint>()
-    private val bourgeons = mutableListOf<Bourgeon>()
-    private val feuilles = mutableListOf<Feuille>()
-    private var fleur: Fleur? = null
-    
-    private val forceThreshold = 0.08f
-    private val growthRate = 174.6f // 50% plus rapide encore
-    private val baseStrokeWidth = 4f
-    private val maxStrokeWidth = 96f // Différence d'épaisseur plus visible
-    private val strokeDecayRate = 0.2f
-    private val abruptThreshold = 0.15f
-    private val centeringRate = 0.92f
-    private val waveThreshold = 0.03f
-    private val maxWaveAmplitude = 15f
-    
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         
@@ -171,14 +171,19 @@ class OrganicLineView @JvmOverloads constructor(
         
         if (tracedPath.isEmpty()) {
             tracedPath.add(TracePoint(baseX + offsetX, baseY, baseStrokeWidth, 0f, 0f, 0f))
-            // Démarrer le cycle du feu
-            stateStartTime = System.currentTimeMillis()
-            lightState = LightState.YELLOW
+            // NE PAS démarrer le cycle automatiquement - attendre les permissions
         }
     }
     
+    // Fonction pour démarrer le cycle après permissions
+    fun startCycle() {
+        lightState = LightState.YELLOW
+        stateStartTime = System.currentTimeMillis()
+        invalidate()
+    }
+    
     fun updateForce(force: Float) {
-        // Gérer le système en 5 étapes
+        // Gérer le système en 4 étapes
         updateLightState()
         
         // Appliquer le souffle selon l'étape
@@ -192,12 +197,12 @@ class OrganicLineView @JvmOverloads constructor(
                 growStem(force)
             }
             LightState.GREEN_LEAVES -> {
-                // Phase souffle - effet feuilles (simulation)
-                simulateLeafEffect(force)
+                // Phase souffle - croissance feuilles directement
+                growLeaves(force)
             }
             LightState.GREEN_FLOWER -> {
-                // Phase souffle - effet fleur (simulation)
-                simulateFlowerEffect(force)
+                // Phase souffle - croissance fleur seulement
+                growFlowerOnly(force)
             }
             LightState.RED -> {
                 // Phase finale - admirer
@@ -278,42 +283,40 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // Simulation effet feuilles - faire grandir les bourgeons
-    private fun simulateLeafEffect(force: Float) {
-        if (force > forceThreshold) {
-            val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.3f // Plus lent que la tige
-            
-            for (bourgeon in bourgeons) {
-                bourgeon.taille += growthIncrement
-                bourgeon.taille = kotlin.math.min(bourgeon.taille, 25f) // Taille max 25px
-            }
-        }
-    }
-    
-    // Simulation effet fleur - transformer bourgeons en feuilles + créer fleur
-    private fun simulateFlowerEffect(force: Float) {
+    // Croissance directe des feuilles (sans passer par les bourgeons)
+    private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
             val growthIncrement = adjustedForce * growthRate * 0.2f
             
-            // Créer feuilles depuis gros bourgeons
-            for (bourgeon in bourgeons) {
-                if (bourgeon.taille > 15f) { // Si bourgeon assez grand
-                    var feuille = feuilles.find { it.bourgeon == bourgeon }
-                    if (feuille == null) {
-                        val angle = (0..360).random().toFloat()
-                        feuille = Feuille(bourgeon, 0f, 0f, angle)
-                        feuilles.add(feuille)
-                    }
-                    
-                    // Faire grandir la feuille - 3X PLUS GRANDE
-                    feuille.longueur += growthIncrement * 2.4f // 3x plus grande
-                    feuille.largeur += growthIncrement * 1.2f  // 3x plus grande
-                    feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // Max 120px (3x40)
-                    feuille.largeur = kotlin.math.min(feuille.largeur, 60f)    // Max 60px (3x20)
-                }
+            // Créer feuilles directement sur la tige lors du souffle
+            val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
+            if (rhythmIntensity > abruptThreshold && tracedPath.size > 5) {
+                // Prendre un point aléatoire sur la tige existante
+                val randomPoint = tracedPath[(tracedPath.size * 0.3f).toInt()..(tracedPath.size - 1)].random()
+                val angle = (0..360).random().toFloat()
+                
+                // Créer une feuille directement
+                val dummyBourgeon = Bourgeon(randomPoint.x, randomPoint.y, 20f) // Bourgeon invisible
+                val nouvelleFeuille = Feuille(dummyBourgeon, 0f, 0f, angle)
+                feuilles.add(nouvelleFeuille)
             }
+            
+            // Faire grandir toutes les feuilles existantes
+            for (feuille in feuilles) {
+                feuille.longueur += growthIncrement * 2.4f // 3x plus grande
+                feuille.largeur += growthIncrement * 1.2f  // 3x plus grande
+                feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // Max 120px
+                feuille.largeur = kotlin.math.min(feuille.largeur, 60f)    // Max 60px
+            }
+        }
+    }
+    
+    // Croissance fleur seulement (pas de feuilles)
+    private fun growFlowerOnly(force: Float) {
+        if (force > forceThreshold) {
+            val adjustedForce = force - forceThreshold
+            val growthIncrement = adjustedForce * growthRate * 0.4f
             
             // Créer/faire grandir la fleur au sommet
             if (tracedPath.isNotEmpty()) {
@@ -324,7 +327,7 @@ class OrganicLineView @JvmOverloads constructor(
                     }
                     fleur?.let {
                         it.taille += growthIncrement * 3.0f // 5x plus grande
-                        it.taille = kotlin.math.min(it.taille, 175f) // Taille max 175px (5x35)
+                        it.taille = kotlin.math.min(it.taille, 175f) // Taille max 175px
                         it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt()) // 5-8 pétales
                     }
                 }
@@ -339,14 +342,14 @@ class OrganicLineView @JvmOverloads constructor(
         when (lightState) {
             LightState.YELLOW -> {
                 canGrow = false
-                if (elapsedTime >= 2000) { // 2 secondes
+                if (elapsedTime >= 2000) {
                     lightState = LightState.GREEN_GROW
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_GROW -> {
                 canGrow = true
-                if (elapsedTime >= 3000) { // 3 secondes
+                if (elapsedTime >= 3000) {
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                     canGrow = false
@@ -354,21 +357,20 @@ class OrganicLineView @JvmOverloads constructor(
             }
             LightState.GREEN_LEAVES -> {
                 canGrow = false
-                if (elapsedTime >= 3000) { // 3 secondes
+                if (elapsedTime >= 3000) {
                     lightState = LightState.GREEN_FLOWER
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_FLOWER -> {
                 canGrow = false
-                if (elapsedTime >= 3000) { // 3 secondes
+                if (elapsedTime >= 3000) {
                     lightState = LightState.RED
                     stateStartTime = currentTime
                 }
             }
             LightState.RED -> {
                 canGrow = false
-                // Reste rouge jusqu'au clic
             }
         }
     }
@@ -382,8 +384,7 @@ class OrganicLineView @JvmOverloads constructor(
             val prevPoint = tracedPath[i - 1]
             val currentPoint = tracedPath[i]
             
-            // Oscillation TRÈS VISIBLE
-            val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f // Beaucoup plus d'amplitude
+            val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f
             
             val midX = (prevPoint.x + currentPoint.x) / 2f + oscillation
             val midY = (prevPoint.y + currentPoint.y) / 2f
@@ -401,7 +402,7 @@ class OrganicLineView @JvmOverloads constructor(
             } else midY
             
             val segmentPath = Path()
-            segmentPath.moveTo(prevPoint.x + oscillation * 0.8f, prevPoint.y) // Plus d'oscillation
+            segmentPath.moveTo(prevPoint.x + oscillation * 0.8f, prevPoint.y)
             segmentPath.quadTo(controlX, controlY, currentPoint.x + oscillation, currentPoint.y)
             
             basePaint.strokeWidth = currentPoint.strokeWidth
@@ -409,14 +410,14 @@ class OrganicLineView @JvmOverloads constructor(
         }
         
         val currentY = baseY - currentHeight
-        val pointOscillation = kotlin.math.sin(time * 2f) * 15f // Point oscille beaucoup plus
+        val pointOscillation = kotlin.math.sin(time * 2f) * 15f
         val currentX = baseX + offsetX + pointOscillation
         basePaint.style = Paint.Style.FILL
         canvas.drawCircle(currentX, currentY, 8f, basePaint)
         basePaint.style = Paint.Style.STROKE
         
-        // Dessiner les bourgeons (cercles verts)
-        basePaint.color = 0xFF32CD32.toInt() // Vert
+        // Dessiner les bourgeons (plus utilisés mais gardés pour éviter erreurs)
+        basePaint.color = 0xFF32CD32.toInt() // Vert  
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
             if (bourgeon.taille > 0) {
