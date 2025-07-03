@@ -207,60 +207,68 @@ class OrganicLineView @JvmOverloads constructor(
         
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
+            val previousHeight = currentHeight
             currentHeight += adjustedForce * growthRate
             currentHeight = kotlin.math.min(currentHeight, maxHeight)
-        }
-        
-        val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
-        val currentY = baseY - currentHeight
-        val currentX = baseX + offsetX
-        
-        if (rhythmIntensity > abruptThreshold) {
-            val displacement = if ((0..1).random() == 0) 120f else -120f
-            offsetX += displacement
             
-            if (currentHeight > 100f) {
-                val budX = currentX
-                val budY = currentY + ((-20..20).random())
-                bourgeons.add(Bourgeon(budX, budY, 0f))
-            }
-        } else if (rhythmIntensity > 0.02f) {
-            val thicknessIncrease = rhythmIntensity * 160f
-            currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
-        }
-        
-        if (currentStrokeWidth > baseStrokeWidth) {
-            currentStrokeWidth = kotlin.math.max(baseStrokeWidth, currentStrokeWidth - strokeDecayRate)
-        }
-        offsetX *= centeringRate
-        
-        var curvature = 0f
-        if (rhythmIntensity > 0.05f) {
-            curvature = (rhythmIntensity * 40f).coerceAtMost(20f)
-            if ((0..1).random() == 0) curvature = -curvature
-        }
-        
-        var waveFreq = 0f
-        var waveAmp = 0f
-        
-        if (rhythmIntensity > 0.01f && rhythmIntensity < abruptThreshold) {
-            waveFreq = (rhythmIntensity * 15f) + 1f
-            waveAmp = (rhythmIntensity * 200f).coerceAtMost(maxWaveAmplitude)
-        }
-        
-        if (waveAmp == 0f && currentHeight > 0f) {
-            waveFreq = 2f
-            waveAmp = 3f
-        }
-        
-        if (tracedPath.isNotEmpty()) {
-            val lastPoint = tracedPath.last()
-            if (currentY < lastPoint.y) {
+            // Ajouter un point de tracé chaque fois que la tige pousse
+            if (currentHeight > previousHeight && currentHeight > 0) {
+                val currentY = baseY - currentHeight
+                val currentX = baseX + offsetX
+                
+                // Calculer les paramètres d'oscillation
+                val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
+                
+                var waveFreq = 0f
+                var waveAmp = 0f
+                var curvature = 0f
+                
+                if (rhythmIntensity > 0.01f && rhythmIntensity < abruptThreshold) {
+                    waveFreq = (rhythmIntensity * 15f) + 1f
+                    waveAmp = (rhythmIntensity * 200f).coerceAtMost(maxWaveAmplitude)
+                }
+                
+                if (rhythmIntensity > 0.05f) {
+                    curvature = (rhythmIntensity * 40f).coerceAtMost(20f)
+                    if ((0..1).random() == 0) curvature = -curvature
+                }
+                
+                // Ajouter le point de tracé
                 tracedPath.add(TracePoint(currentX, currentY, currentStrokeWidth, waveFreq, waveAmp, curvature))
             }
         }
         
-        if (!showResetButton && currentHeight > 50f) {
+        val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
+        
+        // Gestion des mouvements brusques
+        if (rhythmIntensity > abruptThreshold) {
+            val displacement = if ((0..1).random() == 0) 30f else -30f
+            offsetX += displacement
+            
+            // Créer des bourgeons si la tige est assez haute
+            if (currentHeight > 80f) {
+                val currentY = baseY - currentHeight
+                val currentX = baseX + offsetX
+                val budX = currentX + ((-15..15).random())
+                val budY = currentY + ((-20..20).random())
+                bourgeons.add(Bourgeon(budX, budY, 0f))
+            }
+        } else if (rhythmIntensity > 0.02f) {
+            // Augmenter l'épaisseur
+            val thicknessIncrease = rhythmIntensity * 80f
+            currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
+        }
+        
+        // Réduction progressive de l'épaisseur
+        if (currentStrokeWidth > baseStrokeWidth) {
+            currentStrokeWidth = kotlin.math.max(baseStrokeWidth, currentStrokeWidth - strokeDecayRate)
+        }
+        
+        // Recentrage progressif
+        offsetX *= centeringRate
+        
+        // Afficher le bouton reset quand la tige commence à pousser
+        if (!showResetButton && currentHeight > 30f) {
             showResetButton = true
         }
     }
@@ -359,66 +367,89 @@ class OrganicLineView @JvmOverloads constructor(
 
         val time = System.currentTimeMillis() * 0.002f
 
-        // TIGE - suit la croissance en temps réel
-        if (::stemBitmap.isInitialized && tracedPath.size > 1) {
-            for (i in 1 until tracedPath.size) {
-                val currentPoint = tracedPath[i]
+        // TIGE - corrigée pour suivre currentHeight
+        if (currentHeight > 0 && ::stemBitmap.isInitialized) {
+            val stemTop = baseY - currentHeight
+            val currentX = baseX + offsetX
+            
+            // Calculer le nombre de segments nécessaires
+            val segmentHeight = 30f // Hauteur de chaque segment
+            val totalSegments = (currentHeight / segmentHeight).toInt() + 1
+            
+            for (i in 0 until totalSegments) {
+                val segmentY = baseY - (i * segmentHeight)
                 
-                val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f
-                val adjustedX = currentPoint.x + oscillation
-                
-                val scale = (currentPoint.strokeWidth / 50f).coerceIn(0.05f, 0.2f)
-                val stemW = stemBitmap.width * scale
-                val stemH = stemBitmap.height * scale
-                
-                val angle = if (i > 1) {
-                    val prevPoint = tracedPath[i - 1]
-                    val dx = currentPoint.x - prevPoint.x
-                    val dy = currentPoint.y - prevPoint.y
-                    kotlin.math.atan2(dy.toDouble(), dx.toDouble()) * 180.0 / kotlin.math.PI
-                } else -90.0
-                
-                canvas.save()
-                canvas.translate(adjustedX, currentPoint.y)
-                canvas.rotate(angle.toFloat() + 90f)
-                
-                val paint = Paint().apply {
-                    isAntiAlias = true
-                    alpha = 180
+                // Ne dessiner que si le segment est dans la zone de croissance
+                if (segmentY >= stemTop) {
+                    val oscillation = kotlin.math.sin(time + segmentY * 0.005f) * 5f
+                    val adjustedX = currentX + oscillation
+                    
+                    // Calculer l'épaisseur basée sur la position (plus épais en bas)
+                    val positionRatio = (baseY - segmentY) / currentHeight
+                    val thickness = kotlin.math.lerp(currentStrokeWidth, baseStrokeWidth, positionRatio)
+                    val scale = (thickness / 50f).coerceIn(0.05f, 0.15f)
+                    
+                    val stemW = stemBitmap.width * scale
+                    val stemH = stemBitmap.height * scale
+                    
+                    canvas.save()
+                    canvas.translate(adjustedX, segmentY)
+                    
+                    // Rotation basée sur l'offset pour suivre les courbes
+                    val rotation = (offsetX / 50f).coerceIn(-15f, 15f)
+                    canvas.rotate(rotation)
+                    
+                    val paint = Paint().apply {
+                        isAntiAlias = true
+                        alpha = 200
+                        isFilterBitmap = true
+                    }
+                    
+                    canvas.drawBitmap(stemBitmap, -stemW / 2f, -stemH / 2f, paint)
+                    canvas.restore()
                 }
-                
-                canvas.drawBitmap(stemBitmap, -stemW / 2f, -stemH / 2f, paint)
-                canvas.restore()
             }
         }
 
-        val currentY = baseY - currentHeight
-        val pointOscillation = kotlin.math.sin(time * 2f) * 15f
-        val currentX = baseX + offsetX + pointOscillation
+        // Point de croissance visible (sommet de la tige)
+        if (currentHeight > 0) {
+            val stemTop = baseY - currentHeight
+            val currentX = baseX + offsetX
+            val pointOscillation = kotlin.math.sin(time * 2f) * 3f
+            
+            // Dessiner un petit point vert au sommet
+            basePaint.color = 0xFF90EE90.toInt()
+            basePaint.style = Paint.Style.FILL
+            canvas.drawCircle(currentX + pointOscillation, stemTop, 4f, basePaint)
+        }
 
         // Bourgeons
         basePaint.color = 0xFF8B4513.toInt()
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
             if (bourgeon.taille > 2) {
-                canvas.drawCircle(bourgeon.x, bourgeon.y, bourgeon.taille * 0.5f, basePaint)
+                val oscillation = kotlin.math.sin(time + bourgeon.y * 0.01f) * 2f
+                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, bourgeon.taille * 0.5f, basePaint)
             }
         }
 
         // FEUILLES
         for (feuille in feuilles) {
             if (feuille.longueur > 10 && ::leafBitmap.isInitialized) {
-                canvas.save()
-                canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
-                canvas.rotate(feuille.angle)
+                val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
-                val scale = kotlin.math.min(feuille.longueur / 500f, 0.1f)
+                canvas.save()
+                canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
+                canvas.rotate(feuille.angle + leafOscillation * 0.5f)
+                
+                val scale = kotlin.math.min(feuille.longueur / 400f, 0.12f)
                 val leafW = leafBitmap.width * scale
                 val leafH = leafBitmap.height * scale
                 
                 val paint = Paint().apply {
                     isAntiAlias = true
                     isFilterBitmap = true
+                    alpha = 220
                 }
                 
                 val dstRect = RectF(-leafW/2, -leafH/2, leafW/2, leafH/2)
@@ -430,29 +461,33 @@ class OrganicLineView @JvmOverloads constructor(
         // FLEUR
         fleur?.let { flower ->
             if (flower.taille > 10 && ::flowerBitmap.isInitialized) {
-                val scale = kotlin.math.min(flower.taille / 100f, 0.8f)
+                val flowerOscillation = kotlin.math.sin(time * 0.8f) * 5f
+                
+                val scale = kotlin.math.min(flower.taille / 100f, 0.6f)
                 val w = flowerBitmap.width * scale
                 val h = flowerBitmap.height * scale
                 
-                val maxSize = 300f
+                val maxSize = 250f
                 val finalW = kotlin.math.min(w, maxSize)
                 val finalH = kotlin.math.min(h, maxSize)
                 
                 val paint = Paint().apply {
                     isAntiAlias = true
                     isFilterBitmap = true
+                    alpha = 240
                 }
                 
                 val rect = RectF(
-                    flower.x - finalW / 2,
+                    flower.x - finalW / 2 + flowerOscillation,
                     flower.y - finalH / 2,
-                    flower.x + finalW / 2,
+                    flower.x + finalW / 2 + flowerOscillation,
                     flower.y + finalH / 2
                 )
                 canvas.drawBitmap(flowerBitmap, null, rect, paint)
             }
         }
 
+        // Reset du style pour le feu de circulation
         basePaint.color = 0xFFFFFFFF.toInt()
         basePaint.style = Paint.Style.STROKE
 
