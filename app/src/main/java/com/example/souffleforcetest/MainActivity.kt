@@ -76,6 +76,8 @@ class MainActivity : Activity() {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startRecording()
                 startAudioAnalysis()
+                // Redémarrer le timer jaune proprement après permission
+                organicLineView?.restartCycle()
             }
         }
     }
