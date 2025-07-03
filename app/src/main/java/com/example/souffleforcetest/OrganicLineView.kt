@@ -8,11 +8,21 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 
+
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+
 class OrganicLineView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
+    // Bitmaps pour les visuels réalistes
+    private val stemBitmap: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.stem_segment)
+    private val leafBitmap: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.leaf)
+    private val flowerBitmap: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.flower)
+
     
     private val basePaint = Paint().apply {
         color = 0xFFFFFFFF.toInt()
@@ -419,7 +429,58 @@ class OrganicLineView @JvmOverloads constructor(
         canvas.drawCircle(currentX, currentY, 8f, basePaint)
         basePaint.style = Paint.Style.STROKE
         
-        // Dessiner les bourgeons (plus utilisés mais gardés pour éviter erreurs)
+        
+        // Dessiner les segments de tige avec le Bitmap
+        for (i in 1 until tracedPath.size) {
+            val prev = tracedPath[i - 1]
+            val curr = tracedPath[i]
+
+            val angle = Math.toDegrees(Math.atan2((curr.y - prev.y).toDouble(), (curr.x - prev.x).toDouble())).toFloat()
+            val centerX = (prev.x + curr.x) / 2f
+            val centerY = (prev.y + curr.y) / 2f
+
+            val segmentWidth = 24f
+            val segmentHeight = kotlin.math.max(16f, curr.strokeWidth * 2f)
+
+            canvas.save()
+            canvas.translate(centerX, centerY)
+            canvas.rotate(angle)
+            val dstRect = android.graphics.RectF(-segmentWidth / 2, -segmentHeight / 2, segmentWidth / 2, segmentHeight / 2)
+            canvas.drawBitmap(stemBitmap, null, dstRect, null)
+            canvas.restore()
+        }
+
+        // Dessiner les feuilles avec Bitmap
+        for (feuille in feuilles) {
+            if (feuille.longueur > 0 && feuille.largeur > 0) {
+                canvas.save()
+                canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
+                canvas.rotate(feuille.angle)
+                val scaleX = feuille.largeur / leafBitmap.width
+                val scaleY = feuille.longueur / leafBitmap.height
+                canvas.scale(scaleX, scaleY)
+                canvas.drawBitmap(leafBitmap, -leafBitmap.width / 2f, -leafBitmap.height / 2f, null)
+                canvas.restore()
+            }
+        }
+
+        // Dessiner la fleur avec Bitmap
+        fleur?.let { flower ->
+            if (flower.taille > 0) {
+                val flowerWidth = flower.taille
+                val flowerHeight = flower.taille
+                val rect = android.graphics.RectF(
+                    flower.x - flowerWidth / 2,
+                    flower.y - flowerHeight / 2,
+                    flower.x + flowerWidth / 2,
+                    flower.y + flowerHeight / 2
+                )
+                canvas.drawBitmap(flowerBitmap, null, rect, null)
+            }
+        }
+
+        // Dessiner les bourgeons (optionnel, pour débogage)
+
         basePaint.color = 0xFF32CD32.toInt() // Vert  
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
