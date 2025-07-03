@@ -274,8 +274,8 @@ class OrganicLineView @JvmOverloads constructor(
                 val attachX = recentPoint.x + ((-25..25).random()).toFloat()
                 val attachY = recentPoint.y + ((-15..15).random()).toFloat()
                 
-                // Calculer position à 60 pixels de la tige (20 + 40)
-                val distanceFromStem = 60f
+                // Calculer position à -40 pixels de la tige (60 - 100)
+                val distanceFromStem = -40f
                 val isRightSide = attachX > recentPoint.x
                 val finalX = if (isRightSide) {
                     recentPoint.x + distanceFromStem
@@ -327,7 +327,7 @@ class OrganicLineView @JvmOverloads constructor(
                         
                         // Angle pour que le pétiole pointe vers la tige
                         val angleToStem = if (isRightSide) {
-                            195f // 195 degrés
+                            215f // 215 degrés
                         } else {
                             345f // 345 degrés
                         }
@@ -341,13 +341,13 @@ class OrganicLineView @JvmOverloads constructor(
                     feuille.largeur += growthIncrement * 0.08f
                     
                     // Si taille normale atteinte, continuer à allonger BEAUCOUP plus
-                    if (feuille.longueur >= 80f) {
-                        feuille.longueur += growthIncrement * 0.5f // Beaucoup plus rapide : 0.1f -> 0.5f
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 300f) // Limite beaucoup plus haute : 150f -> 300f
+                    if (feuille.longueur >= 120f) { // Nouvelle limite de base
+                        feuille.longueur += growthIncrement * 0.5f
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 450f) // 50% plus grandes : 300f -> 450f
                         // Pas de changement en largeur - elle reste à sa taille
                     } else {
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 80f) // Limite normale
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 40f) // Grandit normalement
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // 50% plus grandes : 80f -> 120f
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 60f) // 50% plus grandes : 40f -> 60f
                     }
                 }
             }
@@ -492,8 +492,10 @@ class OrganicLineView @JvmOverloads constructor(
                 val leafW = leafBitmap.width.toFloat() * scale
                 val petioleOffset = leafW * 0.3f // Distance du pétiole depuis le centre de l'image
                 
-            
                 // Position de la feuille décalée
+                val angleRad = feuille.angle * kotlin.math.PI / 180.0 // Conversion manuelle
+                val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleOffset
+        // Position de la feuille décalée
                 val angleRad = feuille.angle * kotlin.math.PI / 180.0 // Conversion manuelle
                 val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleOffset
                 val leafY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * petioleOffset
@@ -522,7 +524,7 @@ class OrganicLineView @JvmOverloads constructor(
                 val flowerOscillation = kotlin.math.sin(time * 0.8f) * 5f
                 
                 val progressRatio = flower.taille / 175f
-                val scale = progressRatio * 1.2f
+                val scale = progressRatio * 1.44f // 20% plus grande : 1.2f -> 1.44f
                 val w = flowerBitmap.width.toFloat() * scale
                 val h = flowerBitmap.height.toFloat() * scale
                 
