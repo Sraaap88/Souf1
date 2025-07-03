@@ -1,26 +1,21 @@
 package com.example.souffleforcetest
 
-import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.RectF
-import android.util.AttributeSet
-import android.view.MotionEvent
-import android.view.View
+import android.graphics.Bitmap
+import android.content.Context
 
-class OrganicLineView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+// Fichier de rendu - NE PAS MODIFIER
+class PlantRenderer(private val context: Context) {
     
-    // Chargement des bitmaps
-    private lateinit var stemBitmap: Bitmap
-    private lateinit var leafBitmap: Bitmap
-    private lateinit var flowerBitmap: Bitmap
+    private val stemPaint = Paint().apply {
+        color = 0xFF2F4F2F.toInt()
+        strokeWidth = 8f
+        isAntiAlias = true
+        strokeCap = Paint.Cap.ROUND
+        style = Paint.Style.STROKE
+    }
     
     private val basePaint = Paint().apply {
         color = 0xFFFFFFFF.toInt()
@@ -30,473 +25,165 @@ class OrganicLineView @JvmOverloads constructor(
         style = Paint.Style.STROKE
     }
     
-    private val stemPaint = Paint().apply {
-        color = 0xFF2F4F2F.toInt() // Vert foncé
-        strokeWidth = 8f
-        isAntiAlias = true
-        strokeCap = Paint.Cap.ROUND
-        style = Paint.Style.STROKE
-    }
-    
-    private val resetButtonPaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.FILL
-    }
-    
-    private val resetTextPaint = Paint().apply {
-        color = 0xFFFFFFFF.toInt()
-        textSize = 80f // Plus petit : 120f -> 80f
-        isAntiAlias = true
-        textAlign = Paint.Align.LEFT // Aligné à gauche
-    }
-    
-    private var currentForce = 0.0f
-    private var previousForce = 0.0f
-    private var currentHeight = 0f
-    private var currentStrokeWidth = 4f
-    private var offsetX = 0f
-    private var maxHeight = 0f
-    private var baseX = 0f
-    private var baseY = 0f
-    private var showResetButton = false
-    private var resetButtonX = 0f
-    private var resetButtonY = 0f
-    private val resetButtonRadius = 175f
-    
-    // États du système
-    private var lightState = LightState.YELLOW
-    private var stateStartTime = 0L
-    private var canGrow = false
-    
-    enum class LightState {
-        YELLOW,
-        GREEN_GROW,
-        GREEN_LEAVES,
-        GREEN_FLOWER,
-        RED
-    }
-    
-    private data class TracePoint(
-        val x: Float,
-        val y: Float,
-        val strokeWidth: Float,
-        val waveFrequency: Float,
-        val waveAmplitude: Float,
-        val curvature: Float
-    )
-    
-    data class Bourgeon(val x: Float, val y: Float, var taille: Float)
-    data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float)
-    data class Fleur(var x: Float, var y: Float, var taille: Float, var petalCount: Int)
-    
-    private val tracedPath = mutableListOf<TracePoint>()
-    private val bourgeons = mutableListOf<Bourgeon>()
-    private val feuilles = mutableListOf<Feuille>()
-    private var fleur: Fleur? = null
-    
-    private val forceThreshold = 0.08f
-    private val growthRate = 174.6f
-    private val baseStrokeWidth = 12f // Plus épais : 8f -> 12f
-    private val maxStrokeWidth = 32f // Plus épais : 24f -> 32f
-    private val strokeDecayRate = 0.2f
-    private val abruptThreshold = 0.15f
-    private val centeringRate = 0.98f // Plus lent : 0.92f -> 0.98f
-    private val waveThreshold = 0.03f
-    private val maxWaveAmplitude = 15f
-    
-    init {
-        try {
-            stemBitmap = BitmapFactory.decodeResource(resources, R.drawable.stem_segment)
-            leafBitmap = BitmapFactory.decodeResource(resources, R.drawable.leaf)
-            flowerBitmap = BitmapFactory.decodeResource(resources, R.drawable.flower)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-    
-    // Fonction utilitaire pour interpolation linéaire
-    private fun lerp(start: Float, end: Float, fraction: Float): Float {
+    fun lerp(start: Float, end: Float, fraction: Float): Float {
         return start + fraction * (end - start)
     }
     
-    private fun drawTrafficLight(canvas: Canvas) {
-        val currentTime = System.currentTimeMillis()
-        val elapsedTime = currentTime - stateStartTime
-        
-        val lightRadius = when (lightState) {
-            LightState.YELLOW -> width * 0.4f
-            else -> resetButtonRadius
-        }
-        
-        val lightX = if (lightState == LightState.YELLOW) width / 2f else resetButtonX
-        val lightY = if (lightState == LightState.YELLOW) height / 2f else resetButtonY
-        
-        // Dessiner le cercle (y compris le gros jaune)
-        resetButtonPaint.color = 0x40000000.toInt()
-        canvas.drawCircle(lightX + 8f, lightY + 8f, lightRadius, resetButtonPaint)
-        
-        when (lightState) {
-            LightState.YELLOW -> resetButtonPaint.color = 0xFFFFD700.toInt()
-            LightState.GREEN_GROW -> resetButtonPaint.color = 0xFF2F4F2F.toInt() // Vert foncé
-            LightState.GREEN_LEAVES -> resetButtonPaint.color = 0xFF00FF00.toInt() // Vert
-            LightState.GREEN_FLOWER -> resetButtonPaint.color = 0xFFFF69B4.toInt() // Rose
-            LightState.RED -> resetButtonPaint.color = 0xFFFF0000.toInt()
-        }
-        canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
-        
-        resetButtonPaint.color = 0xFF333333.toInt()
-        resetButtonPaint.style = Paint.Style.STROKE
-        resetButtonPaint.strokeWidth = 12f
-        canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
-        resetButtonPaint.style = Paint.Style.FILL
-        
-        val timeRemaining = when (lightState) {
-            LightState.YELLOW -> kotlin.math.max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
-            LightState.GREEN_LEAVES -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
-            LightState.GREEN_FLOWER -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
-            LightState.RED -> 0
-        }
-        
-        val mainText = when (lightState) {
-            LightState.YELLOW -> "INSPIREZ"
-            LightState.GREEN_GROW -> "SOUFFLEZ"
-            LightState.GREEN_LEAVES -> "SOUFFLEZ"
-            LightState.GREEN_FLOWER -> "SOUFFLEZ"
-            LightState.RED -> "↻"
-        }
-        
-        // Texte sur le cercle (centré) ET en haut à gauche
-        if (lightState == LightState.YELLOW) {
-            // Gros texte centré sur le cercle jaune
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 180f
-            resetTextPaint.color = 0xFF000000.toInt()
-            canvas.drawText(mainText, lightX, lightY, resetTextPaint)
-            
-            if (timeRemaining > 0) {
-                resetTextPaint.textSize = 108f
-                canvas.drawText(timeRemaining.toString(), lightX, lightY + 144f, resetTextPaint)
-            }
-        } else if (lightState == LightState.RED) {
-            // Symbole reset centré sur le cercle rouge
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 120f
-            resetTextPaint.color = 0xFF000000.toInt()
-            canvas.drawText(mainText, lightX, lightY, resetTextPaint)
-        }
-        
-        // Texte en haut à gauche supprimé
-    }
-    
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        
-        baseX = w / 2.0f
-        baseY = h - 100f
-        maxHeight = h - 150f
-        
-        resetButtonX = w - resetButtonRadius - 50f
-        resetButtonY = resetButtonRadius + 80f
-        
-        if (tracedPath.isEmpty()) {
-            tracedPath.add(TracePoint(baseX + offsetX, baseY, baseStrokeWidth, 0f, 0f, 0f))
-        }
-    }
-    
-    fun startCycle() {
-        lightState = LightState.YELLOW
-        stateStartTime = System.currentTimeMillis()
-        invalidate()
-    }
-    
-    fun updateForce(force: Float) {
-        updateLightState()
-        
-        when (lightState) {
-            LightState.YELLOW -> return
-            LightState.GREEN_GROW -> growStem(force)
-            LightState.GREEN_LEAVES -> growLeaves(force)
-            LightState.GREEN_FLOWER -> growFlowerOnly(force)
-            LightState.RED -> return
-        }
-        
-        invalidate()
-    }
-    
-    private fun growStem(force: Float) {
-        previousForce = currentForce
-        currentForce = force
-        
-        if (force > forceThreshold) {
-            val adjustedForce = force - forceThreshold
-            val previousHeight = currentHeight
-            currentHeight += adjustedForce * growthRate
-            currentHeight = kotlin.math.min(currentHeight, maxHeight)
-            
-            // Ajouter un point de tracé chaque fois que la tige pousse
-            if (currentHeight > previousHeight && currentHeight > 0) {
-                val currentY = baseY - currentHeight
-                val currentX = baseX + offsetX
-                
-                // Calculer les paramètres d'oscillation
-                val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
-                
-                var waveFreq = 0f
-                var waveAmp = 0f
-                var curvature = 0f
-                
-                if (rhythmIntensity > 0.01f && rhythmIntensity < abruptThreshold) {
-                    waveFreq = (rhythmIntensity * 15f) + 1f
-                    waveAmp = (rhythmIntensity * 200f).coerceAtMost(maxWaveAmplitude)
-                }
-                
-                if (rhythmIntensity > 0.05f) {
-                    curvature = (rhythmIntensity * 40f).coerceAtMost(20f)
-                    if ((0..1).random() == 0) curvature = -curvature
-                }
-                
-                // Ajouter le point de tracé
-                tracedPath.add(TracePoint(currentX, currentY, currentStrokeWidth, waveFreq, waveAmp, curvature))
-            }
-        }
-        
-        val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
-        
-        // Gestion des mouvements brusques - créer des points d'attache pour futures feuilles
-        if (rhythmIntensity > abruptThreshold) {
-            val displacement = if ((0..1).random() == 0) 60f else -60f
-            offsetX += displacement
-            
-            // Créer des points d'attache (petits bourgeons) pendant la croissance
-            if (currentHeight > 80f && tracedPath.size > 3) {
-                val recentPoint = tracedPath[tracedPath.size - (2..4).random()]
-                val attachX = recentPoint.x + ((-25..25).random()).toFloat()
-                val attachY = recentPoint.y + ((-15..15).random()).toFloat()
-                
-                // Calculer position à -40 pixels de la tige (60 - 100)
-                val distanceFromStem = -40f
-                val isRightSide = attachX > recentPoint.x
-                val finalX = if (isRightSide) {
-                    recentPoint.x + distanceFromStem
-                } else {
-                    recentPoint.x - distanceFromStem
-                }
-                
-                bourgeons.add(Bourgeon(finalX, attachY, 3f))
-            }
-        } else if (rhythmIntensity > 0.02f) {
-            // Augmenter l'épaisseur
-            val thicknessIncrease = rhythmIntensity * 50f
-            currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
-        }
-        
-        // Réduction progressive de l'épaisseur
-        if (currentStrokeWidth > baseStrokeWidth) {
-            currentStrokeWidth = kotlin.math.max(baseStrokeWidth, currentStrokeWidth - strokeDecayRate)
-        }
-        
-        // Recentrage progressif
-        offsetX *= centeringRate
-        
-        // Afficher le bouton reset quand la tige commence à pousser
-        if (!showResetButton && currentHeight > 30f) {
-            showResetButton = true
-        }
-    }
-    
-    private fun growLeaves(force: Float) {
-        if (force > forceThreshold) {
-            val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.05f
-            
-            // Créer des feuilles à partir des points d'attache
-            for (bourgeon in bourgeons) {
-                if (bourgeon.taille > 2f) { // Point d'attache mature
-                    var feuille = feuilles.find { it.bourgeon == bourgeon }
-                    if (feuille == null) {
-                        // Calculer l'angle du pétiole vers la tige la plus proche
-                        val stemX = tracedPath.minByOrNull { 
-                            val dx = it.x - bourgeon.x
-                            val dy = it.y - bourgeon.y
-                            dx * dx + dy * dy
-                        }?.x ?: bourgeon.x
-                        
-                        // Déterminer le côté du bourgeon par rapport à la tige
-                        val isRightSide = bourgeon.x > stemX
-                        
-                        // Angle pour que le pétiole pointe vers la tige
-                        val angleToStem = if (isRightSide) {
-                            215f // 215 degrés
-                        } else {
-                            345f // 345 degrés
-                        }
-                        
-                        feuille = Feuille(bourgeon, 0f, 0f, angleToStem)
-                        feuilles.add(feuille)
-                    }
-                    
-                    // Faire grandir la feuille
-                    feuille.longueur += growthIncrement * 0.15f
-                    feuille.largeur += growthIncrement * 0.08f
-                    
-                    // Si taille normale atteinte, continuer à allonger BEAUCOUP plus
-                    if (feuille.longueur >= 120f) { // Nouvelle limite de base
-                        feuille.longueur += growthIncrement * 0.5f
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 450f) // 50% plus grandes : 300f -> 450f
-                        // Pas de changement en largeur - elle reste à sa taille
-                    } else {
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // 50% plus grandes : 80f -> 120f
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 60f) // 50% plus grandes : 40f -> 60f
-                    }
-                }
-            }
-        }
-    }
-    
-    private fun growFlowerOnly(force: Float) {
-        if (force > forceThreshold) {
-            val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.08f // Plus lent : 0.15f -> 0.08f
-            
-            if (tracedPath.isNotEmpty()) {
-                val topPoint = tracedPath.last()
-                if (fleur == null) {
-                    fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
-                }
-                fleur?.let {
-                    it.taille += growthIncrement * 0.15f // Plus lent : 0.2f -> 0.15f
-                    it.taille = kotlin.math.min(it.taille, 175f)
-                    it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt())
-                    // Mettre à jour la position de la fleur au sommet
-                    it.x = topPoint.x
-                    it.y = topPoint.y
-                }
-            }
-        }
-    }
-    
-    private fun updateLightState() {
-        val currentTime = System.currentTimeMillis()
-        val elapsedTime = currentTime - stateStartTime
-        
-        when (lightState) {
-            LightState.YELLOW -> {
-                canGrow = false
-                if (elapsedTime >= 2000) {
-                    lightState = LightState.GREEN_GROW
-                    stateStartTime = currentTime
-                }
-            }
-            LightState.GREEN_GROW -> {
-                canGrow = true
-                if (elapsedTime >= 3000) {
-                    lightState = LightState.GREEN_LEAVES
-                    stateStartTime = currentTime
-                    canGrow = false
-                }
-            }
-            LightState.GREEN_LEAVES -> {
-                canGrow = false
-                if (elapsedTime >= 3000) {
-                    lightState = LightState.GREEN_FLOWER
-                    stateStartTime = currentTime
-                }
-            }
-            LightState.GREEN_FLOWER -> {
-                canGrow = false
-                if (elapsedTime >= 3000) {
-                    lightState = LightState.RED
-                    stateStartTime = currentTime
-                }
-            }
-            LightState.RED -> {
-                canGrow = false
-            }
-        }
-    }
-    
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-
-        val time = System.currentTimeMillis() * 0.002f
-
-        // TIGE LIGNE - comme un tronc qui suit le tracé
+    fun drawRealisticStem(
+        canvas: Canvas, 
+        tracedPath: List<OrganicLineView.TracePoint>,
+        time: Float,
+        baseStrokeWidth: Float,
+        maxStrokeWidth: Float
+    ) {
         if (tracedPath.size > 1) {
-            val path = Path()
+            // 1. SEGMENTS/NŒUDS - Calculer les positions des nœuds
+            val nodeSpacing = 60f
+            val nodes = mutableListOf<Pair<Float, Float>>()
+            var currentDistance = 0f
             
-            // Commencer le chemin
-            val firstPoint = tracedPath[0]
-            path.moveTo(firstPoint.x, firstPoint.y)
-            
-            // Dessiner la ligne qui suit tous les points du tracé
             for (i in 1 until tracedPath.size) {
                 val point = tracedPath[i]
                 val prevPoint = tracedPath[i-1]
+                val segmentLength = kotlin.math.sqrt(
+                    (point.x - prevPoint.x) * (point.x - prevPoint.x) + 
+                    (point.y - prevPoint.y) * (point.y - prevPoint.y)
+                )
+                currentDistance += segmentLength
                 
-                // Ajouter de l'oscillation dynamique
-                val oscillation = kotlin.math.sin(time + point.y * 0.01f) * 2f
-                val adjustedX = point.x + oscillation
-                
-                // Ligne lisse vers le point suivant
-                path.lineTo(adjustedX, point.y)
+                if (currentDistance >= nodeSpacing) {
+                    nodes.add(Pair(point.x, point.y))
+                    currentDistance = 0f
+                }
             }
             
-            // Dessiner le chemin avec une apparence de tronc
+            // 2. TEXTURE FIBREUSE - Dessiner les fibres principales
             for (i in tracedPath.indices) {
                 val point = tracedPath[i]
                 val thickness = lerp(maxStrokeWidth, baseStrokeWidth, i.toFloat() / tracedPath.size.toFloat())
+                val oscillation = kotlin.math.sin(time + point.y * 0.01f) * 2f
+                val adjustedX = point.x + oscillation
+                
+                // 3. RELIEF 3D - Couleurs pour l'effet 3D
+                val heightRatio = i.toFloat() / tracedPath.size.toFloat()
+                val baseGreen = (47 + heightRatio * 30).toInt().coerceIn(47, 77)
+                
+                // Ligne principale (côté éclairé)
+                stemPaint.color = android.graphics.Color.rgb(baseGreen + 20, 79 + (heightRatio * 40).toInt(), baseGreen + 20)
                 stemPaint.strokeWidth = thickness
                 
                 if (i < tracedPath.size - 1) {
                     val nextPoint = tracedPath[i + 1]
-                    val oscillation1 = kotlin.math.sin(time + point.y * 0.01f) * 2f
-                    val oscillation2 = kotlin.math.sin(time + nextPoint.y * 0.01f) * 2f
+                    val nextOscillation = kotlin.math.sin(time + nextPoint.y * 0.01f) * 2f
+                    canvas.drawLine(adjustedX, point.y, nextPoint.x + nextOscillation, nextPoint.y, stemPaint)
+                }
+                
+                // Fibres parallèles (côtés)
+                val fiberOffset = thickness * 0.3f
+                stemPaint.strokeWidth = thickness * 0.4f
+                stemPaint.color = android.graphics.Color.rgb(baseGreen, 79 + (heightRatio * 20).toInt(), baseGreen)
+                
+                if (i < tracedPath.size - 1) {
+                    val nextPoint = tracedPath[i + 1]
+                    val nextOscillation = kotlin.math.sin(time + nextPoint.y * 0.01f) * 2f
+                    
+                    // Fibre gauche
+                    canvas.drawLine(
+                        adjustedX - fiberOffset, point.y,
+                        nextPoint.x + nextOscillation - fiberOffset, nextPoint.y,
+                        stemPaint
+                    )
+                    // Fibre droite
+                    canvas.drawLine(
+                        adjustedX + fiberOffset, point.y,
+                        nextPoint.x + nextOscillation + fiberOffset, nextPoint.y,
+                        stemPaint
+                    )
+                }
+                
+                // Ombre (côté sombre)
+                stemPaint.strokeWidth = thickness * 0.6f
+                stemPaint.color = android.graphics.Color.rgb(baseGreen - 15, 79, baseGreen - 15)
+                
+                if (i < tracedPath.size - 1) {
+                    val nextPoint = tracedPath[i + 1]
+                    val nextOscillation = kotlin.math.sin(time + nextPoint.y * 0.01f) * 2f
+                    val shadowOffset = thickness * 0.2f
                     
                     canvas.drawLine(
-                        point.x + oscillation1, point.y,
-                        nextPoint.x + oscillation2, nextPoint.y,
+                        adjustedX + shadowOffset, point.y,
+                        nextPoint.x + nextOscillation + shadowOffset, nextPoint.y,
+                        stemPaint
+                    )
+                }
+                
+                // Texture transversale (tous les 20 pixels)
+                if (i % 3 == 0 && i > 0) {
+                    stemPaint.strokeWidth = 2f
+                    stemPaint.color = android.graphics.Color.rgb(baseGreen - 10, 69, baseGreen - 10)
+                    val fiberLength = thickness * 0.8f
+                    
+                    canvas.drawLine(
+                        adjustedX - fiberLength/2, point.y,
+                        adjustedX + fiberLength/2, point.y,
                         stemPaint
                     )
                 }
             }
-        }
-
-        // Point de croissance visible (sommet de la tige)
-        if (tracedPath.isNotEmpty()) {
-            val topPoint = tracedPath.last()
-            val pointOscillation = kotlin.math.sin(time * 2f) * 3f
             
-            basePaint.color = 0xFF90EE90.toInt()
-            basePaint.style = Paint.Style.FILL
-            canvas.drawCircle(topPoint.x + pointOscillation, topPoint.y, 4f, basePaint)
+            // Dessiner les nœuds (renflements)
+            stemPaint.style = Paint.Style.FILL
+            for (node in nodes) {
+                val oscillation = kotlin.math.sin(time + node.second * 0.01f) * 2f
+                val nodeX = node.first + oscillation
+                
+                // Nœud principal
+                stemPaint.color = android.graphics.Color.rgb(67, 99, 67)
+                canvas.drawCircle(nodeX, node.second, 8f, stemPaint)
+                
+                // Highlight du nœud
+                stemPaint.color = android.graphics.Color.rgb(87, 119, 87)
+                canvas.drawCircle(nodeX - 2f, node.second - 2f, 5f, stemPaint)
+            }
+            stemPaint.style = Paint.Style.STROKE
         }
-
-        // Points d'attache (petits bourgeons bruns)
+    }
+    
+    fun drawGrowthPoint(canvas: Canvas, topPoint: OrganicLineView.TracePoint, time: Float) {
+        val pointOscillation = kotlin.math.sin(time * 2f) * 3f
+        basePaint.color = 0xFF90EE90.toInt()
+        basePaint.style = Paint.Style.FILL
+        canvas.drawCircle(topPoint.x + pointOscillation, topPoint.y, 4f, basePaint)
+    }
+    
+    fun drawAttachmentPoints(canvas: Canvas, bourgeons: List<OrganicLineView.Bourgeon>, time: Float) {
         basePaint.color = 0xFF8B4513.toInt()
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
             if (bourgeon.taille > 1f) {
                 val oscillation = kotlin.math.sin(time + bourgeon.y * 0.01f) * 1f
-                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, 2f, basePaint) // Petit point discret
+                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, 2f, basePaint)
             }
         }
-
-        // FEUILLES - attachées par le pétiole
+    }
+    
+    fun drawLeaves(
+        canvas: Canvas, 
+        feuilles: List<OrganicLineView.Feuille>, 
+        leafBitmap: Bitmap, 
+        time: Float
+    ) {
         for (feuille in feuilles) {
-            if (feuille.longueur > 5 && ::leafBitmap.isInitialized) {
+            if (feuille.longueur > 5) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
                 // Calculer la position de la feuille : décalée pour que le pétiole touche le point d'attache
                 val scale = kotlin.math.min(feuille.longueur / 400f, 0.055f)
                 val leafW = leafBitmap.width.toFloat() * scale
-                val petioleOffset = leafW * 0.3f // Distance du pétiole depuis le centre de l'image
+                val petioleOffset = leafW * 0.3f
                 
                 // Position de la feuille décalée
-                val angleRad = feuille.angle * kotlin.math.PI / 180.0 // Conversion manuelle
-                val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleOffset
-        // Position de la feuille décalée
-                val angleRad = feuille.angle * kotlin.math.PI / 180.0 // Conversion manuelle
+                val angleRad = feuille.angle * kotlin.math.PI / 180.0
                 val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleOffset
                 val leafY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * petioleOffset
                 
@@ -517,14 +204,20 @@ class OrganicLineView @JvmOverloads constructor(
                 canvas.restore()
             }
         }
-
-        // FLEUR - au sommet de la tige (opaque)
+    }
+    
+    fun drawFlower(
+        canvas: Canvas, 
+        fleur: OrganicLineView.Fleur?, 
+        flowerBitmap: Bitmap, 
+        time: Float
+    ) {
         fleur?.let { flower ->
-            if (flower.taille > 5f && ::flowerBitmap.isInitialized) {
+            if (flower.taille > 5f) {
                 val flowerOscillation = kotlin.math.sin(time * 0.8f) * 5f
                 
                 val progressRatio = flower.taille / 175f
-                val scale = progressRatio * 1.44f // 20% plus grande : 1.2f -> 1.44f
+                val scale = progressRatio * 1.44f
                 val w = flowerBitmap.width.toFloat() * scale
                 val h = flowerBitmap.height.toFloat() * scale
                 
@@ -535,7 +228,7 @@ class OrganicLineView @JvmOverloads constructor(
                 val paint = Paint().apply {
                     isAntiAlias = true
                     isFilterBitmap = true
-                    alpha = 255 // Complètement opaque
+                    alpha = 255
                 }
                 
                 val rect = RectF(
@@ -547,47 +240,5 @@ class OrganicLineView @JvmOverloads constructor(
                 canvas.drawBitmap(flowerBitmap, null, rect, paint)
             }
         }
-
-        basePaint.color = 0xFFFFFFFF.toInt()
-        basePaint.style = Paint.Style.STROKE
-
-        drawTrafficLight(canvas)
-    }
-    
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN && lightState == LightState.RED) {
-            val lightX = resetButtonX
-            val lightY = resetButtonY
-            val lightRadius = resetButtonRadius
-            
-            val dx = event.x - lightX
-            val dy = event.y - lightY
-            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
-            
-            if (distance <= lightRadius) {
-                resetPlant()
-                return true
-            }
-        }
-        return super.onTouchEvent(event)
-    }
-    
-    private fun resetPlant() {
-        tracedPath.clear()
-        bourgeons.clear()
-        feuilles.clear()
-        fleur = null
-        
-        currentHeight = 0f
-        currentStrokeWidth = baseStrokeWidth
-        offsetX = 0f
-        showResetButton = false
-        
-        lightState = LightState.YELLOW
-        stateStartTime = System.currentTimeMillis()
-        canGrow = false
-        
-        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
-        invalidate()
     }
 }
