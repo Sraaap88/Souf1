@@ -403,18 +403,18 @@ class OrganicLineView @JvmOverloads constructor(
 
         val time = System.currentTimeMillis() * 0.002f
 
-        // TIGE avec votre image - optimisée pour éviter la répétition excessive
+        // TIGE avec votre image - mieux visible
         if (::stemBitmap.isInitialized && tracedPath.size > 1) {
-            // Dessiner seulement tous les 3-4 points pour éviter la surcharge
-            for (i in 1 until tracedPath.size step 4) {
+            // Dessiner plus souvent pour voir la tige grandir
+            for (i in 1 until tracedPath.size step 2) { // Tous les 2 points au lieu de 4
                 val currentPoint = tracedPath[i]
                 
                 // Oscillations comme votre tige originale
                 val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f
                 val adjustedX = currentPoint.x + oscillation
                 
-                // Scaling beaucoup plus petit pour votre belle image
-                val scale = 0.1f // Très petit pour éviter les gros rectangles
+                // Scaling plus visible mais pas trop gros
+                val scale = 0.15f // Un peu plus gros pour être visible
                 val stemW = stemBitmap.width * scale
                 val stemH = stemBitmap.height * scale
                 
@@ -429,11 +429,18 @@ class OrganicLineView @JvmOverloads constructor(
                 canvas.save()
                 canvas.translate(adjustedX, currentPoint.y)
                 canvas.rotate(angle.toFloat() + 90f)
+                
+                // Paint avec transparence pour éviter surcharge visuelle
+                val paint = Paint().apply {
+                    isAntiAlias = true
+                    alpha = 200 // Légèrement transparent
+                }
+                
                 canvas.drawBitmap(
                     stemBitmap, 
                     -stemW / 2f, 
                     -stemH / 2f, 
-                    null
+                    paint
                 )
                 canvas.restore()
             }
@@ -452,15 +459,15 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FEUILLES avec votre belle image - scaling optimisé
+        // FEUILLES avec votre belle image - taille réduite
         for (feuille in feuilles) {
             if (feuille.longueur > 10 && ::leafBitmap.isInitialized) {
                 canvas.save()
                 canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
                 canvas.rotate(feuille.angle)
                 
-                // Scaling plus réaliste basé sur votre image
-                val scale = kotlin.math.min(feuille.longueur / 200f, 0.3f) // Max 30% de la taille originale
+                // Scaling beaucoup plus petit pour éviter les feuilles géantes
+                val scale = kotlin.math.min(feuille.longueur / 500f, 0.1f) // Max 10% de la taille originale
                 val leafW = leafBitmap.width * scale
                 val leafH = leafBitmap.height * scale
                 
@@ -476,18 +483,17 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FLEUR avec votre belle image - taille fixe raisonnable
+        // FLEUR avec votre belle image - plus grande
         fleur?.let { flower ->
             if (flower.taille > 10 && ::flowerBitmap.isInitialized) {
-                // Taille fixe raisonnable au lieu de scaling variable
-                val maxSize = 150f // Taille maximum en pixels
-                val scale = kotlin.math.min(flower.taille / 100f, 1.0f) * 0.4f // Max 40% de la taille
+                // Taille plus grande pour la fleur
+                val scale = kotlin.math.min(flower.taille / 80f, 1.2f) // Plus grande, max 120%
                 val w = flowerBitmap.width * scale
                 val h = flowerBitmap.height * scale
                 
-                // Limiter la taille finale
-                val finalW = kotlin.math.min(w, maxSize)
-                val finalH = kotlin.math.min(h, maxSize)
+                // Pas de limite artificielle - laissons la fleur grandir
+                val finalW = w
+                val finalH = h
                 
                 // Filtrage pour améliorer la qualité
                 val paint = Paint().apply {
@@ -512,41 +518,4 @@ class OrganicLineView @JvmOverloads constructor(
         drawTrafficLight(canvas)
     }
     
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN && lightState == LightState.RED) {
-            val lightX = resetButtonX
-            val lightY = resetButtonY
-            val lightRadius = resetButtonRadius
-            
-            val dx = event.x - lightX
-            val dy = event.y - lightY
-            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
-            
-            if (distance <= lightRadius) {
-                resetPlant()
-                return true
-            }
-        }
-        return super.onTouchEvent(event)
-    }
-    
-    private fun resetPlant() {
-        tracedPath.clear()
-        bourgeons.clear()
-        feuilles.clear()
-        fleur = null
-        
-        currentHeight = 0f
-        currentStrokeWidth = baseStrokeWidth
-        offsetX = 0f
-        showResetButton = false
-        
-        // Redémarrer le cycle complet
-        lightState = LightState.YELLOW
-        stateStartTime = System.currentTimeMillis()
-        canGrow = false
-        
-        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
-        invalidate()
-    }
-}
+    override fun onTouchEvent(event: Motion
