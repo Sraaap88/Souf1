@@ -45,9 +45,9 @@ class OrganicLineView @JvmOverloads constructor(
     
     private val resetTextPaint = Paint().apply {
         color = 0xFFFFFFFF.toInt()
-        textSize = 120f
+        textSize = 80f // Plus petit : 120f -> 80f
         isAntiAlias = true
-        textAlign = Paint.Align.CENTER
+        textAlign = Paint.Align.LEFT // Aligné à gauche
     }
     
     private var currentForce = 0.0f
@@ -131,6 +131,7 @@ class OrganicLineView @JvmOverloads constructor(
         val lightX = if (lightState == LightState.YELLOW) width / 2f else resetButtonX
         val lightY = if (lightState == LightState.YELLOW) height / 2f else resetButtonY
         
+        // Dessiner le cercle (y compris le gros jaune)
         resetButtonPaint.color = 0x40000000.toInt()
         canvas.drawCircle(lightX + 8f, lightY + 8f, lightRadius, resetButtonPaint)
         
@@ -165,18 +166,31 @@ class OrganicLineView @JvmOverloads constructor(
             LightState.RED -> "↻"
         }
         
-        val textSize = if (lightState == LightState.YELLOW) 180f else 120f
-        resetTextPaint.textSize = textSize
-        resetTextPaint.color = 0xFF000000.toInt()
-        
-        canvas.drawText(mainText, lightX, lightY, resetTextPaint)
-        
-        if (lightState != LightState.RED && timeRemaining > 0) {
-            resetTextPaint.textSize = textSize * 0.6f
-            canvas.drawText(timeRemaining.toString(), lightX, lightY + textSize * 0.8f, resetTextPaint)
+        // Texte sur le cercle (centré) ET en haut à gauche
+        if (lightState == LightState.YELLOW) {
+            // Gros texte centré sur le cercle jaune
+            resetTextPaint.textAlign = Paint.Align.CENTER
+            resetTextPaint.textSize = 180f
+            resetTextPaint.color = 0xFF000000.toInt()
+            canvas.drawText(mainText, lightX, lightY, resetTextPaint)
+            
+            if (timeRemaining > 0) {
+                resetTextPaint.textSize = 108f
+                canvas.drawText(timeRemaining.toString(), lightX, lightY + 144f, resetTextPaint)
+            }
         }
         
-        resetTextPaint.textSize = 120f
+        // Texte en haut à gauche (toujours visible)
+        resetTextPaint.textAlign = Paint.Align.LEFT
+        resetTextPaint.textSize = 80f
+        resetTextPaint.color = 0xFFFFFFFF.toInt()
+        val textX = 50f
+        val textY = 150f
+        canvas.drawText(mainText, textX, textY, resetTextPaint)
+        
+        if (lightState != LightState.RED && timeRemaining > 0) {
+            canvas.drawText(timeRemaining.toString(), textX, textY + 100f, resetTextPaint)
+        }
     }
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -461,8 +475,9 @@ class OrganicLineView @JvmOverloads constructor(
                 val petioleOffset = leafW * 0.3f // Distance du pétiole depuis le centre de l'image
                 
                 // Position de la feuille décalée
-                val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(kotlin.math.toRadians(feuille.angle.toDouble())).toFloat() * petioleOffset
-                val leafY = feuille.bourgeon.y + kotlin.math.sin(kotlin.math.toRadians(feuille.angle.toDouble())).toFloat() * petioleOffset
+                val angleRad = kotlin.math.toRadians(feuille.angle.toDouble())
+                val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleOffset
+                val leafY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * petioleOffset
                 
                 canvas.save()
                 canvas.translate(leafX, leafY)
