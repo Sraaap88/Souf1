@@ -305,9 +305,9 @@ class OrganicLineView @JvmOverloads constructor(
                         feuilles.add(feuille)
                     }
                     
-                    // Faire grandir la feuille - 3X PLUS GRANDE
-                    feuille.longueur += growthIncrement * 2.4f // 3x plus grande
-                    feuille.largeur += growthIncrement * 1.2f  // 3x plus grande
+                    // Faire grandir la feuille - PLUS LENT (divisé par 4)
+                    feuille.longueur += growthIncrement * 0.6f // 4x moins vite (était 2.4f)
+                    feuille.largeur += growthIncrement * 0.3f  // 4x moins vite (était 1.2f)
                     feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // Max 120px
                     feuille.largeur = kotlin.math.min(feuille.largeur, 60f)    // Max 60px
                 }
@@ -329,7 +329,7 @@ class OrganicLineView @JvmOverloads constructor(
                         fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
                     }
                     fleur?.let {
-                        it.taille += growthIncrement * 1.0f // 3x moins vite (était 3.0f)
+                        it.taille += growthIncrement * 0.5f // 2x moins vite (était 1.0f)
                         it.taille = kotlin.math.min(it.taille, 175f) // Taille max 175px
                         it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt()) // 5-8 pétales
                     }
