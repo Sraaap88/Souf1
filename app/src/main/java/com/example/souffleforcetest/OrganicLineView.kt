@@ -281,15 +281,15 @@ class OrganicLineView @JvmOverloads constructor(
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.3f
+            val growthIncrement = adjustedForce * growthRate * 0.1f // Plus lent : 0.3f -> 0.1f
             
             for (bourgeon in bourgeons) {
-                bourgeon.taille += growthIncrement
+                bourgeon.taille += growthIncrement * 0.3f // Plus lent pour les bourgeons
                 bourgeon.taille = kotlin.math.min(bourgeon.taille, 25f)
             }
             
             for (bourgeon in bourgeons) {
-                if (bourgeon.taille > 15f) {
+                if (bourgeon.taille > 8f) { // Seuil plus bas : 15f -> 8f
                     var feuille = feuilles.find { it.bourgeon == bourgeon }
                     if (feuille == null) {
                         val angle = (0..360).random().toFloat()
@@ -297,8 +297,8 @@ class OrganicLineView @JvmOverloads constructor(
                         feuilles.add(feuille)
                     }
                     
-                    feuille.longueur += growthIncrement * 0.6f
-                    feuille.largeur += growthIncrement * 0.3f
+                    feuille.longueur += growthIncrement * 0.2f // Plus lent : 0.6f -> 0.2f
+                    feuille.largeur += growthIncrement * 0.1f // Plus lent : 0.3f -> 0.1f
                     feuille.longueur = kotlin.math.min(feuille.longueur, 120f)
                     feuille.largeur = kotlin.math.min(feuille.largeur, 60f)
                 }
@@ -309,7 +309,7 @@ class OrganicLineView @JvmOverloads constructor(
     private fun growFlowerOnly(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.4f
+            val growthIncrement = adjustedForce * growthRate * 0.15f // Plus lent : 0.4f -> 0.15f
             
             if (tracedPath.isNotEmpty()) {
                 val topPoint = tracedPath.minByOrNull { it.y }
@@ -318,7 +318,7 @@ class OrganicLineView @JvmOverloads constructor(
                         fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
                     }
                     fleur?.let {
-                        it.taille += growthIncrement * 0.5f
+                        it.taille += growthIncrement * 0.2f // Plus lent : 0.5f -> 0.2f
                         it.taille = kotlin.math.min(it.taille, 175f)
                         it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt())
                     }
@@ -372,46 +372,34 @@ class OrganicLineView @JvmOverloads constructor(
 
         val time = System.currentTimeMillis() * 0.002f
 
-        // TIGE - plus visible et plus grosse
-        if (currentHeight > 0 && ::stemBitmap.isInitialized) {
-            val stemTop = baseY - currentHeight
+        // TIGE - simplifiée et visible
+        if (currentHeight > 5f && ::stemBitmap.isInitialized) {
             val currentX = baseX + offsetX
             
-            // Segments plus rapprochés pour une tige continue
-            val segmentHeight = 20f
-            val totalSegments = (currentHeight / segmentHeight).toInt() + 2
+            // Dessiner des segments tous les 25 pixels
+            val segmentSpacing = 25f
+            val numSegments = (currentHeight / segmentSpacing).toInt() + 1
             
-            for (i in 0 until totalSegments) {
-                val segmentY = baseY - (i.toFloat() * segmentHeight)
+            for (i in 0..numSegments) {
+                val segmentY = baseY - (i * segmentSpacing)
                 
-                // Dessiner tous les segments jusqu'au sommet
-                if (segmentY >= stemTop - segmentHeight) {
-                    val oscillation = kotlin.math.sin(time + segmentY * 0.005f) * 3f
+                // S'arrêter au sommet de la tige
+                if (segmentY <= baseY - currentHeight) {
+                    val oscillation = kotlin.math.sin(time + segmentY * 0.01f) * 2f
                     val adjustedX = currentX + oscillation
                     
-                    // Tige plus grosse et plus visible
-                    val positionRatio = if (currentHeight > 0) (baseY - segmentY) / currentHeight else 0f
-                    val thickness = baseStrokeWidth + (currentStrokeWidth - baseStrokeWidth) * (1f - positionRatio)
-                    val scale = (thickness / 30f).coerceIn(0.15f, 0.4f) // Plus grosse !
-                    
+                    // Taille plus petite pour la tige
+                    val scale = 0.1f
                     val stemW = stemBitmap.width.toFloat() * scale
                     val stemH = stemBitmap.height.toFloat() * scale
                     
-                    canvas.save()
-                    canvas.translate(adjustedX, segmentY)
-                    
-                    // Rotation plus subtile
-                    val rotation = (offsetX / 100f).coerceIn(-10f, 10f)
-                    canvas.rotate(rotation)
-                    
                     val paint = Paint().apply {
                         isAntiAlias = true
-                        alpha = 255 // Complètement opaque
+                        alpha = 255
                         isFilterBitmap = true
                     }
                     
-                    canvas.drawBitmap(stemBitmap, -stemW / 2f, -stemH / 2f, paint)
-                    canvas.restore()
+                    canvas.drawBitmap(stemBitmap, adjustedX - stemW/2, segmentY - stemH/2, paint)
                 }
             }
         }
@@ -438,14 +426,15 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FEUILLES - 30% plus petites
+        // FEUILLES - 30% plus petites avec angle corrigé
         for (feuille in feuilles) {
             if (feuille.longueur > 10 && ::leafBitmap.isInitialized) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
                 canvas.save()
                 canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
-                canvas.rotate(feuille.angle + leafOscillation * 0.5f)
+                // Angle corrigé : pétiole à gauche devient pétiole vers la tige
+                canvas.rotate(feuille.angle - 90f + leafOscillation * 0.5f)
                 
                 // 30% plus petites : 0.12f devient 0.08f
                 val scale = kotlin.math.min(feuille.longueur / 400f, 0.08f)
@@ -464,17 +453,17 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FLEUR - 2 fois plus grosse
+        // FLEUR - 2 fois plus grosse mais croissance progressive
         fleur?.let { flower ->
-            if (flower.taille > 10 && ::flowerBitmap.isInitialized) {
+            if (flower.taille > 5f && ::flowerBitmap.isInitialized) { // Seuil plus bas : 10f -> 5f
                 val flowerOscillation = kotlin.math.sin(time * 0.8f) * 5f
                 
-                // 2 fois plus grosse : 0.6f devient 1.2f
-                val scale = kotlin.math.min(flower.taille / 100f, 1.2f)
+                // Croissance progressive basée sur la taille actuelle
+                val progressRatio = flower.taille / 175f // Sur la taille max
+                val scale = progressRatio * 1.2f // Croissance progressive jusqu'à 1.2f
                 val w = flowerBitmap.width.toFloat() * scale
                 val h = flowerBitmap.height.toFloat() * scale
                 
-                // Taille max plus grande aussi : 250f devient 500f
                 val maxSize = 500f
                 val finalW = kotlin.math.min(w, maxSize)
                 val finalH = kotlin.math.min(h, maxSize)
@@ -482,7 +471,7 @@ class OrganicLineView @JvmOverloads constructor(
                 val paint = Paint().apply {
                     isAntiAlias = true
                     isFilterBitmap = true
-                    alpha = 240
+                    alpha = kotlin.math.min(240, (progressRatio * 240).toInt()) // Alpha progressif
                 }
                 
                 val rect = RectF(
