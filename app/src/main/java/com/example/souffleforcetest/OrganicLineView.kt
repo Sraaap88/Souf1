@@ -441,14 +441,15 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FEUILLES - attachées aux bourgeons
+        // FEUILLES - attachées aux bourgeons avec bonne orientation
         for (feuille in feuilles) {
             if (feuille.longueur > 10 && ::leafBitmap.isInitialized) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
                 canvas.save()
                 canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
-                canvas.rotate(feuille.angle - 90f + leafOscillation * 0.5f)
+                // Orientation corrigée : pétiole vers la tige
+                canvas.rotate(feuille.angle + leafOscillation * 0.5f)
                 
                 val scale = kotlin.math.min(feuille.longueur / 400f, 0.08f)
                 val leafW = leafBitmap.width.toFloat() * scale
@@ -466,7 +467,7 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FLEUR - au sommet de la tige
+        // FLEUR - au sommet de la tige (opaque)
         fleur?.let { flower ->
             if (flower.taille > 5f && ::flowerBitmap.isInitialized) {
                 val flowerOscillation = kotlin.math.sin(time * 0.8f) * 5f
@@ -483,7 +484,7 @@ class OrganicLineView @JvmOverloads constructor(
                 val paint = Paint().apply {
                     isAntiAlias = true
                     isFilterBitmap = true
-                    alpha = kotlin.math.min(240, (progressRatio * 240).toInt())
+                    alpha = 255 // Complètement opaque
                 }
                 
                 val rect = RectF(
