@@ -100,7 +100,7 @@ class OrganicLineView @JvmOverloads constructor(
                 LightState.GREEN_BUDS -> "DITES U"
                 LightState.GREEN_LEAVES -> "DITES A et I"
                 LightState.GREEN_FLOWER -> "DITES O"
-                LightState.RED -> "CLIQUEZ POUR RECOMMENCER"
+                LightState.RED -> ""
                 else -> ""
             }
             canvas.drawText(instructionText, 50f, 120f, instructionTextPaint)
@@ -285,6 +285,13 @@ class OrganicLineView @JvmOverloads constructor(
     
     fun updateVowelO(intensity: Float) {
         oIntensity = intensity.coerceIn(0f, 1f)
+    }
+    
+    // Fonction pour redémarrer le cycle proprement après permissions
+    fun restartCycle() {
+        lightState = LightState.YELLOW
+        stateStartTime = System.currentTimeMillis()
+        invalidate()
     }
     
     private fun updateLightState() {
