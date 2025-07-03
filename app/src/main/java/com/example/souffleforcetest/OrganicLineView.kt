@@ -283,34 +283,34 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // Croissance directe des feuilles (sans passer par les bourgeons)
+    // Croissance des feuilles depuis les bourgeons (comme avant)
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.2f
+            val growthIncrement = adjustedForce * growthRate * 0.3f
             
-            // Créer feuilles directement sur la tige lors du souffle
-            val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
-            if (rhythmIntensity > abruptThreshold && tracedPath.size > 5) {
-                // Prendre un point aléatoire sur la tige existante
-                val startIndex = (tracedPath.size * 0.3f).toInt()
-                val endIndex = tracedPath.size - 1
-                val randomIndex = (startIndex..endIndex).random()
-                val randomPoint = tracedPath[randomIndex]
-                val angle = (0..360).random().toFloat()
-                
-                // Créer une feuille directement
-                val dummyBourgeon = Bourgeon(randomPoint.x, randomPoint.y, 20f) // Bourgeon invisible
-                val nouvelleFeuille = Feuille(dummyBourgeon, 0f, 0f, angle)
-                feuilles.add(nouvelleFeuille)
+            // Faire grandir les bourgeons d'abord
+            for (bourgeon in bourgeons) {
+                bourgeon.taille += growthIncrement
+                bourgeon.taille = kotlin.math.min(bourgeon.taille, 25f) // Taille max 25px
             }
             
-            // Faire grandir toutes les feuilles existantes
-            for (feuille in feuilles) {
-                feuille.longueur += growthIncrement * 2.4f // 3x plus grande
-                feuille.largeur += growthIncrement * 1.2f  // 3x plus grande
-                feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // Max 120px
-                feuille.largeur = kotlin.math.min(feuille.largeur, 60f)    // Max 60px
+            // Créer feuilles depuis gros bourgeons
+            for (bourgeon in bourgeons) {
+                if (bourgeon.taille > 15f) { // Si bourgeon assez grand
+                    var feuille = feuilles.find { it.bourgeon == bourgeon }
+                    if (feuille == null) {
+                        val angle = (0..360).random().toFloat()
+                        feuille = Feuille(bourgeon, 0f, 0f, angle)
+                        feuilles.add(feuille)
+                    }
+                    
+                    // Faire grandir la feuille - 3X PLUS GRANDE
+                    feuille.longueur += growthIncrement * 2.4f // 3x plus grande
+                    feuille.largeur += growthIncrement * 1.2f  // 3x plus grande
+                    feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // Max 120px
+                    feuille.largeur = kotlin.math.min(feuille.largeur, 60f)    // Max 60px
+                }
             }
         }
     }
@@ -329,7 +329,7 @@ class OrganicLineView @JvmOverloads constructor(
                         fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
                     }
                     fleur?.let {
-                        it.taille += growthIncrement * 3.0f // 5x plus grande
+                        it.taille += growthIncrement * 1.0f // 3x moins vite (était 3.0f)
                         it.taille = kotlin.math.min(it.taille, 175f) // Taille max 175px
                         it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt()) // 5-8 pétales
                     }
