@@ -88,9 +88,9 @@ class OrganicLineView @JvmOverloads constructor(
     private var fleur: Fleur? = null
     
     private val forceThreshold = 0.08f
-    private val growthRate = 87.3f // Divisé par 2 pour ralentir
+    private val growthRate = 174.6f
     private val baseStrokeWidth = 4f
-    private val maxStrokeWidth = 48f // Divisé par 2 pour réduire épaisseur max
+    private val maxStrokeWidth = 96f
     private val strokeDecayRate = 0.2f
     private val abruptThreshold = 0.15f
     private val centeringRate = 0.92f
@@ -312,12 +312,12 @@ class OrganicLineView @JvmOverloads constructor(
             // Faire grandir les bourgeons d'abord
             for (bourgeon in bourgeons) {
                 bourgeon.taille += growthIncrement
-                bourgeon.taille = kotlin.math.min(bourgeon.taille, 12f) // Réduit de 25px à 12px
+                bourgeon.taille = kotlin.math.min(bourgeon.taille, 25f) // Taille max 25px
             }
             
             // Créer feuilles depuis gros bourgeons
             for (bourgeon in bourgeons) {
-                if (bourgeon.taille > 8f) { // Réduit de 15px à 8px
+                if (bourgeon.taille > 15f) { // Si bourgeon assez grand
                     var feuille = feuilles.find { it.bourgeon == bourgeon }
                     if (feuille == null) {
                         val angle = (0..360).random().toFloat()
@@ -325,11 +325,11 @@ class OrganicLineView @JvmOverloads constructor(
                         feuilles.add(feuille)
                     }
                     
-                    // Faire grandir la feuille - ENCORE PLUS LENT
-                    feuille.longueur += growthIncrement * 0.2f // Encore réduit
-                    feuille.largeur += growthIncrement * 0.1f  // Encore réduit
-                    feuille.longueur = kotlin.math.min(feuille.longueur, 40f) // Max réduit de 120px à 40px
-                    feuille.largeur = kotlin.math.min(feuille.largeur, 20f)   // Max réduit de 60px à 20px
+                    // Faire grandir la feuille - PLUS LENT (divisé par 4)
+                    feuille.longueur += growthIncrement * 0.6f // 4x moins vite (était 2.4f)
+                    feuille.largeur += growthIncrement * 0.3f  // 4x moins vite (était 1.2f)
+                    feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // Max 120px
+                    feuille.largeur = kotlin.math.min(feuille.largeur, 60f)    // Max 60px
                 }
             }
         }
@@ -349,9 +349,9 @@ class OrganicLineView @JvmOverloads constructor(
                         fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
                     }
                     fleur?.let {
-                        it.taille += growthIncrement * 0.2f // Encore réduit (était 0.5f)
-                        it.taille = kotlin.math.min(it.taille, 60f) // Max réduit de 175px à 60px
-                        it.petalCount = kotlin.math.max(5, (it.taille * 0.1f).toInt()) // Ajusté
+                        it.taille += growthIncrement * 0.5f // 2x moins vite (était 1.0f)
+                        it.taille = kotlin.math.min(it.taille, 175f) // Taille max 175px
+                        it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt()) // 5-8 pétales
                     }
                 }
             }
@@ -418,8 +418,8 @@ class OrganicLineView @JvmOverloads constructor(
                 val dy = currentPoint.y - prevPoint.y
                 val angle = kotlin.math.atan2(dy.toDouble(), dx.toDouble()) * 180.0 / kotlin.math.PI
                 
-                // Scaling selon l'épaisseur de la tige (réduit)
-                val scale = currentPoint.strokeWidth / 40f // Réduit de 20f à 40f pour images plus petites
+                // Scaling selon l'épaisseur de la tige (votre strokeWidth)
+                val scale = currentPoint.strokeWidth / 20f // Ajustez selon vos besoins
                 val stemW = stemBitmap.width * scale
                 val stemH = stemBitmap.height * scale
                 
@@ -451,13 +451,13 @@ class OrganicLineView @JvmOverloads constructor(
 
         // FEUILLES avec votre image leaf
         for (feuille in feuilles) {
-            if (feuille.longueur > 2 && feuille.largeur > 1 && ::leafBitmap.isInitialized) {
+            if (feuille.longueur > 5 && feuille.largeur > 2 && ::leafBitmap.isInitialized) {
                 canvas.save()
                 canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
                 canvas.rotate(feuille.angle)
                 
-                // Scaling réduit pour feuilles
-                val scale = feuille.longueur / 200f // Réduit de 100f à 200f
+                // Scaling basé sur la longueur de la feuille
+                val scale = feuille.longueur / 100f
                 val leafW = leafBitmap.width * scale
                 val leafH = leafBitmap.height * scale
                 
@@ -469,8 +469,8 @@ class OrganicLineView @JvmOverloads constructor(
 
         // FLEUR avec votre image flower
         fleur?.let { flower ->
-            if (flower.taille > 2 && ::flowerBitmap.isInitialized) {
-                val scale = flower.taille / 300f // Réduit de 150f à 300f
+            if (flower.taille > 5 && ::flowerBitmap.isInitialized) {
+                val scale = flower.taille / 150f
                 val w = flowerBitmap.width * scale
                 val h = flowerBitmap.height * scale
                 
@@ -525,5 +525,47 @@ class OrganicLineView @JvmOverloads constructor(
         stateStartTime = System.currentTimeMillis()
         canGrow = false
         
-        tracedPath.add(TracePoint(baseX, baseY, ba
+        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
+        invalidate()
     }
+}
+    }
+    
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_DOWN && lightState == LightState.RED) {
+            val lightX = resetButtonX
+            val lightY = resetButtonY
+            val lightRadius = resetButtonRadius
+            
+            val dx = event.x - lightX
+            val dy = event.y - lightY
+            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+            
+            if (distance <= lightRadius) {
+                resetPlant()
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+    
+    private fun resetPlant() {
+        tracedPath.clear()
+        bourgeons.clear()
+        feuilles.clear()
+        fleur = null
+        
+        currentHeight = 0f
+        currentStrokeWidth = baseStrokeWidth
+        offsetX = 0f
+        showResetButton = false
+        
+        // Redémarrer le cycle complet
+        lightState = LightState.YELLOW
+        stateStartTime = System.currentTimeMillis()
+        canGrow = false
+        
+        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
+        invalidate()
+    }
+}
