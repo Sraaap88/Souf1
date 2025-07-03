@@ -4,25 +4,23 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
-
-
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 
 class OrganicLineView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-
-    // Bitmaps pour les visuels réalistes
-    private val stemBitmap: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.stem_segment)
-    private val leafBitmap: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.leaf)
-    private val flowerBitmap: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.flower)
-
+    
+    // Chargement des bitmaps dans init
+    private lateinit var stemBitmap: Bitmap
+    private lateinit var leafBitmap: Bitmap
+    private lateinit var flowerBitmap: Bitmap
     
     private val basePaint = Paint().apply {
         color = 0xFFFFFFFF.toInt()
@@ -98,6 +96,18 @@ class OrganicLineView @JvmOverloads constructor(
     private val centeringRate = 0.92f
     private val waveThreshold = 0.03f
     private val maxWaveAmplitude = 15f
+    
+    init {
+        // Charger les bitmaps ici
+        try {
+            stemBitmap = BitmapFactory.decodeResource(resources, R.drawable.stem_segment)
+            leafBitmap = BitmapFactory.decodeResource(resources, R.drawable.leaf)
+            flowerBitmap = BitmapFactory.decodeResource(resources, R.drawable.flower)
+        } catch (e: Exception) {
+            // Fallback si les images ne se chargent pas
+            e.printStackTrace()
+        }
+    }
     
     private fun drawTrafficLight(canvas: Canvas) {
         val currentTime = System.currentTimeMillis()
@@ -390,140 +400,127 @@ class OrganicLineView @JvmOverloads constructor(
     
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        
+
         val time = System.currentTimeMillis() * 0.002f
-        
-        for (i in 1 until tracedPath.size) {
-            val prevPoint = tracedPath[i - 1]
-            val currentPoint = tracedPath[i]
-            
-            val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f
-            
-            val midX = (prevPoint.x + currentPoint.x) / 2f + oscillation
-            val midY = (prevPoint.y + currentPoint.y) / 2f
-            
-            val dx = currentPoint.x - prevPoint.x
-            val dy = currentPoint.y - prevPoint.y
-            val length = kotlin.math.sqrt(dx * dx + dy * dy)
-            
-            val controlX = if (length > 0) {
-                midX + (-dy / length) * currentPoint.curvature
-            } else midX
-            
-            val controlY = if (length > 0) {
-                midY + (dx / length) * currentPoint.curvature
-            } else midY
-            
-            val segmentPath = Path()
-            segmentPath.moveTo(prevPoint.x + oscillation * 0.8f, prevPoint.y)
-            segmentPath.quadTo(controlX, controlY, currentPoint.x + oscillation, currentPoint.y)
-            
-            basePaint.strokeWidth = currentPoint.strokeWidth
-            canvas.drawPath(segmentPath, basePaint)
+
+        // TIGE avec image (si bitmap chargé, sinon fallback)
+        if (::stemBitmap.isInitialized) {
+            for (i in 1 until tracedPath.size) {
+                val point = tracedPath[i]
+                val bmpX = point.x - stemBitmap.width / 2f
+                val bmpY = point.y - stemBitmap.height / 2f
+                canvas.drawBitmap(stemBitmap, bmpX, bmpY, null)
+            }
+        } else {
+            // Fallback - dessiner avec les courbes originales
+            for (i in 1 until tracedPath.size) {
+                val prevPoint = tracedPath[i - 1]
+                val currentPoint = tracedPath[i]
+                
+                val oscillation = kotlin.math.sin(time + currentPoint.y * 0.005f) * 35f
+                
+                val midX = (prevPoint.x + currentPoint.x) / 2f + oscillation
+                val midY = (prevPoint.y + currentPoint.y) / 2f
+                
+                val dx = currentPoint.x - prevPoint.x
+                val dy = currentPoint.y - prevPoint.y
+                val length = kotlin.math.sqrt(dx * dx + dy * dy)
+                
+                val controlX = if (length > 0) {
+                    midX + (-dy / length) * currentPoint.curvature
+                } else midX
+                
+                val controlY = if (length > 0) {
+                    midY + (dx / length) * currentPoint.curvature
+                } else midY
+                
+                val segmentPath = Path()
+                segmentPath.moveTo(prevPoint.x + oscillation * 0.8f, prevPoint.y)
+                segmentPath.quadTo(controlX, controlY, currentPoint.x + oscillation, currentPoint.y)
+                
+                basePaint.strokeWidth = currentPoint.strokeWidth
+                canvas.drawPath(segmentPath, basePaint)
+            }
         }
-        
+
         val currentY = baseY - currentHeight
         val pointOscillation = kotlin.math.sin(time * 2f) * 15f
         val currentX = baseX + offsetX + pointOscillation
+        
+        // Point au sommet de la tige
         basePaint.style = Paint.Style.FILL
         canvas.drawCircle(currentX, currentY, 8f, basePaint)
         basePaint.style = Paint.Style.STROKE
-        
-        
-        // Dessiner les segments de tige avec le Bitmap
-        for (i in 1 until tracedPath.size) {
-            val prev = tracedPath[i - 1]
-            val curr = tracedPath[i]
 
-            val angle = Math.toDegrees(Math.atan2((curr.y - prev.y).toDouble(), (curr.x - prev.x).toDouble())).toFloat()
-            val centerX = (prev.x + curr.x) / 2f
-            val centerY = (prev.y + curr.y) / 2f
-
-            val segmentWidth = 24f
-            val segmentHeight = kotlin.math.max(16f, curr.strokeWidth * 2f)
-
-            canvas.save()
-            canvas.translate(centerX, centerY)
-            canvas.rotate(angle)
-            val dstRect = android.graphics.RectF(-segmentWidth / 2, -segmentHeight / 2, segmentWidth / 2, segmentHeight / 2)
-            canvas.drawBitmap(stemBitmap, null, dstRect, null)
-            canvas.restore()
-        }
-
-        // Dessiner les feuilles avec Bitmap
-        for (feuille in feuilles) {
-            if (feuille.longueur > 0 && feuille.largeur > 0) {
-                canvas.save()
-                canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
-                canvas.rotate(feuille.angle)
-                val scaleX = feuille.largeur / leafBitmap.width
-                val scaleY = feuille.longueur / leafBitmap.height
-                canvas.scale(scaleX, scaleY)
-                canvas.drawBitmap(leafBitmap, -leafBitmap.width / 2f, -leafBitmap.height / 2f, null)
-                canvas.restore()
-            }
-        }
-
-        // Dessiner la fleur avec Bitmap
-        fleur?.let { flower ->
-            if (flower.taille > 0) {
-                val flowerWidth = flower.taille
-                val flowerHeight = flower.taille
-                val rect = android.graphics.RectF(
-                    flower.x - flowerWidth / 2,
-                    flower.y - flowerHeight / 2,
-                    flower.x + flowerWidth / 2,
-                    flower.y + flowerHeight / 2
-                )
-                canvas.drawBitmap(flowerBitmap, null, rect, null)
-            }
-        }
-
-        // Dessiner les bourgeons (optionnel, pour débogage)
-
-        basePaint.color = 0xFF32CD32.toInt() // Vert  
+        // Dessiner les bourgeons (cercles verts - fallback)
+        basePaint.color = 0xFF32CD32.toInt()
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
             if (bourgeon.taille > 0) {
                 canvas.drawCircle(bourgeon.x, bourgeon.y, bourgeon.taille, basePaint)
             }
         }
-        
-        // Dessiner les feuilles (ellipses)
-        basePaint.color = 0xFF228B22.toInt() // Vert foncé
+
+        // FEUILLES avec image (si bitmap chargé, sinon fallback)
         for (feuille in feuilles) {
             if (feuille.longueur > 0 && feuille.largeur > 0) {
-                canvas.save()
-                canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
-                canvas.rotate(feuille.angle)
-                canvas.drawOval(-feuille.largeur/2, -feuille.longueur/2, 
-                              feuille.largeur/2, feuille.longueur/2, basePaint)
-                canvas.restore()
+                if (::leafBitmap.isInitialized) {
+                    canvas.save()
+                    canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
+                    canvas.rotate(feuille.angle)
+                    val scale = feuille.longueur / leafBitmap.height
+                    val leafW = leafBitmap.width * scale
+                    val leafH = leafBitmap.height * scale
+                    val dstRect = RectF(-leafW/2, -leafH/2, leafW/2, leafH/2)
+                    canvas.drawBitmap(leafBitmap, null, dstRect, null)
+                    canvas.restore()
+                } else {
+                    // Fallback - ellipses vertes
+                    canvas.save()
+                    canvas.translate(feuille.bourgeon.x, feuille.bourgeon.y)
+                    canvas.rotate(feuille.angle)
+                    basePaint.color = 0xFF228B22.toInt()
+                    canvas.drawOval(-feuille.largeur/2, -feuille.longueur/2, 
+                                  feuille.largeur/2, feuille.longueur/2, basePaint)
+                    canvas.restore()
+                }
             }
         }
-        
-        // Dessiner la fleur (pétales + centre)
+
+        // FLEUR avec image (si bitmap chargé, sinon fallback)
         fleur?.let { flower ->
             if (flower.taille > 0) {
-                basePaint.color = 0xFFFFB6C1.toInt() // Rose clair
-                val angleStep = 360f / flower.petalCount
-                for (i in 0 until flower.petalCount) {
-                    val angle = i * angleStep
-                    val petalX = flower.x + kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat() * flower.taille * 0.5f
-                    val petalY = flower.y + kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat() * flower.taille * 0.5f
-                    canvas.drawCircle(petalX, petalY, flower.taille * 0.3f, basePaint)
+                if (::flowerBitmap.isInitialized) {
+                    val scale = flower.taille / flowerBitmap.width
+                    val w = flowerBitmap.width * scale
+                    val h = flowerBitmap.height * scale
+                    val rect = RectF(
+                        flower.x - w / 2,
+                        flower.y - h,
+                        flower.x + w / 2,
+                        flower.y
+                    )
+                    canvas.drawBitmap(flowerBitmap, null, rect, null)
+                } else {
+                    // Fallback - cercles colorés
+                    basePaint.color = 0xFFFFB6C1.toInt()
+                    val angleStep = 360f / flower.petalCount
+                    for (i in 0 until flower.petalCount) {
+                        val angle = i * angleStep
+                        val petalX = flower.x + kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat() * flower.taille * 0.5f
+                        val petalY = flower.y + kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat() * flower.taille * 0.5f
+                        canvas.drawCircle(petalX, petalY, flower.taille * 0.3f, basePaint)
+                    }
+                    basePaint.color = 0xFFFFD700.toInt()
+                    canvas.drawCircle(flower.x, flower.y, flower.taille * 0.2f, basePaint)
                 }
-                // Centre de la fleur
-                basePaint.color = 0xFFFFD700.toInt() // Jaune
-                canvas.drawCircle(flower.x, flower.y, flower.taille * 0.2f, basePaint)
             }
         }
-        
+
         // Remettre la couleur blanche pour la tige
         basePaint.color = 0xFFFFFFFF.toInt()
         basePaint.style = Paint.Style.STROKE
-        
-        // Dessiner le feu de circulation
+
         drawTrafficLight(canvas)
     }
     
