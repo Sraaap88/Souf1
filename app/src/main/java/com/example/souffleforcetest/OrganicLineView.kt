@@ -225,10 +225,10 @@ class OrganicLineView @JvmOverloads constructor(
             val displacement = if ((0..1).random() == 0) 120f else -120f
             offsetX += displacement
             
-            // Créer des bourgeons lors des coups de vent
+            // Créer des bourgeons lors des coups de vent - COLLÉS sur la tige
             if (currentHeight > 100f) {
-                val budX = baseX + offsetX + (if ((0..1).random() == 0) 60f else -60f)
-                val budY = baseY - currentHeight + (0..100).random()
+                val budX = currentX // Position exacte de la tige
+                val budY = currentY + ((-20..20).random()) // Légère variation verticale
                 bourgeons.add(Bourgeon(budX, budY, 0f)) // Taille 0 au début
             }
         } else if (rhythmIntensity > 0.02f) {
@@ -304,11 +304,11 @@ class OrganicLineView @JvmOverloads constructor(
                         feuilles.add(feuille)
                     }
                     
-                    // Faire grandir la feuille
-                    feuille.longueur += growthIncrement * 0.8f
-                    feuille.largeur += growthIncrement * 0.4f
-                    feuille.longueur = kotlin.math.min(feuille.longueur, 40f) // Max 40px
-                    feuille.largeur = kotlin.math.min(feuille.largeur, 20f)   // Max 20px
+                    // Faire grandir la feuille - 3X PLUS GRANDE
+                    feuille.longueur += growthIncrement * 2.4f // 3x plus grande
+                    feuille.largeur += growthIncrement * 1.2f  // 3x plus grande
+                    feuille.longueur = kotlin.math.min(feuille.longueur, 120f) // Max 120px (3x40)
+                    feuille.largeur = kotlin.math.min(feuille.largeur, 60f)    // Max 60px (3x20)
                 }
             }
             
@@ -320,9 +320,9 @@ class OrganicLineView @JvmOverloads constructor(
                         fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
                     }
                     fleur?.let {
-                        it.taille += growthIncrement * 0.6f
-                        it.taille = kotlin.math.min(it.taille, 35f) // Taille max 35px
-                        it.petalCount = kotlin.math.max(5, (it.taille * 0.2f).toInt()) // 5-7 pétales
+                        it.taille += growthIncrement * 3.0f // 5x plus grande
+                        it.taille = kotlin.math.min(it.taille, 175f) // Taille max 175px (5x35)
+                        it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt()) // 5-8 pétales
                     }
                 }
             }
