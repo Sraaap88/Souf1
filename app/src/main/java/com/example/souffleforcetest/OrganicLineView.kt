@@ -526,3 +526,4 @@ class OrganicLineView @JvmOverloads constructor(
         canGrow = false
         
         tracedPath.add(TracePoint(baseX, baseY, ba
+    }
