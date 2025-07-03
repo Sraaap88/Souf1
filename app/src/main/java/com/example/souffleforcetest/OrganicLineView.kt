@@ -253,17 +253,21 @@ class OrganicLineView @JvmOverloads constructor(
         
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
-        // Gestion des mouvements brusques
+        // Gestion des mouvements brusques - coups de vent plus forts
         if (rhythmIntensity > abruptThreshold) {
-            val displacement = if ((0..1).random() == 0) 30f else -30f
+            val displacement = if ((0..1).random() == 0) 60f else -60f // Plus fort : 30f -> 60f
             offsetX += displacement
             
-            // Créer des bourgeons sur la tige
+            // Créer des feuilles directement sur la tige (sans bourgeons)
             if (currentHeight > 80f && tracedPath.size > 3) {
                 val recentPoint = tracedPath[tracedPath.size - (2..4).random()]
-                val budX = recentPoint.x + ((-20..20).random()).toFloat()
-                val budY = recentPoint.y + ((-15..15).random()).toFloat()
-                bourgeons.add(Bourgeon(budX, budY, 0f))
+                val leafX = recentPoint.x + ((-25..25).random()).toFloat()
+                val leafY = recentPoint.y + ((-15..15).random()).toFloat()
+                // Créer un bourgeon factice juste pour porter la feuille
+                val fakeBourgeon = Bourgeon(leafX, leafY, 15f) // Déjà mature
+                val angle = (0..360).random().toFloat()
+                val feuille = Feuille(fakeBourgeon, 20f, 10f, angle) // Commence plus petite
+                feuilles.add(feuille)
             }
         } else if (rhythmIntensity > 0.02f) {
             // Augmenter l'épaisseur
@@ -288,27 +292,14 @@ class OrganicLineView @JvmOverloads constructor(
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.1f
+            val growthIncrement = adjustedForce * growthRate * 0.05f // Plus lent : 0.1f -> 0.05f
             
-            for (bourgeon in bourgeons) {
-                bourgeon.taille += growthIncrement * 0.3f
-                bourgeon.taille = kotlin.math.min(bourgeon.taille, 25f)
-            }
-            
-            for (bourgeon in bourgeons) {
-                if (bourgeon.taille > 8f) {
-                    var feuille = feuilles.find { it.bourgeon == bourgeon }
-                    if (feuille == null) {
-                        val angle = (0..360).random().toFloat()
-                        feuille = Feuille(bourgeon, 0f, 0f, angle)
-                        feuilles.add(feuille)
-                    }
-                    
-                    feuille.longueur += growthIncrement * 0.2f
-                    feuille.largeur += growthIncrement * 0.1f
-                    feuille.longueur = kotlin.math.min(feuille.longueur, 120f)
-                    feuille.largeur = kotlin.math.min(feuille.largeur, 60f)
-                }
+            // Faire grandir les feuilles existantes
+            for (feuille in feuilles) {
+                feuille.longueur += growthIncrement * 0.15f // Plus lent : 0.2f -> 0.15f
+                feuille.largeur += growthIncrement * 0.08f // Plus lent : 0.1f -> 0.08f
+                feuille.longueur = kotlin.math.min(feuille.longueur, 80f) // Plus petites : 120f -> 80f
+                feuille.largeur = kotlin.math.min(feuille.largeur, 40f) // Plus petites : 60f -> 40f
             }
         }
     }
@@ -316,7 +307,7 @@ class OrganicLineView @JvmOverloads constructor(
     private fun growFlowerOnly(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.15f
+            val growthIncrement = adjustedForce * growthRate * 0.08f // Plus lent : 0.15f -> 0.08f
             
             if (tracedPath.isNotEmpty()) {
                 val topPoint = tracedPath.last()
@@ -324,7 +315,7 @@ class OrganicLineView @JvmOverloads constructor(
                     fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
                 }
                 fleur?.let {
-                    it.taille += growthIncrement * 0.2f
+                    it.taille += growthIncrement * 0.15f // Plus lent : 0.2f -> 0.15f
                     it.taille = kotlin.math.min(it.taille, 175f)
                     it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt())
                     // Mettre à jour la position de la fleur au sommet
@@ -431,27 +422,20 @@ class OrganicLineView @JvmOverloads constructor(
             canvas.drawCircle(topPoint.x + pointOscillation, topPoint.y, 4f, basePaint)
         }
 
-        // Bourgeons - positionnés sur la tige
-        basePaint.color = 0xFF8B4513.toInt()
-        basePaint.style = Paint.Style.FILL
-        for (bourgeon in bourgeons) {
-            if (bourgeon.taille > 0.5f) {
-                val oscillation = kotlin.math.sin(time + bourgeon.y * 0.01f) * 2f
-                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, bourgeon.taille * 2f, basePaint)
-            }
-        }
+        // Bourgeons supprimés - plus besoin
 
-        // FEUILLES - attachées aux bourgeons avec bonne orientation
+        // FEUILLES - plus petites et mieux orientées
         for (feuille in feuilles) {
-            if (feuille.longueur > 10 && ::leafBitmap.isInitialized) {
+            if (feuille.longueur > 5 && ::leafBitmap.isInitialized) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
                 canvas.save()
                 canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
-                // Orientation corrigée : pétiole vers la tige
-                canvas.rotate(feuille.angle + leafOscillation * 0.5f)
+                // Orientation corrigée pour pétiole vers la tige
+                canvas.rotate(feuille.angle + 90f + leafOscillation * 0.5f)
                 
-                val scale = kotlin.math.min(feuille.longueur / 400f, 0.08f)
+                // 30% plus petites qu'avant : 0.08f -> 0.055f
+                val scale = kotlin.math.min(feuille.longueur / 400f, 0.055f)
                 val leafW = leafBitmap.width.toFloat() * scale
                 val leafH = leafBitmap.height.toFloat() * scale
                 
@@ -523,7 +507,6 @@ class OrganicLineView @JvmOverloads constructor(
     
     private fun resetPlant() {
         tracedPath.clear()
-        bourgeons.clear()
         feuilles.clear()
         fleur = null
         
