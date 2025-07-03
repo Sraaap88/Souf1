@@ -221,6 +221,10 @@ class OrganicLineView @JvmOverloads constructor(
         
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
+        // Calculer position actuelle de la tige AVANT de l'utiliser
+        val currentY = baseY - currentHeight
+        val currentX = baseX + offsetX
+        
         if (rhythmIntensity > abruptThreshold) {
             val displacement = if ((0..1).random() == 0) 120f else -120f
             offsetX += displacement
@@ -260,8 +264,7 @@ class OrganicLineView @JvmOverloads constructor(
             waveAmp = 3f
         }
         
-        val currentY = baseY - currentHeight
-        val currentX = baseX + offsetX
+        // currentX et currentY déjà calculés plus haut
         
         if (tracedPath.isNotEmpty()) {
             val lastPoint = tracedPath.last()
