@@ -31,7 +31,7 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private val stemPaint = Paint().apply {
-        color = 0xFF8B7355.toInt() // Couleur tronc
+        color = 0xFF2F4F2F.toInt() // Vert foncé
         strokeWidth = 8f
         isAntiAlias = true
         strokeCap = Paint.Cap.ROUND
@@ -137,7 +137,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         when (lightState) {
             LightState.YELLOW -> resetButtonPaint.color = 0xFFFFD700.toInt()
-            LightState.GREEN_GROW -> resetButtonPaint.color = 0xFF8B4513.toInt() // Brun
+            LightState.GREEN_GROW -> resetButtonPaint.color = 0xFF2F4F2F.toInt() // Vert foncé
             LightState.GREEN_LEAVES -> resetButtonPaint.color = 0xFF00FF00.toInt() // Vert
             LightState.GREEN_FLOWER -> resetButtonPaint.color = 0xFFFF69B4.toInt() // Rose
             LightState.RED -> resetButtonPaint.color = 0xFFFF0000.toInt()
@@ -186,17 +186,7 @@ class OrganicLineView @JvmOverloads constructor(
             canvas.drawText(mainText, lightX, lightY, resetTextPaint)
         }
         
-        // Texte en haut à gauche (toujours visible)
-        resetTextPaint.textAlign = Paint.Align.LEFT
-        resetTextPaint.textSize = 80f
-        resetTextPaint.color = 0xFFFFFFFF.toInt()
-        val textX = 50f
-        val textY = 150f
-        canvas.drawText(mainText, textX, textY, resetTextPaint)
-        
-        if (lightState != LightState.RED && timeRemaining > 0) {
-            canvas.drawText(timeRemaining.toString(), textX, textY + 100f, resetTextPaint)
-        }
+        // Texte en haut à gauche supprimé
     }
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -284,8 +274,8 @@ class OrganicLineView @JvmOverloads constructor(
                 val attachX = recentPoint.x + ((-25..25).random()).toFloat()
                 val attachY = recentPoint.y + ((-15..15).random()).toFloat()
                 
-                // Calculer position à 20 pixels de la tige
-                val distanceFromStem = 20f
+                // Calculer position à 60 pixels de la tige (20 + 40)
+                val distanceFromStem = 60f
                 val isRightSide = attachX > recentPoint.x
                 val finalX = if (isRightSide) {
                     recentPoint.x + distanceFromStem
@@ -337,9 +327,9 @@ class OrganicLineView @JvmOverloads constructor(
                         
                         // Angle pour que le pétiole pointe vers la tige
                         val angleToStem = if (isRightSide) {
-                            165f // Pétiole vers la tige (15° depuis l'horizontale)
+                            195f // 195 degrés
                         } else {
-                            15f // Pétiole vers la tige (15° depuis l'horizontale)
+                            345f // 345 degrés
                         }
                         
                         feuille = Feuille(bourgeon, 0f, 0f, angleToStem)
@@ -350,10 +340,10 @@ class OrganicLineView @JvmOverloads constructor(
                     feuille.longueur += growthIncrement * 0.15f
                     feuille.largeur += growthIncrement * 0.08f
                     
-                    // Si taille normale atteinte, continuer à allonger SEULEMENT en X
+                    // Si taille normale atteinte, continuer à allonger BEAUCOUP plus
                     if (feuille.longueur >= 80f) {
-                        feuille.longueur += growthIncrement * 0.1f // Continue à s'étirer en longueur
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 150f) // Nouvelle limite plus haute
+                        feuille.longueur += growthIncrement * 0.5f // Beaucoup plus rapide : 0.1f -> 0.5f
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 300f) // Limite beaucoup plus haute : 150f -> 300f
                         // Pas de changement en largeur - elle reste à sa taille
                     } else {
                         feuille.longueur = kotlin.math.min(feuille.longueur, 80f) // Limite normale
@@ -492,7 +482,7 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-    // FEUILLES - attachées par le pétiole
+        // FEUILLES - attachées par le pétiole
         for (feuille in feuilles) {
             if (feuille.longueur > 5 && ::leafBitmap.isInitialized) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
@@ -502,6 +492,7 @@ class OrganicLineView @JvmOverloads constructor(
                 val leafW = leafBitmap.width.toFloat() * scale
                 val petioleOffset = leafW * 0.3f // Distance du pétiole depuis le centre de l'image
                 
+            
                 // Position de la feuille décalée
                 val angleRad = feuille.angle * kotlin.math.PI / 180.0 // Conversion manuelle
                 val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleOffset
