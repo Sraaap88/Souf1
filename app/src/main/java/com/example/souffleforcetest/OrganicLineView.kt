@@ -87,7 +87,7 @@ class OrganicLineView @JvmOverloads constructor(
     
     data class Bourgeon(val x: Float, val y: Float, var taille: Float)
     data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float)
-    data class Fleur(val x: Float, val y: Float, var taille: Float, var petalCount: Int)
+    data class Fleur(var x: Float, var y: Float, var taille: Float, var petalCount: Int)
     
     private val tracedPath = mutableListOf<TracePoint>()
     private val bourgeons = mutableListOf<Bourgeon>()
