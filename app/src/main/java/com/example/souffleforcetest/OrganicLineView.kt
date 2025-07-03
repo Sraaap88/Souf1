@@ -372,27 +372,27 @@ class OrganicLineView @JvmOverloads constructor(
 
         val time = System.currentTimeMillis() * 0.002f
 
-        // TIGE - corrigée pour suivre currentHeight
+        // TIGE - plus visible et plus grosse
         if (currentHeight > 0 && ::stemBitmap.isInitialized) {
             val stemTop = baseY - currentHeight
             val currentX = baseX + offsetX
             
-            // Calculer le nombre de segments nécessaires
-            val segmentHeight = 30f
-            val totalSegments = (currentHeight / segmentHeight).toInt() + 1
+            // Segments plus rapprochés pour une tige continue
+            val segmentHeight = 20f
+            val totalSegments = (currentHeight / segmentHeight).toInt() + 2
             
             for (i in 0 until totalSegments) {
                 val segmentY = baseY - (i.toFloat() * segmentHeight)
                 
-                // Ne dessiner que si le segment est dans la zone de croissance
-                if (segmentY >= stemTop) {
-                    val oscillation = kotlin.math.sin(time + segmentY * 0.005f) * 5f
+                // Dessiner tous les segments jusqu'au sommet
+                if (segmentY >= stemTop - segmentHeight) {
+                    val oscillation = kotlin.math.sin(time + segmentY * 0.005f) * 3f
                     val adjustedX = currentX + oscillation
                     
-                    // Calculer l'épaisseur basée sur la position (plus épais en bas)
-                    val positionRatio = (baseY - segmentY) / currentHeight
-                    val thickness = lerp(currentStrokeWidth, baseStrokeWidth, positionRatio)
-                    val scale = (thickness / 50f).coerceIn(0.05f, 0.15f)
+                    // Tige plus grosse et plus visible
+                    val positionRatio = if (currentHeight > 0) (baseY - segmentY) / currentHeight else 0f
+                    val thickness = baseStrokeWidth + (currentStrokeWidth - baseStrokeWidth) * (1f - positionRatio)
+                    val scale = (thickness / 30f).coerceIn(0.15f, 0.4f) // Plus grosse !
                     
                     val stemW = stemBitmap.width.toFloat() * scale
                     val stemH = stemBitmap.height.toFloat() * scale
@@ -400,13 +400,13 @@ class OrganicLineView @JvmOverloads constructor(
                     canvas.save()
                     canvas.translate(adjustedX, segmentY)
                     
-                    // Rotation basée sur l'offset pour suivre les courbes
-                    val rotation = (offsetX / 50f).coerceIn(-15f, 15f)
+                    // Rotation plus subtile
+                    val rotation = (offsetX / 100f).coerceIn(-10f, 10f)
                     canvas.rotate(rotation)
                     
                     val paint = Paint().apply {
                         isAntiAlias = true
-                        alpha = 200
+                        alpha = 255 // Complètement opaque
                         isFilterBitmap = true
                     }
                     
@@ -438,7 +438,7 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FEUILLES
+        // FEUILLES - 30% plus petites
         for (feuille in feuilles) {
             if (feuille.longueur > 10 && ::leafBitmap.isInitialized) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
@@ -447,7 +447,8 @@ class OrganicLineView @JvmOverloads constructor(
                 canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
                 canvas.rotate(feuille.angle + leafOscillation * 0.5f)
                 
-                val scale = kotlin.math.min(feuille.longueur / 400f, 0.12f)
+                // 30% plus petites : 0.12f devient 0.08f
+                val scale = kotlin.math.min(feuille.longueur / 400f, 0.08f)
                 val leafW = leafBitmap.width.toFloat() * scale
                 val leafH = leafBitmap.height.toFloat() * scale
                 
@@ -463,16 +464,18 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
 
-        // FLEUR
+        // FLEUR - 2 fois plus grosse
         fleur?.let { flower ->
             if (flower.taille > 10 && ::flowerBitmap.isInitialized) {
                 val flowerOscillation = kotlin.math.sin(time * 0.8f) * 5f
                 
-                val scale = kotlin.math.min(flower.taille / 100f, 0.6f)
+                // 2 fois plus grosse : 0.6f devient 1.2f
+                val scale = kotlin.math.min(flower.taille / 100f, 1.2f)
                 val w = flowerBitmap.width.toFloat() * scale
                 val h = flowerBitmap.height.toFloat() * scale
                 
-                val maxSize = 250f
+                // Taille max plus grande aussi : 250f devient 500f
+                val maxSize = 500f
                 val finalW = kotlin.math.min(w, maxSize)
                 val finalH = kotlin.math.min(h, maxSize)
                 
