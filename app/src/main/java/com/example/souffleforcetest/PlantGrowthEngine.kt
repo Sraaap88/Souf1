@@ -18,7 +18,7 @@ class PlantGrowthEngine(
     private var baseX = 0f
     private var baseY = 0f
     
-    // Collections de la plante
+    // Collections de la plante (publiques pour accès direct)
     val tracedPath = mutableListOf<TracePoint>()
     val bourgeons = mutableListOf<Bourgeon>()
     val feuilles = mutableListOf<Feuille>()
@@ -91,13 +91,6 @@ class PlantGrowthEngine(
     fun getBranches(): List<Branch> {
         return branches.filter { it.isActive }
     }
-    
-    fun addBourgeon(bourgeon: Bourgeon) {
-        bourgeons.add(bourgeon)
-    }
-    
-    fun accessBourgeons(): MutableList<Bourgeon> = bourgeons
-    fun accessFeuilles(): MutableList<Feuille> = feuilles
     
     // ==================== CROISSANCE DES BRANCHES ====================
     
