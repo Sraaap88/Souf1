@@ -121,8 +121,8 @@ class PlantRenderer(private val context: Context) {
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
                 val perspectiveFactor = Math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
-                // CORRIGÉ : Tailles encore réduites de 20%
-                val sizeMultiplier = 1.34f // 1.67f * 0.8 = 1.34f
+                // FEUILLES 30% plus longues
+                val sizeMultiplier = 1.74f // 1.34f * 1.3 = 1.74f (30% plus longues)
                 val displayWidth = feuille.largeur * sizeMultiplier * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
                 val displayLength = feuille.longueur * sizeMultiplier
                 
@@ -248,12 +248,14 @@ class PlantRenderer(private val context: Context) {
                 val progressRatio = (flower.taille / 175f).coerceAtMost(1f)
                 val petalCount = 14 // Marguerite: 12-16 pétales
                 
-                // CORRIGÉ : Tailles augmentées de 20% pour les fleurs
-                val sizeMultiplier = 4f // 3.33f * 1.2 = 4f
-                val petalLength = (20f + progressRatio * 50f) * sizeMultiplier * flowerPulse // Plus étroits
-                val petalWidth = (6f + progressRatio * 12f) * sizeMultiplier * flowerPulse    // Plus fins
+                // CORRIGÉ : Tailles augmentées de 30% pour les fleurs
+                val sizeMultiplier = 5.2f // 4f * 1.3 = 5.2f (30% plus grande)
+                val petalLength = (20f + progressRatio * 50f) * sizeMultiplier * flowerPulse
+                val petalWidth = (6f + progressRatio * 12f) * sizeMultiplier * flowerPulse
                 
-                // Dessiner chaque pétale avec animation individuelle
+                // Dessiner chaque pétale avec animation individuelle + perspective
+                val mainFlowerIndex = petalCount / 2 // Pétale principal (face)
+                
                 for (i in 0 until petalCount) {
                     val baseAngle = i * 360f / petalCount
                     val petalWave = kotlin.math.sin(time * 2f + i * 0.8f) * 6f
@@ -262,10 +264,16 @@ class PlantRenderer(private val context: Context) {
                     canvas.save()
                     canvas.rotate(angle)
                     
+                    // NOUVEAU : Perspective pour certains pétales
+                    val isMainPetal = (i == mainFlowerIndex || i == mainFlowerIndex + 1)
+                    val perspectiveAngle = if (isMainPetal) 0f else (i - mainFlowerIndex) * 15f
+                    val perspectiveFactor = kotlin.math.abs(kotlin.math.cos(Math.toRadians(perspectiveAngle.toDouble()))).toFloat()
+                    val finalPerspectiveFactor = perspectiveFactor.coerceAtLeast(0.3f) // Pas trop écrasé
+                    
                     // Animation d'ouverture plus rapide des pétales
                     val openingFactor = kotlin.math.min(1f, progressRatio * 2.5f)
                     val currentPetalLength = petalLength * openingFactor
-                    val currentPetalWidth = petalWidth * openingFactor
+                    val currentPetalWidth = petalWidth * openingFactor * finalPerspectiveFactor
                     
                     // Pétale en forme de goutte animé
                     val petalPaint = Paint().apply {
@@ -273,19 +281,10 @@ class PlantRenderer(private val context: Context) {
                         style = Paint.Style.FILL
                     }
                     
-                    // MARGUERITE : Dégradé blanc avec base légèrement crème
-                    val colorShift = kotlin.math.sin(time * 0.8f + i * 0.3f) * 0.05f
-                    val gradient = LinearGradient(
-                        0f, 0f, 0f, currentPetalLength,
-                        intArrayOf(
-                            Color.rgb((255 * (0.95f + colorShift)).toInt(), (248 * (0.95f + colorShift)).toInt(), (220 * (0.9f + colorShift)).toInt()), // Base crème
-                            Color.rgb((255 * (0.98f + colorShift)).toInt(), (255 * (0.98f + colorShift)).toInt(), (250 * (0.95f + colorShift)).toInt()), // Milieu blanc cassé
-                            0xFFFFFFFF.toInt() // Pointe blanc pur
-                        ),
-                        floatArrayOf(0f, 0.3f, 1f),
-                        Shader.TileMode.CLAMP
-                    )
-                    petalPaint.shader = gradient
+                    // MARGUERITE : BLANC FIXE seulement
+                    val brightness = 0.9f + finalPerspectiveFactor * 0.1f // Légère variation selon perspective
+                    val whiteValue = (255 * brightness).toInt().coerceIn(240, 255)
+                    petalPaint.color = Color.rgb(whiteValue, whiteValue, whiteValue)
                     
                     // MARGUERITE : Forme de pétale étroite et allongée
                     val organicVariation = kotlin.math.sin(time + i * 0.7f) * 0.03f
@@ -314,14 +313,16 @@ class PlantRenderer(private val context: Context) {
                     
                     canvas.drawPath(petalPath, petalPaint)
                     
-                    // MARGUERITE : Nervure centrale très fine
-                    val nervurePaint = Paint().apply {
-                        color = Color.rgb(245, 245, 240) // Blanc cassé très discret
-                        strokeWidth = 1f + sizeMultiplier * 0.05f
-                        style = Paint.Style.STROKE
-                        isAntiAlias = true
+                    // MARGUERITE : Nervure centrale très fine (seulement sur pétales de face)
+                    if (isMainPetal) {
+                        val nervurePaint = Paint().apply {
+                            color = Color.rgb(245, 245, 240) // Blanc cassé très discret
+                            strokeWidth = 1f + sizeMultiplier * 0.05f
+                            style = Paint.Style.STROKE
+                            isAntiAlias = true
+                        }
+                        canvas.drawLine(0f, 0f, 0f, currentPetalLength, nervurePaint)
                     }
-                    canvas.drawLine(0f, 0f, 0f, currentPetalLength, nervurePaint)
                     
                     canvas.restore()
                 }
