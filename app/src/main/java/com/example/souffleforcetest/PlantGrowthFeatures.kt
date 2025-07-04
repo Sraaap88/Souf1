@@ -23,7 +23,7 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                         var closestBranchX = findClosestBranchX(bourgeon)
                         
                         val isRightSide = bourgeon.x > closestBranchX
-                        val baseAngle = if (isRightSide) 85f else 275f // 85° et 275° (vers le bas)
+                        val baseAngle = if (isRightSide) 95f else 265f // 95° et 265° (plus vers le bas)
                         val heightFactor = bourgeon.y / 2400f // screenHeight approximé
                         val heightVariation = (heightFactor - 0.5f) * 5f // Très peu de variation
                         val randomVariation = ((-2..2).random()).toFloat() // Très peu de variation
@@ -34,8 +34,12 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                     }
                     
                     if (!feuille.maxLargeurAtteinte) {
-                        val lengthGrowth = growthIncrement * 1.0f * 1.3f // 2x plus longues (0.5f → 1.0f)
-                        val widthGrowth = growthIncrement * 0.35f // Même largeur qu'avant
+                        // Feuilles graduées : plus grosses en bas, plus petites en haut
+                        val heightRatio = bourgeon.y / 2400f // Position relative sur l'écran
+                        val sizeMultiplier = 1.5f - (heightRatio * 0.8f) // 1.5x en bas, 0.7x en haut
+                        
+                        val lengthGrowth = growthIncrement * 1.0f * 1.3f * sizeMultiplier
+                        val widthGrowth = growthIncrement * 0.35f * sizeMultiplier
                         
                         feuille.longueur += lengthGrowth
                         feuille.largeur += widthGrowth
@@ -47,7 +51,11 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                         
                         feuille.longueur = kotlin.math.min(feuille.longueur, 100f)
                     } else {
-                        val lengthGrowth = growthIncrement * 1.4f * 1.3f // 2x plus longues (0.7f → 1.4f)
+                        // Même logique de taille graduée pour la phase finale
+                        val heightRatio = bourgeon.y / 2400f
+                        val sizeMultiplier = 1.5f - (heightRatio * 0.8f)
+                        
+                        val lengthGrowth = growthIncrement * 1.4f * 1.3f * sizeMultiplier
                         feuille.longueur += lengthGrowth
                         feuille.longueur = kotlin.math.min(feuille.longueur, maxLeafLength)
                     }
