@@ -240,7 +240,8 @@ class OrganicLineView @JvmOverloads constructor(
                 val attachX = recentPoint.x + ((-25..25).random()).toFloat()
                 val attachY = recentPoint.y + ((-15..15).random()).toFloat()
                 
-                val distanceFromStem = -40f
+                // CORRIGÉ : Position plus proche de la tige pour les bourgeons
+                val distanceFromStem = 15f // Plus proche de la tige
                 val isRightSide = attachX > recentPoint.x
                 val finalX = if (isRightSide) {
                     recentPoint.x + distanceFromStem
@@ -266,7 +267,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // AMÉLIORATION : Fonction growLeaves() avec meilleur équilibre largeur/longueur
+    // CORRIGÉ : Fonction growLeaves avec angles mieux orientés
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
@@ -284,32 +285,34 @@ class OrganicLineView @JvmOverloads constructor(
                         
                         val isRightSide = bourgeon.x > stemX
                         
+                        // CORRIGÉ : Angles plus réalistes pour que les feuilles partent du bourgeon
                         val angleToStem = if (isRightSide) {
-                            215f
+                            // Feuille va vers la droite et légèrement vers le haut
+                            -30f + ((-20..20).random()).toFloat()
                         } else {
-                            345f
+                            // Feuille va vers la gauche et légèrement vers le haut  
+                            210f + ((-20..20).random()).toFloat()
                         }
                         
                         feuille = Feuille(bourgeon, 0f, 0f, angleToStem)
                         feuilles.add(feuille)
                     }
                     
-                    // AMÉLIORATION : Croissance plus équilibrée largeur/longueur
-                    val lengthGrowth = growthIncrement * 0.2f  // Augmenté pour plus de longueur
-                    val widthGrowth = growthIncrement * 0.15f   // Plus de largeur aussi
+                    // Croissance équilibrée
+                    val lengthGrowth = growthIncrement * 0.2f
+                    val widthGrowth = growthIncrement * 0.15f
                     
                     feuille.longueur += lengthGrowth
                     feuille.largeur += widthGrowth
                     
-                    // Phases de croissance avec meilleur équilibre
                     if (feuille.longueur >= 120f) {
-                        feuille.longueur += lengthGrowth * 0.4f  // Ralentir la longueur
-                        feuille.largeur += widthGrowth * 0.8f    // Favoriser la largeur
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 350f) // Limite réduite
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 180f)   // Limite augmentée
+                        feuille.longueur += lengthGrowth * 0.4f
+                        feuille.largeur += widthGrowth * 0.8f
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 350f)
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 180f)
                     } else {
                         feuille.longueur = kotlin.math.min(feuille.longueur, 120f)
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 80f)    // Limite augmentée
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 80f)
                     }
                 }
             }
@@ -377,7 +380,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // AMÉLIORATION : Fonction onDraw() avec ajout des poils
+    // CORRIGÉ : Fonction onDraw() avec poils plus visibles
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
@@ -386,7 +389,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Utiliser le renderer pour dessiner
         plantRenderer.drawRealisticStem(canvas, tracedPath, time, baseStrokeWidth, maxStrokeWidth)
         
-        // NOUVEAU : Ajouter les poils sur la tige
+        // CORRIGÉ : Ajouter les poils partout sur la tige
         plantRenderer.drawStemHairs(canvas, tracedPath, time)
         
         if (tracedPath.isNotEmpty()) {
