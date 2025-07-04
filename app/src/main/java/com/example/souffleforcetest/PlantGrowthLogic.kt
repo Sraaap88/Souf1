@@ -75,8 +75,12 @@ class PlantGrowthLogic(
     }
     
     fun drawPlant(canvas: Canvas, renderer: PlantRenderer, time: Float) {
+        println("*** DRAWING PLANT - Branches: ${growthEngine.getBranches().size} ***")
+        
         // Dessiner toutes les branches actives
         for (branch in growthEngine.getBranches()) {
+            println("*** Branch ${branch.id} - tracedPath: ${branch.tracedPath.size}, fleur: ${branch.fleur?.taille} ***")
+            
             renderer.drawRealisticStem(canvas, branch.tracedPath, time, 9.6f, 25.6f)
             
             if (branch.tracedPath.isNotEmpty()) {
@@ -84,12 +88,16 @@ class PlantGrowthLogic(
             }
             
             // Dessiner la fleur de cette branche
-            renderer.drawRealisticFlower(canvas, branch.fleur, time)
+            if (branch.fleur != null) {
+                println("*** TENTATIVE DESSIN FLEUR taille: ${branch.fleur!!.taille} ***")
+                renderer.drawRealisticFlower(canvas, branch.fleur, time, currentPlantType.flowerStyle)
+            }
         }
         
         // Dessiner les bourgeons et feuilles
+        println("*** Bourgeons: ${bourgeons.size}, Feuilles: ${feuilles.size} ***")
         renderer.drawAttachmentPoints(canvas, bourgeons, time)
-        renderer.drawRealistic3DLeaves(canvas, feuilles, time)
+        renderer.drawRealistic3DLeaves(canvas, feuilles, time, currentPlantType.leafStyle)
     }
     
     fun resetPlant() {
@@ -107,13 +115,19 @@ class PlantGrowthLogic(
     // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createBudsForActiveBranches(force: Float) {
-        val previousForce = 0.08f // Valeur de base pour calculer l'intensité
-        val rhythmIntensity = kotlin.math.abs(force - previousForce)
-        
-        if (rhythmIntensity > 0.15f) { // abruptThreshold
+        // FORCÉ : Créer des bourgeons à chaque appel si force > seuil
+        if (force > 0.08f) {
             for (branch in growthEngine.getBranches()) {
-                if (branch.currentHeight > 30f && branch.tracedPath.size > 6) {
-                    growthFeatures.createRealisticBud(branch)
+                if (branch.currentHeight > 20f && branch.tracedPath.size > 3) {
+                    // Créer un bourgeon à chaque fois
+                    val segmentIndex = kotlin.math.max(0, branch.tracedPath.size - (2..5).random())
+                    val budPoint = branch.tracedPath[segmentIndex]
+                    
+                    val budX = budPoint.x + ((-10..10).random()).toFloat()
+                    val budY = budPoint.y + ((-5..5).random()).toFloat()
+                    
+                    growthEngine.bourgeons.add(Bourgeon(budX, budY, 5f))
+                    println("*** BOURGEON CRÉÉ à ($budX, $budY) ***")
                 }
             }
         }
