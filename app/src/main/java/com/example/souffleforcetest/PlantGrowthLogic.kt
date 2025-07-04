@@ -77,6 +77,7 @@ class PlantGrowthLogic(
             renderer.drawRealisticFlower(canvas, branch.fleur, time)
         }
         
+        // Dessiner les bourgeons et feuilles
         renderer.drawAttachmentPoints(canvas, bourgeons, time)
         renderer.drawRealistic3DLeaves(canvas, feuilles, time)
     }
@@ -96,7 +97,8 @@ class PlantGrowthLogic(
     // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createBudsForActiveBranches(force: Float) {
-        val rhythmIntensity = kotlin.math.abs(force - 0.08f)
+        val previousForce = 0.08f // Valeur de base pour calculer l'intensité
+        val rhythmIntensity = kotlin.math.abs(force - previousForce)
         
         if (rhythmIntensity > 0.15f) { // abruptThreshold
             for (branch in growthEngine.getBranches()) {
