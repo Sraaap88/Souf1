@@ -146,26 +146,26 @@ class PlantRenderer(private val context: Context) {
                 }
                 
                 if (perspectiveFactor > 0.3f) {
-                    // MARGUERITE : Feuille avec première moitié lisse, deuxième moitié dentelée
+                    // MARGUERITE : Feuille avec première moitié lisse rallongée, deuxième moitié dentelée
                     val leafPath = Path()
                     leafPath.moveTo(0f, 0f)
                     
-                    val midLength = displayLength * 0.5f // Moitié de la feuille
+                    val midLength = displayLength * 0.65f // Partie lisse rallongée de 30% (0.5f → 0.65f)
                     
-                    // PREMIÈRE MOITIÉ : LISSE et effilée
-                    leafPath.lineTo(-displayWidth * 0.1f, midLength * 0.3f)  // Effilée
-                    leafPath.lineTo(-displayWidth * 0.25f, midLength * 0.7f) // Élargissement progressif
-                    leafPath.lineTo(-displayWidth * 0.35f, midLength)        // Largeur max à mi-longueur
+                    // PREMIÈRE MOITIÉ : LISSE, effilée et PLUS FINE à la jonction
+                    leafPath.lineTo(-displayWidth * 0.08f, midLength * 0.3f)  // Plus effilée
+                    leafPath.lineTo(-displayWidth * 0.2f, midLength * 0.7f)   // Élargissement progressif
+                    leafPath.lineTo(-displayWidth * 0.25f, midLength)        // PLUS FINE à la jonction (0.35f → 0.25f)
                     
-                    // DEUXIÈME MOITIÉ : DENTELÉE (comme avant)
+                    // DEUXIÈME MOITIÉ : DENTELÉE (plus large)
                     val edgeWave = kotlin.math.sin(time * 2f) * 0.03f
                     
                     // Côté gauche avec dentelures seulement sur la deuxième moitié
                     val leftPoints = arrayOf(
-                        Pair(-displayWidth * (0.4f - edgeWave), displayLength * 0.6f),
-                        Pair(-displayWidth * (0.25f + edgeWave), displayLength * 0.7f), // Dent
-                        Pair(-displayWidth * (0.45f - edgeWave), displayLength * 0.8f),
-                        Pair(-displayWidth * (0.3f + edgeWave), displayLength * 0.9f),  // Dent
+                        Pair(-displayWidth * (0.45f - edgeWave), displayLength * 0.7f),  // Plus large après jonction
+                        Pair(-displayWidth * (0.3f + edgeWave), displayLength * 0.8f),   // Dent
+                        Pair(-displayWidth * (0.5f - edgeWave), displayLength * 0.85f),
+                        Pair(-displayWidth * (0.35f + edgeWave), displayLength * 0.95f), // Dent
                         Pair(-displayWidth * 0.1f, displayLength * 0.98f)
                     )
                     
@@ -177,13 +177,13 @@ class PlantRenderer(private val context: Context) {
                     // Côté droit symétrique
                     val rightPoints = arrayOf(
                         Pair(displayWidth * 0.1f, displayLength * 0.98f),
-                        Pair(displayWidth * (0.3f + edgeWave), displayLength * 0.9f),  // Dent
-                        Pair(displayWidth * (0.45f - edgeWave), displayLength * 0.8f),
-                        Pair(displayWidth * (0.25f + edgeWave), displayLength * 0.7f), // Dent
-                        Pair(displayWidth * (0.4f - edgeWave), displayLength * 0.6f),
-                        Pair(displayWidth * 0.35f, midLength),        // Retour à mi-longueur
-                        Pair(displayWidth * 0.25f, midLength * 0.7f), // Première moitié lisse
-                        Pair(displayWidth * 0.1f, midLength * 0.3f)   // Effilée
+                        Pair(displayWidth * (0.35f + edgeWave), displayLength * 0.95f), // Dent
+                        Pair(displayWidth * (0.5f - edgeWave), displayLength * 0.85f),
+                        Pair(displayWidth * (0.3f + edgeWave), displayLength * 0.8f),   // Dent
+                        Pair(displayWidth * (0.45f - edgeWave), displayLength * 0.7f),  // Plus large après jonction
+                        Pair(displayWidth * 0.25f, midLength),        // PLUS FINE à la jonction
+                        Pair(displayWidth * 0.2f, midLength * 0.7f),  // Première moitié lisse
+                        Pair(displayWidth * 0.08f, midLength * 0.3f)  // Plus effilée
                     )
                     
                     for ((x, y) in rightPoints) {
