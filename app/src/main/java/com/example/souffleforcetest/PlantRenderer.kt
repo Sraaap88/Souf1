@@ -274,7 +274,7 @@ class PlantRenderer(private val context: Context) {
         time: Float
     ) {
         fleur?.let { flower ->
-            if (flower.taille > 5f) {
+            if (flower.taille > 1f) {
                 // Animation plus complexe
                 val flowerOscillation = kotlin.math.sin(time * 0.6f) * 8f
                 val flowerPulse = 1f + kotlin.math.sin(time * 1.5f) * 0.1f
@@ -282,13 +282,13 @@ class PlantRenderer(private val context: Context) {
                 canvas.save()
                 canvas.translate(flower.x + flowerOscillation, flower.y)
                 
-                val progressRatio = (flower.taille / 175f).coerceAtMost(1f)
+                val progressRatio = (flower.taille / 75f).coerceAtMost(1f)
                 val petalCount = 14 // Marguerite: 12-16 pétales
                 
-                // FLEURS 15% plus grandes encore
-                val sizeMultiplier = 7.5f // 15% plus grandes (6.5f * 1.15 = 7.5f)
-                val petalLength = (20f + progressRatio * 50f) * sizeMultiplier * flowerPulse
-                val petalWidth = (6f + progressRatio * 12f) * sizeMultiplier * flowerPulse
+                // FLEURS plus grandes
+                val sizeMultiplier = 7.5f
+                val petalLength = kotlin.math.max(20f, (15f + progressRatio * 40f) * sizeMultiplier * flowerPulse)
+                val petalWidth = kotlin.math.max(10f, (4f + progressRatio * 10f) * sizeMultiplier * flowerPulse)
                 
                 // Dessiner chaque pétale avec animation individuelle + perspective
                 val mainFlowerIndex = petalCount / 2 // Pétale principal (face)
@@ -301,13 +301,10 @@ class PlantRenderer(private val context: Context) {
                     canvas.save()
                     canvas.rotate(angle)
                     
-                    // NOUVEAU : Largeur uniforme pour tous les pétales
-                    val isMainPetal = (i == mainFlowerIndex || i == mainFlowerIndex + 1) // Gardé pour la nervure
-                    
                     // Animation d'ouverture plus rapide des pétales
                     val openingFactor = kotlin.math.min(1f, progressRatio * 2.5f)
                     val currentPetalLength = petalLength * openingFactor
-                    val currentPetalWidth = petalWidth * openingFactor * 1.3f // Largeur uniforme
+                    val currentPetalWidth = petalWidth * openingFactor * 1.3f
                     
                     // Pétale en forme de goutte animé
                     val petalPaint = Paint().apply {
@@ -325,9 +322,9 @@ class PlantRenderer(private val context: Context) {
                     val petalPath = Path()
                     petalPath.moveTo(0f, 0f)
                     petalPath.cubicTo(
-                        -currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f, // Plus large (0.4f → 0.5f)
-                        -currentPetalWidth * (0.35f - organicVariation), currentPetalLength * 0.8f, // Moins pointu (0.25f → 0.35f, 0.7f → 0.8f)
-                        -currentPetalWidth * 0.15f, currentPetalLength * 0.98f // Bout moins pointu (0.1f → 0.15f, 0.95f → 0.98f)
+                        -currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f,
+                        -currentPetalWidth * (0.35f - organicVariation), currentPetalLength * 0.8f,
+                        -currentPetalWidth * 0.15f, currentPetalLength * 0.98f
                     )
                     petalPath.cubicTo(
                         0f, currentPetalLength,
@@ -340,14 +337,14 @@ class PlantRenderer(private val context: Context) {
                         currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f
                     )
                     petalPath.cubicTo(
-                        currentPetalWidth * 0.3f, currentPetalLength * 0.15f, // Moins pointu (0.2f → 0.3f)
+                        currentPetalWidth * 0.3f, currentPetalLength * 0.15f,
                         0f, 0f,
                         0f, 0f
                     )
                     
                     canvas.drawPath(petalPath, petalPaint)
                     
-                    // MARGUERITE : Nervure centrale très fine (sur tous les pétales maintenant)
+                    // MARGUERITE : Nervure centrale très fine
                     val nervurePaint = Paint().apply {
                         color = Color.rgb(245, 245, 240) // Blanc cassé très discret
                         strokeWidth = 1f + sizeMultiplier * 0.05f
@@ -358,15 +355,15 @@ class PlantRenderer(private val context: Context) {
                     
                     canvas.restore()
                 }
-                // CORRIGÉ : Centre proportionnel aux pétales
+                
+                // Centre proportionnel aux pétales
                 val centerPaint = Paint().apply {
                     isAntiAlias = true
                     style = Paint.Style.FILL
                 }
                 
                 // Centre plus petit et proportionnel
-                val centerSize = petalLength * 0.12f * flowerPulse // Beaucoup plus petit
-                
+                val centerSize = petalLength * 0.12f * flowerPulse
                 // MARGUERITE : Centre jaune vif caractéristique
                 val centerColorShift = kotlin.math.sin(time * 1.2f) * 0.05f
                 centerPaint.color = Color.rgb(
@@ -379,7 +376,7 @@ class PlantRenderer(private val context: Context) {
                 // Petites étamines plus proportionnelles
                 centerPaint.color = 0xFFFFA500.toInt()
                 val stamenCount = 8
-                val stamenRadius = centerSize * 0.6f // Proportionnel au centre
+                val stamenRadius = centerSize * 0.6f
                 for (i in 0 until stamenCount) {
                     val stamenAngle = i * 360f / stamenCount + time * 15f
                     val stamenBob = kotlin.math.sin(time * 3f + i * 0.4f) * 1f
@@ -387,13 +384,13 @@ class PlantRenderer(private val context: Context) {
                     
                     val stamenX = Math.cos(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
                     val stamenY = Math.sin(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
-                    canvas.drawCircle(stamenX, stamenY, centerSize * 0.15f, centerPaint) // Proportionnel
+                    canvas.drawCircle(stamenX, stamenY, centerSize * 0.15f, centerPaint)
                 }
                 
                 // Point central plus petit
                 val pistilPulse = 1f + kotlin.math.sin(time * 2.5f) * 0.2f
                 centerPaint.color = 0xFFFF6347.toInt()
-                canvas.drawCircle(0f, 0f, centerSize * 0.3f * pistilPulse, centerPaint) // Beaucoup plus petit
+                canvas.drawCircle(0f, 0f, centerSize * 0.3f * pistilPulse, centerPaint)
                 
                 canvas.restore()
             }
