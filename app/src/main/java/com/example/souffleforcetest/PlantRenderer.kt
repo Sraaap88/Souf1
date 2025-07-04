@@ -101,23 +101,21 @@ class PlantRenderer(private val context: Context) {
                     )
                 }
                 
-                // NOUVEAU : Texture velue (petits poils) - PLUS VISIBLES
-                if (i % 1 == 0) { // Sur chaque point
-                    stemPaint.strokeWidth = 3f // Plus épais
-                    stemPaint.color = android.graphics.Color.rgb(baseGreen + 25, 99, baseGreen + 25)
+                // TEXTURE VELUE - TRÈS VISIBLE
+                stemPaint.strokeWidth = 4f // Plus épais
+                stemPaint.color = android.graphics.Color.rgb(baseGreen + 35, 109, baseGreen + 35) // Plus clair
+                
+                for (j in 0..12) { // Beaucoup plus de poils
+                    val hairAngle = (j * 30f) + (time * 8f + point.y * 0.03f) % 360f
+                    val hairLength = thickness * 0.4f // Très longs
+                    val hairX = kotlin.math.cos(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength
+                    val hairY = kotlin.math.sin(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength * 0.2f
                     
-                    for (j in 0..8) { // Plus de poils
-                        val hairAngle = (j * 45f) + (time * 10f + point.y * 0.05f) % 360f
-                        val hairLength = thickness * 0.25f // Plus longs
-                        val hairX = kotlin.math.cos(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength
-                        val hairY = kotlin.math.sin(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength * 0.3f
-                        
-                        canvas.drawLine(
-                            adjustedX, point.y,
-                            adjustedX + hairX, point.y + hairY,
-                            stemPaint
-                        )
-                    }
+                    canvas.drawLine(
+                        adjustedX, point.y,
+                        adjustedX + hairX, point.y + hairY,
+                        stemPaint
+                    )
                 }
                 
                 // Ombre (côté sombre)
@@ -181,7 +179,8 @@ class PlantRenderer(private val context: Context) {
         for (bourgeon in bourgeons) {
             if (bourgeon.taille > 1f) {
                 val oscillation = kotlin.math.sin(time + bourgeon.y * 0.01f) * 1f
-                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, 2f, basePaint)
+                // Points bruns EXACTEMENT sur la tige (pas de décalage)
+                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, 3f, basePaint)
             }
         }
     }
@@ -194,30 +193,32 @@ class PlantRenderer(private val context: Context) {
     ) {
         for (feuille in feuilles) {
             if (feuille.longueur > 5) {
-                val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 5f
+                val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 3f
                 
-                val scale = kotlin.math.min(feuille.longueur / 400f, 0.08f)
-                val leafW = leafBitmap.width.toFloat() * scale
-                val leafH = leafBitmap.height.toFloat() * scale
+                // Calcul de l'échelle basé sur la LONGUEUR (pas largeur)
+                val lengthScale = kotlin.math.min(feuille.longueur / 300f, 1.2f) // S'allonge beaucoup plus
+                val widthScale = kotlin.math.min(feuille.largeur / 150f, 0.6f) // S'élargit moins
                 
-                // Le pétiole de la feuille PNG représente environ 15% de la largeur
-                // On positionne la feuille pour que le pétiole touche le bourgeon
-                val petioleOffsetX = leafW * 0.15f // Distance depuis le bord gauche jusqu'au point d'attache
+                val leafW = leafBitmap.width.toFloat() * lengthScale
+                val leafH = leafBitmap.height.toFloat() * widthScale
+                
+                // Le pétiole fait environ 20% de la largeur de l'image
+                val petioleLength = leafW * 0.2f
                 
                 canvas.save()
                 canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
-                canvas.rotate(feuille.angle + leafOscillation * 0.3f)
+                canvas.rotate(feuille.angle + leafOscillation * 0.2f)
                 
                 val paint = Paint().apply {
                     isAntiAlias = true
                     isFilterBitmap = true
-                    alpha = 240
+                    alpha = 250
                 }
                 
-                // Positionner la feuille pour que le pétiole soit au point d'attache
+                // Positionner la feuille pour que l'EXTRÉMITÉ du pétiole soit au bourgeon
                 val dstRect = RectF(
-                    -petioleOffsetX, -leafH/2, 
-                    leafW - petioleOffsetX, leafH/2
+                    petioleLength, -leafH/2, 
+                    leafW + petioleLength, leafH/2
                 )
                 canvas.drawBitmap(leafBitmap, null, dstRect, paint)
                 canvas.restore()
