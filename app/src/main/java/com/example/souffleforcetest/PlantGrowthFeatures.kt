@@ -4,7 +4,7 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.08f
+    private val forceThreshold = 0.068f // 15% moins de souffle (même que PlantGrowthEngine)
     private val growthRate = 174.6f
     private val maxLeafWidth = 75f
     private val maxLeafLength = 200f
@@ -23,7 +23,7 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                         var closestBranchX = findClosestBranchX(bourgeon)
                         
                         val isRightSide = bourgeon.x > closestBranchX
-                        val baseAngle = if (isRightSide) 0f else 180f // Parfaitement horizontales
+                        val baseAngle = if (isRightSide) 85f else 275f // 85° et 275° (vers le bas)
                         val heightFactor = bourgeon.y / 2400f // screenHeight approximé
                         val heightVariation = (heightFactor - 0.5f) * 5f // Très peu de variation
                         val randomVariation = ((-2..2).random()).toFloat() // Très peu de variation
