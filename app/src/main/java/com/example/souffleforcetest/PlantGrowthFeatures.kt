@@ -34,9 +34,9 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                     }
                     
                     if (!feuille.maxLargeurAtteinte) {
-                        // Feuilles graduées : PLUS DE CONTRASTE entre haut et bas
+                        // Feuilles graduées : GROSSES à la base, FINES en haut
                         val heightRatio = bourgeon.y / 2400f // Position relative sur l'écran
-                        val sizeMultiplier = 2.2f - (heightRatio * 1.9f) // 2.2x en bas, 0.3x en haut (contraste extrême)
+                        val sizeMultiplier = 2.5f - (heightRatio * 1.8f) // 2.5x en bas, 0.7x en haut (plus de contraste)
                         
                         val lengthGrowth = growthIncrement * 1.0f * 1.3f * sizeMultiplier
                         val widthGrowth = growthIncrement * 0.35f * sizeMultiplier
@@ -53,7 +53,7 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                     } else {
                         // Même logique de taille graduée ACCENTUÉE pour la phase finale
                         val heightRatio = bourgeon.y / 2400f
-                        val sizeMultiplier = 2.2f - (heightRatio * 1.9f) // Même contraste extrême
+                        val sizeMultiplier = 2.5f - (heightRatio * 1.8f) // Même gradient : grosses → fines
                         
                         val lengthGrowth = growthIncrement * 1.4f * 1.3f * sizeMultiplier
                         feuille.longueur += lengthGrowth
