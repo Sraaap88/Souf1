@@ -432,4 +432,4 @@ class PlantGrowthLogic(
         bourgeons.add(Bourgeon(clampedBudX, budY, 3f))
     }
 }
-}
+
