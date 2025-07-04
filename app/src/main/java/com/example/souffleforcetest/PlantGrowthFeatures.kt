@@ -169,7 +169,7 @@ class PlantGrowthFeatures(
         
         val clampedBudX = budX.coerceIn(100f, screenWidth - 100f)
         
-        engine.bourgeons.add(Bourgeon(clampedBudX, budY, 3f))
+        engine.addBourgeon(Bourgeon(clampedBudX, budY, 3f))
     }
     
     fun updateScreenSize(width: Int, height: Int) {
