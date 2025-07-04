@@ -120,8 +120,8 @@ class PlantRenderer(private val context: Context) {
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
                 val perspectiveFactor = kotlin.math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
-                // Tailles réduites au 1/3
-                val sizeMultiplier = 3.33f // au lieu de 10f
+                // CORRIGÉ : Tailles réduites de moitié pour les feuilles
+                val sizeMultiplier = 1.67f // 3.33f / 2 = 1.67f
                 val displayWidth = feuille.largeur * sizeMultiplier * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
                 val displayLength = feuille.longueur * sizeMultiplier
                 
@@ -239,8 +239,8 @@ class PlantRenderer(private val context: Context) {
                 val progressRatio = (flower.taille / 175f).coerceAtMost(1f)
                 val petalCount = 8
                 
-                // Tailles réduites au 1/3 avec pétales plus rapides
-                val sizeMultiplier = 3.33f
+                // CORRIGÉ : Tailles augmentées de 20% pour les fleurs
+                val sizeMultiplier = 4f // 3.33f * 1.2 = 4f
                 val petalLength = (25f + progressRatio * 60f) * sizeMultiplier * flowerPulse
                 val petalWidth = (12f + progressRatio * 30f) * sizeMultiplier * flowerPulse
                 
