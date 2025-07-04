@@ -121,9 +121,9 @@ class PlantRenderer(private val context: Context) {
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
                 val perspectiveFactor = Math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
-                // FEUILLES 30% plus longues
-                val sizeMultiplier = 1.74f // 1.34f * 1.3 = 1.74f (30% plus longues)
-                val displayWidth = feuille.largeur * sizeMultiplier * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
+                // FEUILLES 30% plus longues + ajustements
+                val sizeMultiplier = 1.84f // Encore plus longues (1.74f → 1.84f)
+                val displayWidth = feuille.largeur * sizeMultiplier * 0.8f * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f) // Moins larges (0.8f)
                 val displayLength = feuille.longueur * sizeMultiplier
                 
                 canvas.save()
@@ -273,7 +273,7 @@ class PlantRenderer(private val context: Context) {
                     // Animation d'ouverture plus rapide des pétales
                     val openingFactor = kotlin.math.min(1f, progressRatio * 2.5f)
                     val currentPetalLength = petalLength * openingFactor
-                    val currentPetalWidth = petalWidth * openingFactor * finalPerspectiveFactor
+                    val currentPetalWidth = petalWidth * openingFactor * finalPerspectiveFactor * 1.3f // Pétales plus larges
                     
                     // Pétale en forme de goutte animé
                     val petalPaint = Paint().apply {
@@ -286,14 +286,14 @@ class PlantRenderer(private val context: Context) {
                     val whiteValue = (255 * brightness).toInt().coerceIn(240, 255)
                     petalPaint.color = Color.rgb(whiteValue, whiteValue, whiteValue)
                     
-                    // MARGUERITE : Forme de pétale étroite et allongée
+                    // MARGUERITE : Forme de pétale plus large et moins pointue
                     val organicVariation = kotlin.math.sin(time + i * 0.7f) * 0.03f
                     val petalPath = Path()
                     petalPath.moveTo(0f, 0f)
                     petalPath.cubicTo(
-                        -currentPetalWidth * (0.4f + organicVariation), currentPetalLength * 0.2f, 
-                        -currentPetalWidth * (0.25f - organicVariation), currentPetalLength * 0.7f, 
-                        -currentPetalWidth * 0.1f, currentPetalLength * 0.95f
+                        -currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f, // Plus large (0.4f → 0.5f)
+                        -currentPetalWidth * (0.35f - organicVariation), currentPetalLength * 0.8f, // Moins pointu (0.25f → 0.35f, 0.7f → 0.8f)
+                        -currentPetalWidth * 0.15f, currentPetalLength * 0.98f // Bout moins pointu (0.1f → 0.15f, 0.95f → 0.98f)
                     )
                     petalPath.cubicTo(
                         0f, currentPetalLength,
@@ -301,12 +301,12 @@ class PlantRenderer(private val context: Context) {
                         0f, currentPetalLength
                     )
                     petalPath.cubicTo(
-                        currentPetalWidth * 0.1f, currentPetalLength * 0.95f,
-                        currentPetalWidth * (0.25f - organicVariation), currentPetalLength * 0.7f, 
-                        currentPetalWidth * (0.4f + organicVariation), currentPetalLength * 0.2f
+                        currentPetalWidth * 0.15f, currentPetalLength * 0.98f,
+                        currentPetalWidth * (0.35f - organicVariation), currentPetalLength * 0.8f, 
+                        currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f
                     )
                     petalPath.cubicTo(
-                        currentPetalWidth * 0.2f, currentPetalLength * 0.1f,
+                        currentPetalWidth * 0.3f, currentPetalLength * 0.15f, // Moins pointu (0.2f → 0.3f)
                         0f, 0f,
                         0f, 0f
                     )
