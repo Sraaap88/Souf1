@@ -110,12 +110,12 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                 
                 if (branch.fleur == null) {
                     val sizeVariation = 0.7f + (0..6).random() * 0.1f
-                    branch.fleur = Fleur(topPoint.x, topPoint.y, 0f, 6, sizeVariation)
+                    branch.fleur = Fleur(topPoint.x, topPoint.y, 15f, 6, sizeVariation)
                 }
                 
                 branch.fleur?.let { flower ->
                     val branchGrowthIncrement = growthIncrement * branch.growthMultiplier
-                    flower.taille += branchGrowthIncrement * 0.15f
+                    flower.taille += branchGrowthIncrement * 0.4f
                     flower.taille = kotlin.math.min(flower.taille, 175f * flower.sizeMultiplier)
                     flower.petalCount = kotlin.math.max(5, (flower.taille * 0.05f).toInt())
                     flower.x = topPoint.x
