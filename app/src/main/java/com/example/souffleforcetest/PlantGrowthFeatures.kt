@@ -24,15 +24,15 @@ class PlantGrowthFeatures(
             val adjustedForce = force - forceThreshold
             val growthIncrement = adjustedForce * growthRate * 0.08f
             
-            for (bourgeon in engine.getBourgeons()) {
+            for (bourgeon in engine.accessBourgeons()) {
                 if (bourgeon.taille > 2f) {
-                    var feuille = engine.getFeuilles().find { it.bourgeon == bourgeon }
+                    var feuille = engine.accessFeuilles().find { it.bourgeon == bourgeon }
                     if (feuille == null) {
                         val closestBranchX = findClosestBranchX(bourgeon)
                         val finalAngle = calculateLeafAngle(bourgeon, closestBranchX)
                         
                         feuille = Feuille(bourgeon, 0f, 0f, finalAngle, false)
-                        engine.getFeuilles().add(feuille)
+                        engine.accessFeuilles().add(feuille)
                     }
                     
                     if (!feuille.maxLargeurAtteinte) {
@@ -120,7 +120,7 @@ class PlantGrowthFeatures(
     // ==================== CRÉATION DE BOURGEONS ====================
     
     fun createRealisticBud(branch: Branch) {
-        val existingBudsOnBranch = engine.getBourgeons().count { bourgeon ->
+        val existingBudsOnBranch = engine.accessBourgeons().count { bourgeon ->
             branch.tracedPath.any { point ->
                 val distance = kotlin.math.sqrt(
                     (point.x - bourgeon.x) * (point.x - bourgeon.x) + 
@@ -144,7 +144,7 @@ class PlantGrowthFeatures(
         leafSideCounter++
         val preferredSide = leafSideCounter % 2 == 0
         
-        val sameHeightBuds = engine.getBourgeons().filter { kotlin.math.abs(it.y - budPoint.y) < 25f }
+        val sameHeightBuds = engine.accessBourgeons().filter { kotlin.math.abs(it.y - budPoint.y) < 25f }
         val hasRightBud = sameHeightBuds.any { it.x > budPoint.x }
         val hasLeftBud = sameHeightBuds.any { it.x < budPoint.x }
         
