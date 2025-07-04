@@ -120,8 +120,8 @@ class PlantRenderer(private val context: Context) {
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
                 val perspectiveFactor = kotlin.math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
-                // CORRIGÉ : Tailles réduites de moitié pour les feuilles
-                val sizeMultiplier = 1.67f // 3.33f / 2 = 1.67f
+                // CORRIGÉ : Tailles encore réduites de 20%
+                val sizeMultiplier = 1.34f // 1.67f * 0.8 = 1.34f
                 val displayWidth = feuille.largeur * sizeMultiplier * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
                 val displayLength = feuille.longueur * sizeMultiplier
                 
