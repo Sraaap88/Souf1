@@ -103,9 +103,9 @@ class OrganicLineView @JvmOverloads constructor(
     private val waveThreshold = 0.03f
     private val maxWaveAmplitude = 15f
     
-    // NOUVEAUX paramètres pour feuilles réalistes réduites au 1/3
-    private val maxLeafWidth = 150f  // 450f / 3 = 150f
-    private val maxLeafLength = 400f // 1200f / 3 = 400f
+    // CORRIGÉS : paramètres pour feuilles réduites de moitié
+    private val maxLeafWidth = 75f  // 150f / 2 = 75f
+    private val maxLeafLength = 200f // 400f / 2 = 200f
     
     // Compteur pour alternance des feuilles
     private var leafSideCounter = 0
@@ -353,6 +353,25 @@ class OrganicLineView @JvmOverloads constructor(
             
             // CORRIGÉ : Limiter l'offset pour rester dans l'écran
             branch.offsetX = branch.offsetX.coerceIn(-150f, 150f)
+            
+            // NOUVEAU : Créer des bourgeons sur cette branche
+            if (branch.currentHeight > 40f && branch.tracedPath.size > 3) {
+                val recentPoint = branch.tracedPath[branch.tracedPath.size - (2..4).random()]
+                val attachY = recentPoint.y + ((-15..15).random()).toFloat()
+                
+                // Alternance droite/gauche pour chaque branche
+                leafSideCounter++
+                val isRightSide = leafSideCounter % 2 == 0
+                
+                val lateralOffset = if (isRightSide) {
+                    (10..20).random().toFloat()
+                } else {
+                    -(10..20).random().toFloat()
+                }
+                
+                val bourgeonnX = recentPoint.x + lateralOffset
+                bourgeons.add(Bourgeon(bourgeonnX, attachY, 3f))
+            }
         }
         
         // Ajustement de l'épaisseur avec les bonnes limites
@@ -374,7 +393,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // NOUVELLE logique de croissance des feuilles en 2 phases avec meilleure répartition
+    // CORRIGÉE : logique de croissance des feuilles adaptée au multi-branches
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
@@ -384,15 +403,26 @@ class OrganicLineView @JvmOverloads constructor(
                 if (bourgeon.taille > 2f) {
                     var feuille = feuilles.find { it.bourgeon == bourgeon }
                     if (feuille == null) {
-                        val stemX = tracedPath.minByOrNull { 
-                            val dx = it.x - bourgeon.x
-                            val dy = it.y - bourgeon.y
-                            dx * dx + dy * dy
-                        }?.x ?: bourgeon.x
+                        // CORRIGÉ : Trouver la branche la plus proche au lieu d'utiliser tracedPath
+                        var closestBranchX = baseX
+                        var minDistance = Float.MAX_VALUE
                         
-                        val isRightSide = bourgeon.x > stemX
+                        for (branch in branches.filter { it.isActive }) {
+                            for (point in branch.tracedPath) {
+                                val distance = kotlin.math.sqrt(
+                                    (point.x - bourgeon.x) * (point.x - bourgeon.x) + 
+                                    (point.y - bourgeon.y) * (point.y - bourgeon.y)
+                                )
+                                if (distance < minDistance) {
+                                    minDistance = distance
+                                    closestBranchX = point.x
+                                }
+                            }
+                        }
                         
-                        // AMÉLIORATION : Angles plus naturels et variés
+                        val isRightSide = bourgeon.x > closestBranchX
+                        
+                        // Angles plus naturels et variés
                         val baseAngle = if (isRightSide) {
                             -25f  // Angle de base pour droite
                         } else {
@@ -424,8 +454,8 @@ class OrganicLineView @JvmOverloads constructor(
                             feuille.maxLargeurAtteinte = true
                         }
                         
-                        // Limites pour phase 1 (réduites au 1/3)
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 200f)
+                        // Limites pour phase 1 (réduites de moitié)
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 100f)
                     } 
                     // PHASE 2 : Seulement croissance en longueur
                     else {
