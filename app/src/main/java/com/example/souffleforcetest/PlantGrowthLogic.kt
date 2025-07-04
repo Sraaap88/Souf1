@@ -186,7 +186,7 @@ class PlantGrowthLogic(
             
             val growthVariation = 0.7f + (0..6).random() * 0.1f
             val branchAngle = (15..25).random().toFloat() * if ((0..1).random() == 0) 1f else -1f
-            val branchOffset = kotlin.math.sin(Math.toRadians(branchAngle.toDouble())).toFloat() * 15f
+            val branchOffset = Math.sin(Math.toRadians(branchAngle.toDouble())).toFloat() * 15f
             
             val newBaseStroke = parent.baseStrokeWidth * 0.5f
             val newMaxStroke = parent.maxStrokeWidth * 0.5f
@@ -430,4 +430,6 @@ class PlantGrowthLogic(
         val clampedBudX = budX.coerceIn(80f, screenWidth - 80f)
         
         bourgeons.add(Bourgeon(clampedBudX, budY, 3f))
+    }
+}
 }
