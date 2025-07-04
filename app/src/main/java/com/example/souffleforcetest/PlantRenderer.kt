@@ -121,9 +121,9 @@ class PlantRenderer(private val context: Context) {
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
                 val perspectiveFactor = Math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
-                // FEUILLES 30% plus longues + ajustements
-                val sizeMultiplier = 1.84f // Encore plus longues (1.74f → 1.84f)
-                val displayWidth = feuille.largeur * sizeMultiplier * 0.8f * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f) // Moins larges (0.8f)
+                // FEUILLES 2x plus longues, même largeur
+                val sizeMultiplier = 2.4f // 2x plus longues (1.84f → 2.4f)
+                val displayWidth = feuille.largeur * sizeMultiplier * 0.5f * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f) // Même largeur (0.8f → 0.5f)
                 val displayLength = feuille.longueur * sizeMultiplier
                 
                 canvas.save()
@@ -146,22 +146,27 @@ class PlantRenderer(private val context: Context) {
                 }
                 
                 if (perspectiveFactor > 0.3f) {
-                    // MARGUERITE : Feuille dentelée caractéristique
+                    // MARGUERITE : Feuille avec première moitié lisse, deuxième moitié dentelée
                     val leafPath = Path()
                     leafPath.moveTo(0f, 0f)
                     
-                    // Ondulation des bords pour effet vivant
+                    val midLength = displayLength * 0.5f // Moitié de la feuille
+                    
+                    // PREMIÈRE MOITIÉ : LISSE et effilée
+                    leafPath.lineTo(-displayWidth * 0.1f, midLength * 0.3f)  // Effilée
+                    leafPath.lineTo(-displayWidth * 0.25f, midLength * 0.7f) // Élargissement progressif
+                    leafPath.lineTo(-displayWidth * 0.35f, midLength)        // Largeur max à mi-longueur
+                    
+                    // DEUXIÈME MOITIÉ : DENTELÉE (comme avant)
                     val edgeWave = kotlin.math.sin(time * 2f) * 0.03f
                     
-                    // Côté gauche avec bords fortement dentelés
+                    // Côté gauche avec dentelures seulement sur la deuxième moitié
                     val leftPoints = arrayOf(
-                        Pair(-displayWidth * (0.15f + edgeWave), displayLength * 0.2f),
-                        Pair(-displayWidth * (0.4f - edgeWave), displayLength * 0.3f),
-                        Pair(-displayWidth * (0.25f + edgeWave), displayLength * 0.45f), // Dent
-                        Pair(-displayWidth * (0.45f - edgeWave), displayLength * 0.6f),
-                        Pair(-displayWidth * (0.3f + edgeWave), displayLength * 0.75f), // Dent
-                        Pair(-displayWidth * (0.35f - edgeWave), displayLength * 0.9f),
-                        Pair(-displayWidth * 0.1f, displayLength * 0.95f)
+                        Pair(-displayWidth * (0.4f - edgeWave), displayLength * 0.6f),
+                        Pair(-displayWidth * (0.25f + edgeWave), displayLength * 0.7f), // Dent
+                        Pair(-displayWidth * (0.45f - edgeWave), displayLength * 0.8f),
+                        Pair(-displayWidth * (0.3f + edgeWave), displayLength * 0.9f),  // Dent
+                        Pair(-displayWidth * 0.1f, displayLength * 0.98f)
                     )
                     
                     for ((x, y) in leftPoints) {
@@ -169,15 +174,16 @@ class PlantRenderer(private val context: Context) {
                     }
                     leafPath.lineTo(0f, displayLength)
                     
-                    // Côté droit symétrique avec dentelures
+                    // Côté droit symétrique
                     val rightPoints = arrayOf(
-                        Pair(displayWidth * 0.1f, displayLength * 0.95f),
-                        Pair(displayWidth * (0.35f - edgeWave), displayLength * 0.9f),
-                        Pair(displayWidth * (0.3f + edgeWave), displayLength * 0.75f), // Dent
-                        Pair(displayWidth * (0.45f - edgeWave), displayLength * 0.6f),
-                        Pair(displayWidth * (0.25f + edgeWave), displayLength * 0.45f), // Dent
-                        Pair(displayWidth * (0.4f - edgeWave), displayLength * 0.3f),
-                        Pair(displayWidth * (0.15f + edgeWave), displayLength * 0.2f)
+                        Pair(displayWidth * 0.1f, displayLength * 0.98f),
+                        Pair(displayWidth * (0.3f + edgeWave), displayLength * 0.9f),  // Dent
+                        Pair(displayWidth * (0.45f - edgeWave), displayLength * 0.8f),
+                        Pair(displayWidth * (0.25f + edgeWave), displayLength * 0.7f), // Dent
+                        Pair(displayWidth * (0.4f - edgeWave), displayLength * 0.6f),
+                        Pair(displayWidth * 0.35f, midLength),        // Retour à mi-longueur
+                        Pair(displayWidth * 0.25f, midLength * 0.7f), // Première moitié lisse
+                        Pair(displayWidth * 0.1f, midLength * 0.3f)   // Effilée
                     )
                     
                     for ((x, y) in rightPoints) {
@@ -248,8 +254,8 @@ class PlantRenderer(private val context: Context) {
                 val progressRatio = (flower.taille / 175f).coerceAtMost(1f)
                 val petalCount = 14 // Marguerite: 12-16 pétales
                 
-                // CORRIGÉ : Tailles augmentées de 30% pour les fleurs
-                val sizeMultiplier = 5.2f // 4f * 1.3 = 5.2f (30% plus grande)
+                // FLEURS 25% plus grandes encore
+                val sizeMultiplier = 6.5f // 25% plus grandes (5.2f * 1.25 = 6.5f)
                 val petalLength = (20f + progressRatio * 50f) * sizeMultiplier * flowerPulse
                 val petalWidth = (6f + progressRatio * 12f) * sizeMultiplier * flowerPulse
                 
@@ -264,16 +270,13 @@ class PlantRenderer(private val context: Context) {
                     canvas.save()
                     canvas.rotate(angle)
                     
-                    // NOUVEAU : Perspective pour certains pétales
-                    val isMainPetal = (i == mainFlowerIndex || i == mainFlowerIndex + 1)
-                    val perspectiveAngle = if (isMainPetal) 0f else (i - mainFlowerIndex) * 15f
-                    val perspectiveFactor = kotlin.math.abs(kotlin.math.cos(Math.toRadians(perspectiveAngle.toDouble()))).toFloat()
-                    val finalPerspectiveFactor = perspectiveFactor.coerceAtLeast(0.3f) // Pas trop écrasé
+                    // NOUVEAU : Largeur uniforme pour tous les pétales
+                    val isMainPetal = (i == mainFlowerIndex || i == mainFlowerIndex + 1) // Gardé pour la nervure
                     
                     // Animation d'ouverture plus rapide des pétales
                     val openingFactor = kotlin.math.min(1f, progressRatio * 2.5f)
                     val currentPetalLength = petalLength * openingFactor
-                    val currentPetalWidth = petalWidth * openingFactor * finalPerspectiveFactor * 1.3f // Pétales plus larges
+                    val currentPetalWidth = petalWidth * openingFactor * 1.3f // Largeur uniforme
                     
                     // Pétale en forme de goutte animé
                     val petalPaint = Paint().apply {
@@ -313,16 +316,14 @@ class PlantRenderer(private val context: Context) {
                     
                     canvas.drawPath(petalPath, petalPaint)
                     
-                    // MARGUERITE : Nervure centrale très fine (seulement sur pétales de face)
-                    if (isMainPetal) {
-                        val nervurePaint = Paint().apply {
-                            color = Color.rgb(245, 245, 240) // Blanc cassé très discret
-                            strokeWidth = 1f + sizeMultiplier * 0.05f
-                            style = Paint.Style.STROKE
-                            isAntiAlias = true
-                        }
-                        canvas.drawLine(0f, 0f, 0f, currentPetalLength, nervurePaint)
+                    // MARGUERITE : Nervure centrale très fine (sur tous les pétales maintenant)
+                    val nervurePaint = Paint().apply {
+                        color = Color.rgb(245, 245, 240) // Blanc cassé très discret
+                        strokeWidth = 1f + sizeMultiplier * 0.05f
+                        style = Paint.Style.STROKE
+                        isAntiAlias = true
                     }
+                    canvas.drawLine(0f, 0f, 0f, currentPetalLength, nervurePaint)
                     
                     canvas.restore()
                 }
