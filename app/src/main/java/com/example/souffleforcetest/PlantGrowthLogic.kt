@@ -59,8 +59,16 @@ class PlantGrowthLogic(
                 // Créer des bourgeons pendant la croissance
                 createBudsForActiveBranches(force)
             }
-            "GREEN_LEAVES" -> growthFeatures.growLeaves(force)
-            "GREEN_FLOWER" -> growthFeatures.growFlowers(force)
+            "GREEN_LEAVES" -> {
+                println("*** DEBUT GREEN_LEAVES ***")
+                growthFeatures.growLeaves(force)
+                println("*** Bourgeons: ${bourgeons.size}, Feuilles: ${feuilles.size} ***")
+            }
+            "GREEN_FLOWER" -> {
+                println("*** DEBUT GREEN_FLOWER ***")
+                growthFeatures.growFlowers(force)
+                println("*** Fleurs: ${fleur?.taille} ***")
+            }
         }
     }
     
