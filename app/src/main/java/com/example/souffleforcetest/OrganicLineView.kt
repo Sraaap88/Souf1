@@ -63,17 +63,19 @@ class OrganicLineView @JvmOverloads constructor(
         val waveFrequency: Float, val waveAmplitude: Float, val curvature: Float
     )
     
-    // NOUVEAU : Structure pour les branches
+    // NOUVEAU : Structure pour les branches avec épaisseur héritée
     data class Branch(
         val id: Int,
         val startPoint: TracePoint,
         val tracedPath: MutableList<TracePoint>,
         var isActive: Boolean = true,
-        val growthMultiplier: Float = 1f, // Variation de vitesse
+        val growthMultiplier: Float = 1f,
         var currentHeight: Float = 0f,
         var offsetX: Float = 0f,
         var currentStrokeWidth: Float = 0f,
-        var fleur: Fleur? = null
+        var fleur: Fleur? = null,
+        val maxStrokeWidth: Float = 25.6f, // Épaisseur max héritée du parent
+        val baseStrokeWidth: Float = 9.6f  // Épaisseur de base héritée du parent
     )
     
     data class Bourgeon(val x: Float, val y: Float, var taille: Float)
@@ -204,7 +206,9 @@ class OrganicLineView @JvmOverloads constructor(
                 startPoint = initialPoint,
                 tracedPath = mutableListOf(initialPoint),
                 growthMultiplier = 1f,
-                currentStrokeWidth = baseStrokeWidth
+                currentStrokeWidth = baseStrokeWidth,
+                maxStrokeWidth = maxStrokeWidth,
+                baseStrokeWidth = baseStrokeWidth
             )
             branches.add(mainBranch!!)
         }
@@ -266,16 +270,19 @@ class OrganicLineView @JvmOverloads constructor(
             
             // Variations naturelles pour la nouvelle branche
             val growthVariation = 0.7f + (0..6).random() * 0.1f // 0.7x à 1.3x
-            val sizeVariation = 0.8f + (0..4).random() * 0.1f   // 0.8x à 1.2x
             
-            // Angle de ramification naturel
-            val branchAngle = (30..60).random().toFloat() * if ((0..1).random() == 0) 1f else -1f
-            val branchOffset = kotlin.math.sin(Math.toRadians(branchAngle.toDouble())).toFloat() * 20f
+            // CORRIGÉ : Angle de ramification plus conservateur
+            val branchAngle = (15..25).random().toFloat() * if ((0..1).random() == 0) 1f else -1f
+            val branchOffset = kotlin.math.sin(Math.toRadians(branchAngle.toDouble())).toFloat() * 15f
+            
+            // CORRIGÉ : Épaisseur divisée par 2
+            val newBaseStroke = parent.baseStrokeWidth * 0.5f
+            val newMaxStroke = parent.maxStrokeWidth * 0.5f
             
             val newBranchPoint = TracePoint(
                 branchPoint.x + branchOffset,
                 branchPoint.y,
-                baseStrokeWidth * 0.8f, // Branches plus fines
+                newBaseStroke,
                 0f, 0f, 0f
             )
             
@@ -284,7 +291,9 @@ class OrganicLineView @JvmOverloads constructor(
                 startPoint = newBranchPoint,
                 tracedPath = mutableListOf(newBranchPoint),
                 growthMultiplier = growthVariation,
-                currentStrokeWidth = baseStrokeWidth * 0.8f
+                currentStrokeWidth = newBaseStroke,
+                maxStrokeWidth = newMaxStroke,
+                baseStrokeWidth = newBaseStroke
             )
             
             branches.add(newBranch)
@@ -301,20 +310,30 @@ class OrganicLineView @JvmOverloads constructor(
             if (branch.currentHeight > previousHeight && branch.currentHeight > 0) {
                 val lastPoint = branch.tracedPath.last()
                 val currentY = lastPoint.y - (branch.currentHeight - previousHeight)
-                val currentX = lastPoint.x + branch.offsetX
+                var currentX = lastPoint.x + branch.offsetX
+                
+                // CORRIGÉ : Contraintes d'écran strictes
+                currentX = currentX.coerceIn(100f, width - 100f)
+                
+                // Si on sort trop, ramener vers le centre
+                if (currentX < 150f || currentX > width - 150f) {
+                    val centerX = width / 2f
+                    val pullForce = 0.1f
+                    currentX = currentX + (centerX - currentX) * pullForce
+                }
                 
                 var waveFreq = 0f
                 var waveAmp = 0f
                 var curvature = 0f
                 
-                // Réponse aux ondulations (chaque branche réagit différemment)
+                // Réponse aux ondulations (plus modérée)
                 if (rhythmIntensity > 0.01f && rhythmIntensity < abruptThreshold) {
-                    waveFreq = (rhythmIntensity * 12f * branch.growthMultiplier) + 1f
-                    waveAmp = (rhythmIntensity * 150f * branch.growthMultiplier).coerceAtMost(maxWaveAmplitude)
+                    waveFreq = (rhythmIntensity * 8f * branch.growthMultiplier) + 1f // Réduit
+                    waveAmp = (rhythmIntensity * 80f * branch.growthMultiplier).coerceAtMost(maxWaveAmplitude) // Réduit
                 }
                 
                 if (rhythmIntensity > 0.04f) {
-                    curvature = (rhythmIntensity * 30f * branch.growthMultiplier).coerceAtMost(15f)
+                    curvature = (rhythmIntensity * 20f * branch.growthMultiplier).coerceAtMost(10f) // Réduit
                     if ((0..1).random() == 0) curvature = -curvature
                 }
                 
@@ -323,18 +342,31 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
         
-        // Oscillations individuelles par branche
+        // Oscillations individuelles par branche (plus modérées)
         if (rhythmIntensity > abruptThreshold) {
             val displacement = if ((0..1).random() == 0) {
-                (75f + rhythmIntensity * 100f) * branch.growthMultiplier
+                (40f + rhythmIntensity * 50f) * branch.growthMultiplier // Réduit de moitié
             } else {
-                -(75f + rhythmIntensity * 100f) * branch.growthMultiplier
+                -(40f + rhythmIntensity * 50f) * branch.growthMultiplier
             }
             branch.offsetX += displacement
+            
+            // CORRIGÉ : Limiter l'offset pour rester dans l'écran
+            branch.offsetX = branch.offsetX.coerceIn(-150f, 150f)
         }
         
-        // Retour au centre pour chaque branche
-        branch.offsetX *= centeringRate
+        // Ajustement de l'épaisseur avec les bonnes limites
+        if (rhythmIntensity > 0.02f) {
+            val thicknessIncrease = rhythmIntensity * 30f * branch.growthMultiplier
+            branch.currentStrokeWidth = kotlin.math.min(branch.maxStrokeWidth, branch.baseStrokeWidth + thicknessIncrease)
+        }
+        
+        if (branch.currentStrokeWidth > branch.baseStrokeWidth) {
+            branch.currentStrokeWidth = kotlin.math.max(branch.baseStrokeWidth, branch.currentStrokeWidth - strokeDecayRate)
+        }
+        
+        // Retour au centre pour chaque branche (plus fort)
+        branch.offsetX *= 0.95f // Plus fort que 0.99f
         
         // Désactiver les branches trop courtes après un certain temps
         if (branch.currentHeight < 50f && branches.size > 3) {
@@ -545,7 +577,9 @@ class OrganicLineView @JvmOverloads constructor(
             startPoint = initialPoint,
             tracedPath = mutableListOf(initialPoint),
             growthMultiplier = 1f,
-            currentStrokeWidth = baseStrokeWidth
+            currentStrokeWidth = baseStrokeWidth,
+            maxStrokeWidth = maxStrokeWidth,
+            baseStrokeWidth = baseStrokeWidth
         )
         branches.add(mainBranch!!)
         
