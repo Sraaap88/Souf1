@@ -92,7 +92,7 @@ class OrganicLineView @JvmOverloads constructor(
     fun updateForce(force: Float) {
         updateLightState()
         
-        // Déléguer la mise à jour de force à la logique de croissance
+        // CORRIGÉ : Déléguer TOUJOURS la mise à jour de force
         when (lightState) {
             LightState.YELLOW -> return
             LightState.GREEN_GROW -> growthLogic.updateForce(force, "GREEN_GROW")
@@ -126,18 +126,21 @@ class OrganicLineView @JvmOverloads constructor(
                 if (elapsedTime >= 3000) {
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
-                    canGrow = false
+                    // CORRIGÉ : On garde canGrow = true pour les feuilles
+                    canGrow = true
                 }
             }
             LightState.GREEN_LEAVES -> {
-                canGrow = false
+                // CORRIGÉ : canGrow reste true pour faire pousser les feuilles
+                canGrow = true
                 if (elapsedTime >= 3000) {
                     lightState = LightState.GREEN_FLOWER
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_FLOWER -> {
-                canGrow = false
+                // CORRIGÉ : canGrow reste true pour faire pousser les fleurs
+                canGrow = true
                 if (elapsedTime >= 3000) {
                     lightState = LightState.RED
                     stateStartTime = currentTime
