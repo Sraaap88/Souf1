@@ -60,9 +60,16 @@ class PlantGrowthLogic(
         renderer.drawAttachmentPoints(canvas, bourgeons, time)
         renderer.drawRealistic3DLeaves(canvas, feuilles, time)
         
-        // Dessiner les fleurs EN DERNIER (premier plan)
+        // Dessiner les fleurs EN DERNIER (premier plan) avec vérification
         for (branch in growthEngine.getBranches()) {
-            renderer.drawRealisticFlower(canvas, branch.fleur, time)
+            branch.fleur?.let { fleur ->
+                renderer.drawRealisticFlower(canvas, fleur, time)
+            }
+        }
+        
+        // Backup : Dessiner aussi la fleur principale si elle existe
+        fleur?.let { mainFleur ->
+            renderer.drawRealisticFlower(canvas, mainFleur, time)
         }
     }
     
@@ -76,5 +83,9 @@ class PlantGrowthLogic(
     
     fun hasVisibleGrowth(): Boolean {
         return growthEngine.hasVisibleGrowth()
+    }
+    
+    fun getBranches(): List<Branch> {
+        return growthEngine.getBranches()
     }
 }
