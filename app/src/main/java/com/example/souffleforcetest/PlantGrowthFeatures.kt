@@ -4,7 +4,7 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.068f // 15% moins de souffle (même que PlantGrowthEngine)
+    private val forceThreshold = 0.055f // Plus sensible (même que PlantGrowthEngine)
     private val growthRate = 174.6f
     private val maxLeafWidth = 75f
     private val maxLeafLength = 200f
@@ -34,9 +34,9 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                     }
                     
                     if (!feuille.maxLargeurAtteinte) {
-                        // Feuilles graduées : plus grosses en bas, plus petites en haut
+                        // Feuilles graduées : PLUS DE CONTRASTE entre haut et bas
                         val heightRatio = bourgeon.y / 2400f // Position relative sur l'écran
-                        val sizeMultiplier = 1.5f - (heightRatio * 0.8f) // 1.5x en bas, 0.7x en haut
+                        val sizeMultiplier = 2.2f - (heightRatio * 1.9f) // 2.2x en bas, 0.3x en haut (contraste extrême)
                         
                         val lengthGrowth = growthIncrement * 1.0f * 1.3f * sizeMultiplier
                         val widthGrowth = growthIncrement * 0.35f * sizeMultiplier
@@ -51,9 +51,9 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                         
                         feuille.longueur = kotlin.math.min(feuille.longueur, 100f)
                     } else {
-                        // Même logique de taille graduée pour la phase finale
+                        // Même logique de taille graduée ACCENTUÉE pour la phase finale
                         val heightRatio = bourgeon.y / 2400f
-                        val sizeMultiplier = 1.5f - (heightRatio * 0.8f)
+                        val sizeMultiplier = 2.2f - (heightRatio * 1.9f) // Même contraste extrême
                         
                         val lengthGrowth = growthIncrement * 1.4f * 1.3f * sizeMultiplier
                         feuille.longueur += lengthGrowth
