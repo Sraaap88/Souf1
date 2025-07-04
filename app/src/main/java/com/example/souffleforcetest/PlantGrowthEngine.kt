@@ -30,7 +30,7 @@ class PlantGrowthEngine(
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.08f
+    private val forceThreshold = 0.068f // 15% moins de souffle (0.08f * 0.85 = 0.068f)
     private val growthRate = 174.6f
     private val baseStrokeWidth = 9.6f
     private val maxStrokeWidth = 25.6f
@@ -128,9 +128,14 @@ class PlantGrowthEngine(
     }
     
     private fun createNewBranchFromBase() {
-        // MARGUERITE : Ramification uniquement depuis la base
+        // MARGUERITE : Ramification PROGRESSIVE depuis la base (pas dès le début)
         val baseBranches = branches.filter { it.isFromBase }
         if (baseBranches.size >= 3) return // Maximum 3 branches
+        
+        // NOUVEAU : Vérifier que la branche principale a assez poussé avant de créer une nouvelle
+        val mainBranchHeight = mainBranch?.currentHeight ?: 0f
+        if (mainBranchHeight < 100f && baseBranches.size >= 1) return // Attendre que la principale pousse
+        if (mainBranchHeight < 200f && baseBranches.size >= 2) return // Attendre encore plus pour la 3ème
         
         // Créer une nouvelle branche depuis la base avec angle varié
         val branchAngle = when (baseBranches.size) {
