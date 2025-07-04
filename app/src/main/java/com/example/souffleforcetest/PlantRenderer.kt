@@ -98,7 +98,7 @@ class PlantRenderer(private val context: Context) {
                 // Orientation 3D basée sur la position
                 val leafIndex = feuille.hashCode() % 1000
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
-                val perspectiveFactor = kotlin.math.cos(kotlin.math.toRadians(tiltAngle.toDouble())).toFloat()
+                val perspectiveFactor = kotlin.math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
                 // Calcul de la taille avec perspective
                 val displayWidth = feuille.largeur * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
@@ -270,8 +270,8 @@ class PlantRenderer(private val context: Context) {
                 for (i in 0 until stamenCount) {
                     val stamenAngle = i * 360f / stamenCount + time * 10f
                     val stamenRadius = 6f + progressRatio * 2f
-                    val stamenX = kotlin.math.cos(kotlin.math.toRadians(stamenAngle.toDouble())).toFloat() * stamenRadius
-                    val stamenY = kotlin.math.sin(kotlin.math.toRadians(stamenAngle.toDouble())).toFloat() * stamenRadius
+                    val stamenX = kotlin.math.cos(Math.toRadians(stamenAngle.toDouble())).toFloat() * stamenRadius
+                    val stamenY = kotlin.math.sin(Math.toRadians(stamenAngle.toDouble())).toFloat() * stamenRadius
                     canvas.drawCircle(stamenX, stamenY, 1.5f, centerPaint)
                 }
                 
