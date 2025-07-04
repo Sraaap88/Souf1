@@ -14,8 +14,8 @@ class PlantGrowthLogic(
     
     // ==================== COMPOSANTS ====================
     
-    private val growthEngine = PlantGrowthEngine(screenWidth, screenHeight, currentPlantType)
-    private val growthFeatures = PlantGrowthFeatures(growthEngine, screenWidth, screenHeight, currentPlantType)
+    private val growthEngine = PlantGrowthEngine(screenWidth, screenHeight)
+    private val growthFeatures = PlantGrowthFeatures(growthEngine, screenWidth, screenHeight)
     
     // ==================== PROPRIÉTÉS PUBLIQUES (pour compatibilité) ====================
     
