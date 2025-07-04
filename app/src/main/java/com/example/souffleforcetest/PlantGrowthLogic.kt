@@ -54,13 +54,16 @@ class PlantGrowthLogic(
             if (branch.tracedPath.isNotEmpty()) {
                 renderer.drawGrowthPoint(canvas, branch.tracedPath.last(), time)
             }
-            
-            // Dessiner la fleur de cette branche
-            renderer.drawRealisticFlower(canvas, branch.fleur, time)
         }
         
+        // Dessiner les bourgeons et feuilles AVANT les fleurs
         renderer.drawAttachmentPoints(canvas, bourgeons, time)
         renderer.drawRealistic3DLeaves(canvas, feuilles, time)
+        
+        // Dessiner les fleurs EN DERNIER (premier plan)
+        for (branch in growthEngine.getBranches()) {
+            renderer.drawRealisticFlower(canvas, branch.fleur, time)
+        }
     }
     
     fun resetPlant() {
