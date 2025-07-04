@@ -83,9 +83,12 @@ class OrganicLineView @JvmOverloads constructor(
     private val waveThreshold = 0.03f
     private val maxWaveAmplitude = 15f
     
-    // NOUVEAUX paramètres pour feuilles réalistes
-    private val maxLeafWidth = 45f  // Largeur max avant de plafonner
-    private val maxLeafLength = 120f // Longueur max finale
+    // NOUVEAUX paramètres pour feuilles réalistes 10x plus grandes
+    private val maxLeafWidth = 450f  // Largeur max 10x plus grande
+    private val maxLeafLength = 1200f // Longueur max 10x plus grande
+    
+    // Compteur pour alternance des feuilles
+    private var leafSideCounter = 0
     
     init {
         try {
@@ -198,7 +201,7 @@ class OrganicLineView @JvmOverloads constructor(
         invalidate()
     }
     
-    // LOGIQUE DE CROISSANCE - MODIFIABLE
+    // LOGIQUE DE CROISSANCE avec comportement naturel amélioré
     private fun growStem(force: Float) {
         previousForce = currentForce
         currentForce = force
@@ -219,13 +222,14 @@ class OrganicLineView @JvmOverloads constructor(
                 var waveAmp = 0f
                 var curvature = 0f
                 
+                // Réponse plus naturelle au souffle
                 if (rhythmIntensity > 0.01f && rhythmIntensity < abruptThreshold) {
-                    waveFreq = (rhythmIntensity * 15f) + 1f
-                    waveAmp = (rhythmIntensity * 200f).coerceAtMost(maxWaveAmplitude)
+                    waveFreq = (rhythmIntensity * 12f) + 1f
+                    waveAmp = (rhythmIntensity * 150f).coerceAtMost(maxWaveAmplitude)
                 }
                 
-                if (rhythmIntensity > 0.05f) {
-                    curvature = (rhythmIntensity * 40f).coerceAtMost(20f)
+                if (rhythmIntensity > 0.04f) {
+                    curvature = (rhythmIntensity * 30f).coerceAtMost(15f)
                     if ((0..1).random() == 0) curvature = -curvature
                 }
                 
@@ -236,19 +240,34 @@ class OrganicLineView @JvmOverloads constructor(
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
         if (rhythmIntensity > abruptThreshold) {
-            val displacement = if ((0..1).random() == 0) 90f else -90f
+            // Déplacements plus naturels et progressifs
+            val displacement = if ((0..1).random() == 0) {
+                75f + rhythmIntensity * 100f
+            } else {
+                -(75f + rhythmIntensity * 100f)
+            }
             offsetX += displacement
             
-            if (currentHeight > 80f && tracedPath.size > 3) {
-                val recentPoint = tracedPath[tracedPath.size - (2..4).random()]
-                val attachX = recentPoint.x + ((-25..25).random()).toFloat()
-                val attachY = recentPoint.y + ((-15..15).random()).toFloat()
+            if (currentHeight > 60f && tracedPath.size > 3) {
+                val recentPoint = tracedPath[tracedPath.size - (2..5).random()]
+                val attachY = recentPoint.y + ((-20..20).random()).toFloat()
                 
-                // Bourgeons directement sur la tige
-                bourgeons.add(Bourgeon(recentPoint.x, attachY, 3f))
+                // AMÉLIORATION : Alternance systématique droite/gauche pour répartition naturelle
+                leafSideCounter++
+                val isRightSide = leafSideCounter % 2 == 0
+                
+                // Espacement plus naturel selon le côté
+                val lateralOffset = if (isRightSide) {
+                    (15..30).random().toFloat()
+                } else {
+                    -(15..30).random().toFloat()
+                }
+                
+                val bourgeonnX = recentPoint.x + lateralOffset
+                bourgeons.add(Bourgeon(bourgeonnX, attachY, 3f))
             }
         } else if (rhythmIntensity > 0.02f) {
-            val thicknessIncrease = rhythmIntensity * 50f
+            val thicknessIncrease = rhythmIntensity * 40f
             currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
         }
         
@@ -256,6 +275,7 @@ class OrganicLineView @JvmOverloads constructor(
             currentStrokeWidth = kotlin.math.max(baseStrokeWidth, currentStrokeWidth - strokeDecayRate)
         }
         
+        // Retour au centre plus progressif et naturel
         offsetX *= centeringRate
         
         if (!showResetButton && currentHeight > 30f) {
@@ -263,11 +283,11 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // NOUVELLE logique de croissance des feuilles en 2 phases
+    // NOUVELLE logique de croissance des feuilles en 2 phases avec meilleure répartition
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.06f
+            val growthIncrement = adjustedForce * growthRate * 0.08f
             
             for (bourgeon in bourgeons) {
                 if (bourgeon.taille > 2f) {
@@ -281,20 +301,28 @@ class OrganicLineView @JvmOverloads constructor(
                         
                         val isRightSide = bourgeon.x > stemX
                         
-                        val angleToStem = if (isRightSide) {
-                            -30f + ((-20..20).random()).toFloat()
+                        // AMÉLIORATION : Angles plus naturels et variés
+                        val baseAngle = if (isRightSide) {
+                            -25f  // Angle de base pour droite
                         } else {
-                            210f + ((-20..20).random()).toFloat()
+                            205f  // Angle de base pour gauche
                         }
                         
-                        feuille = Feuille(bourgeon, 0f, 0f, angleToStem, false)
+                        // Variation naturelle selon la hauteur
+                        val heightFactor = bourgeon.y / height.toFloat()
+                        val heightVariation = (heightFactor - 0.5f) * 30f  // -15° à +15° selon hauteur
+                        val randomVariation = ((-15..15).random()).toFloat()
+                        
+                        val finalAngle = baseAngle + heightVariation + randomVariation
+                        
+                        feuille = Feuille(bourgeon, 0f, 0f, finalAngle, false)
                         feuilles.add(feuille)
                     }
                     
                     // PHASE 1 : Croissance largeur ET longueur jusqu'à largeur max
                     if (!feuille.maxLargeurAtteinte) {
-                        val lengthGrowth = growthIncrement * 0.25f
-                        val widthGrowth = growthIncrement * 0.3f  // Croît plus vite en largeur
+                        val lengthGrowth = growthIncrement * 0.3f
+                        val widthGrowth = growthIncrement * 0.35f  // Croît un peu plus vite en largeur
                         
                         feuille.longueur += lengthGrowth
                         feuille.largeur += widthGrowth
@@ -305,12 +333,12 @@ class OrganicLineView @JvmOverloads constructor(
                             feuille.maxLargeurAtteinte = true
                         }
                         
-                        // Limites pour phase 1
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 60f)
+                        // Limites pour phase 1 (10x plus grandes)
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 600f)
                     } 
                     // PHASE 2 : Seulement croissance en longueur
                     else {
-                        val lengthGrowth = growthIncrement * 0.4f  // Plus rapide maintenant
+                        val lengthGrowth = growthIncrement * 0.5f  // Plus rapide maintenant
                         feuille.longueur += lengthGrowth
                         feuille.longueur = kotlin.math.min(feuille.longueur, maxLeafLength)
                         // Largeur reste fixe à maxLeafWidth
@@ -432,6 +460,7 @@ class OrganicLineView @JvmOverloads constructor(
         currentStrokeWidth = baseStrokeWidth
         offsetX = 0f
         showResetButton = false
+        leafSideCounter = 0  // Reset du compteur d'alternance
         
         lightState = LightState.YELLOW
         stateStartTime = System.currentTimeMillis()
