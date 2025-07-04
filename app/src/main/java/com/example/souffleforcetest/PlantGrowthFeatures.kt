@@ -4,8 +4,8 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.055f // Plus sensible (même que PlantGrowthEngine)
-    private val growthRate = 174.6f
+    private val forceThreshold = 0.035f // Plus sensible (0.055f → 0.035f)
+    private val growthRate = 220f // Plus rapide (174.6f → 220f)
     private val maxLeafWidth = 75f
     private val maxLeafLength = 200f
     private val baseY = 2300f // Approximation de la base (screenHeight - 100f)
