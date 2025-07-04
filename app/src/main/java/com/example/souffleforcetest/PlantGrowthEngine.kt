@@ -7,8 +7,6 @@ class PlantGrowthEngine(
     
     // ==================== VARIABLES DE CROISSANCE ====================
     
-    private val currentPlantType = PlantType.MARGUERITE
-    
     private var currentForce = 0.0f
     private var previousForce = 0.0f
     private var currentHeight = 0f
@@ -18,7 +16,7 @@ class PlantGrowthEngine(
     private var baseX = 0f
     private var baseY = 0f
     
-    // Collections de la plante (publiques pour accès direct)
+    // Collections de la plante
     val tracedPath = mutableListOf<TracePoint>()
     val bourgeons = mutableListOf<Bourgeon>()
     val feuilles = mutableListOf<Feuille>()
@@ -56,10 +54,28 @@ class PlantGrowthEngine(
         }
     }
     
-    fun updateForce(force: Float, lightState: String) {
-        when (lightState) {
-            "GREEN_GROW" -> growAllBranches(force)
-            // Les feuilles et fleurs sont gérées par PlantGrowthFeatures
+    fun growAllBranches(force: Float) {
+        val rhythmIntensity = kotlin.math.abs(force - previousForce)
+        previousForce = force
+        
+        // Créer nouvelle branche si bruit saccadé (MARGUERITE: seulement depuis la base)
+        if (rhythmIntensity > abruptThreshold && branches.isNotEmpty()) {
+            createNewBranchFromBase()
+        }
+        
+        // Faire pousser toutes les branches actives
+        for (branch in branches.filter { it.isActive }) {
+            growBranch(branch, force, rhythmIntensity)
+        }
+        
+        // Mettre à jour la compatibilité (branche principale)
+        mainBranch?.let { main ->
+            if (main.tracedPath.isNotEmpty()) {
+                tracedPath.clear()
+                tracedPath.addAll(main.tracedPath)
+                currentHeight = main.currentHeight
+                fleur = main.fleur
+            }
         }
     }
     
@@ -92,7 +108,7 @@ class PlantGrowthEngine(
         return branches.filter { it.isActive }
     }
     
-    // ==================== CROISSANCE DES BRANCHES ====================
+    // ==================== FONCTIONS PRIVÉES ====================
     
     private fun initializePlant() {
         val initialPoint = TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f)
@@ -111,40 +127,19 @@ class PlantGrowthEngine(
         branches.add(mainBranch!!)
     }
     
-    private fun growAllBranches(force: Float) {
-        val rhythmIntensity = kotlin.math.abs(force - previousForce)
-        previousForce = force
-        
-        if (rhythmIntensity > abruptThreshold && branches.isNotEmpty()) {
-            createNewBranchFromBase()
-        }
-        
-        for (branch in branches.filter { it.isActive }) {
-            growBranch(branch, force, rhythmIntensity)
-        }
-        
-        mainBranch?.let { main ->
-            if (main.tracedPath.isNotEmpty()) {
-                tracedPath.clear()
-                tracedPath.addAll(main.tracedPath)
-                currentHeight = main.currentHeight
-                fleur = main.fleur
-            }
-        }
-    }
-    
     private fun createNewBranchFromBase() {
-        if (!currentPlantType.branchingFromBase) return
-        
+        // MARGUERITE : Ramification uniquement depuis la base
         val baseBranches = branches.filter { it.isFromBase }
-        if (baseBranches.size >= currentPlantType.maxBranches) return
+        if (baseBranches.size >= 3) return // Maximum 3 branches
         
+        // Créer une nouvelle branche depuis la base avec angle varié
         val branchAngle = when (baseBranches.size) {
             1 -> if ((0..1).random() == 0) 25f else -25f
             2 -> if (baseBranches.any { it.startPoint.x > baseX }) -35f else 35f
             else -> ((-40..40).random()).toFloat()
         }
         
+        // Position de départ légèrement décalée pour éviter superposition
         val baseOffset = (baseBranches.size * 15f) * if (branchAngle > 0) 1f else -1f
         val startX = baseX + baseOffset.coerceIn(-30f, 30f)
         
@@ -178,6 +173,7 @@ class PlantGrowthEngine(
                 val currentY = lastPoint.y - (branch.currentHeight - previousHeight)
                 var currentX = lastPoint.x + branch.offsetX
                 
+                // Contraintes d'écran avec plus d'espace pour réduire superpositions
                 currentX = currentX.coerceIn(120f, screenWidth - 120f)
                 
                 if (currentX < 180f || currentX > screenWidth - 180f) {
@@ -214,8 +210,9 @@ class PlantGrowthEngine(
             branch.offsetX += displacement
             branch.offsetX = branch.offsetX.coerceIn(-100f, 100f)
             
+            // Créer des bourgeons plus nombreux (pour plus de feuilles)
             if (branch.currentHeight > 30f && branch.tracedPath.size > 6) {
-                // La création de bourgeons sera gérée par PlantGrowthFeatures
+                createRealisticBud(branch)
             }
         }
         
@@ -235,5 +232,58 @@ class PlantGrowthEngine(
         }
     }
     
-    // Suite dans le prochain fichier...
+    // Méthode améliorée pour créer plus de bourgeons
+    private fun createRealisticBud(branch: Branch) {
+        val existingBudsOnBranch = bourgeons.count { bourgeon ->
+            branch.tracedPath.any { point ->
+                val distance = kotlin.math.sqrt(
+                    (point.x - bourgeon.x) * (point.x - bourgeon.x) + 
+                    (point.y - bourgeon.y) * (point.y - bourgeon.y)
+                )
+                distance < 50f
+            }
+        }
+        
+        // Plus de bourgeons pour plus de feuilles
+        val maxBudsForBranch = kotlin.math.min(6, (branch.currentHeight / 80f * 1.5f).toInt() + 2)
+        if (existingBudsOnBranch >= maxBudsForBranch) return
+        
+        val minSegmentFromTop = 3
+        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 2, 12)
+        
+        if (maxSegmentFromTop <= minSegmentFromTop) return
+        
+        val segmentIndex = branch.tracedPath.size - (minSegmentFromTop..maxSegmentFromTop).random()
+        val budPoint = branch.tracedPath[segmentIndex]
+        
+        leafSideCounter++
+        val preferredSide = leafSideCounter % 2 == 0
+        
+        val sameHeightBuds = bourgeons.filter { kotlin.math.abs(it.y - budPoint.y) < 25f }
+        val hasRightBud = sameHeightBuds.any { it.x > budPoint.x }
+        val hasLeftBud = sameHeightBuds.any { it.x < budPoint.x }
+        
+        val isRightSide = when {
+            preferredSide && !hasRightBud -> true
+            !preferredSide && !hasLeftBud -> false
+            !hasRightBud -> true
+            !hasLeftBud -> false
+            else -> (0..1).random() == 0
+        }
+        
+        val naturalOffset = if (isRightSide) {
+            (2..6).random().toFloat()
+        } else {
+            -(2..6).random().toFloat()
+        }
+        
+        val verticalJitter = ((-3..3).random()).toFloat()
+        
+        val budX = budPoint.x + naturalOffset
+        val budY = budPoint.y + verticalJitter
+        
+        val clampedBudX = budX.coerceIn(100f, screenWidth - 100f)
+        
+        bourgeons.add(Bourgeon(clampedBudX, budY, 3f))
+    }
 }
