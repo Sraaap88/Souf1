@@ -2,6 +2,21 @@ package com.example.souffleforcetest
 
 import android.graphics.Canvas
 
+// Enum pour les types de plantes
+enum class PlantType(
+    val maxBranches: Int,
+    val branchingFromBase: Boolean,
+    val leafDensity: Float,
+    val leafLengthMultiplier: Float
+) {
+    MARGUERITE(
+        maxBranches = 3, // Maximum 3 branches depuis la base
+        branchingFromBase = true, // Ramification uniquement depuis la base
+        leafDensity = 1.5f, // Plus de feuilles
+        leafLengthMultiplier = 1.3f // Feuilles plus longues
+    )
+}
+
 class PlantGrowthLogic(
     private var screenWidth: Int = 1080,
     private var screenHeight: Int = 2400
@@ -25,7 +40,8 @@ class PlantGrowthLogic(
         var currentStrokeWidth: Float = 0f,
         var fleur: Fleur? = null,
         val maxStrokeWidth: Float = 25.6f,
-        val baseStrokeWidth: Float = 9.6f
+        val baseStrokeWidth: Float = 9.6f,
+        val isFromBase: Boolean = true // Nouvelle propriété
     )
     
     data class Bourgeon(val x: Float, val y: Float, var taille: Float)
@@ -33,6 +49,9 @@ class PlantGrowthLogic(
     data class Fleur(var x: Float, var y: Float, var taille: Float, var petalCount: Int, val sizeMultiplier: Float = 1f)
     
     // ==================== VARIABLES DE CROISSANCE ====================
+    
+    // Type de plante actuel
+    private val currentPlantType = PlantType.MARGUERITE
     
     // Variables de force et croissance
     private var currentForce = 0.0f
@@ -67,9 +86,9 @@ class PlantGrowthLogic(
     private val centeringRate = 0.99f
     private val maxWaveAmplitude = 15f
     
-    // Paramètres des feuilles (réduits de 20% en plus)
-    private val maxLeafWidth = 60f    // 75f * 0.8 = 60f
-    private val maxLeafLength = 160f  // 200f * 0.8 = 160f
+    // Paramètres des feuilles améliorés
+    private val maxLeafWidth = 75f    // Augmenté de 60f à 75f
+    private val maxLeafLength = 200f  // Augmenté de 160f à 200f (plus longues)
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -148,7 +167,8 @@ class PlantGrowthLogic(
             growthMultiplier = 1f,
             currentStrokeWidth = baseStrokeWidth,
             maxStrokeWidth = maxStrokeWidth,
-            baseStrokeWidth = baseStrokeWidth
+            baseStrokeWidth = baseStrokeWidth,
+            isFromBase = true
         )
         branches.add(mainBranch!!)
     }
@@ -157,9 +177,9 @@ class PlantGrowthLogic(
         val rhythmIntensity = kotlin.math.abs(force - previousForce)
         previousForce = force
         
-        // Créer nouvelle branche si bruit saccadé
+        // Créer nouvelle branche si bruit saccadé (MARGUERITE: seulement depuis la base)
         if (rhythmIntensity > abruptThreshold && branches.isNotEmpty()) {
-            createNewBranch()
+            createNewBranchFromBase()
         }
         
         // Faire pousser toutes les branches actives
@@ -178,38 +198,49 @@ class PlantGrowthLogic(
         }
     }
     
-    private fun createNewBranch() {
-        val parentBranch = branches.filter { it.isActive && it.tracedPath.size > 5 }.randomOrNull()
-        parentBranch?.let { parent ->
-            val branchPointIndex = (parent.tracedPath.size * 0.6f).toInt().coerceAtMost(parent.tracedPath.size - 1)
-            val branchPoint = parent.tracedPath[branchPointIndex]
-            
-            val growthVariation = 0.7f + (0..6).random() * 0.1f
-            val branchAngle = (15..25).random().toFloat() * if ((0..1).random() == 0) 1f else -1f
-            val branchOffset = Math.sin(Math.toRadians(branchAngle.toDouble())).toFloat() * 15f
-            
-            val newBaseStroke = parent.baseStrokeWidth * 0.5f
-            val newMaxStroke = parent.maxStrokeWidth * 0.5f
-            
-            val newBranchPoint = TracePoint(
-                branchPoint.x + branchOffset,
-                branchPoint.y,
-                newBaseStroke,
-                0f, 0f, 0f
-            )
-            
-            val newBranch = Branch(
-                id = branchIdCounter++,
-                startPoint = newBranchPoint,
-                tracedPath = mutableListOf(newBranchPoint),
-                growthMultiplier = growthVariation,
-                currentStrokeWidth = newBaseStroke,
-                maxStrokeWidth = newMaxStroke,
-                baseStrokeWidth = newBaseStroke
-            )
-            
-            branches.add(newBranch)
+    private fun createNewBranchFromBase() {
+        // MARGUERITE : Ramification uniquement depuis la base
+        if (!currentPlantType.branchingFromBase) return
+        
+        // Limiter le nombre de branches selon le type de plante
+        val baseBranches = branches.filter { it.isFromBase }
+        if (baseBranches.size >= currentPlantType.maxBranches) return
+        
+        // Créer une nouvelle branche depuis la base avec angle varié
+        val branchAngle = when (baseBranches.size) {
+            1 -> if ((0..1).random() == 0) 25f else -25f  // Première branche secondaire
+            2 -> if (baseBranches.any { it.startPoint.x > baseX }) -35f else 35f  // Équilibrer
+            else -> ((-40..40).random()).toFloat()  // Angle aléatoire pour les suivantes
         }
+        
+        // Position de départ légèrement décalée pour éviter superposition
+        val baseOffset = (baseBranches.size * 15f) * if (branchAngle > 0) 1f else -1f
+        val startX = baseX + baseOffset.coerceIn(-30f, 30f)
+        
+        val newBranchPoint = TracePoint(
+            startX,
+            baseY,
+            baseStrokeWidth * 0.7f, // Branches secondaires plus fines
+            0f, 0f, 0f
+        )
+        
+        val growthVariation = 0.6f + (0..4).random() * 0.15f // Croissance variée
+        
+        val newBranch = Branch(
+            id = branchIdCounter++,
+            startPoint = newBranchPoint,
+            tracedPath = mutableListOf(newBranchPoint),
+            growthMultiplier = growthVariation,
+            currentStrokeWidth = baseStrokeWidth * 0.7f,
+            maxStrokeWidth = maxStrokeWidth * 0.7f,
+            baseStrokeWidth = baseStrokeWidth * 0.7f,
+            isFromBase = true
+        )
+        
+        // Appliquer l'angle initial pour la direction de croissance
+        newBranch.offsetX = kotlin.math.sin(Math.toRadians(branchAngle.toDouble())).toFloat() * 20f
+        
+        branches.add(newBranch)
     }
     
     private fun growBranch(branch: Branch, force: Float, rhythmIntensity: Float) {
@@ -224,12 +255,12 @@ class PlantGrowthLogic(
                 val currentY = lastPoint.y - (branch.currentHeight - previousHeight)
                 var currentX = lastPoint.x + branch.offsetX
                 
-                // Contraintes d'écran strictes
-                currentX = currentX.coerceIn(100f, screenWidth - 100f)
+                // Contraintes d'écran avec plus d'espace pour réduire superpositions
+                currentX = currentX.coerceIn(120f, screenWidth - 120f)
                 
-                if (currentX < 150f || currentX > screenWidth - 150f) {
+                if (currentX < 180f || currentX > screenWidth - 180f) {
                     val centerX = screenWidth / 2f
-                    val pullForce = 0.1f
+                    val pullForce = 0.15f // Force de recentrage augmentée
                     currentX = currentX + (centerX - currentX) * pullForce
                 }
                 
@@ -239,11 +270,11 @@ class PlantGrowthLogic(
                 
                 if (rhythmIntensity > 0.01f && rhythmIntensity < abruptThreshold) {
                     waveFreq = (rhythmIntensity * 8f * branch.growthMultiplier) + 1f
-                    waveAmp = (rhythmIntensity * 80f * branch.growthMultiplier).coerceAtMost(maxWaveAmplitude)
+                    waveAmp = (rhythmIntensity * 60f * branch.growthMultiplier).coerceAtMost(maxWaveAmplitude) // Réduit
                 }
                 
                 if (rhythmIntensity > 0.04f) {
-                    curvature = (rhythmIntensity * 20f * branch.growthMultiplier).coerceAtMost(10f)
+                    curvature = (rhythmIntensity * 15f * branch.growthMultiplier).coerceAtMost(8f) // Réduit
                     if ((0..1).random() == 0) curvature = -curvature
                 }
                 
@@ -253,16 +284,17 @@ class PlantGrowthLogic(
         }
         
         if (rhythmIntensity > abruptThreshold) {
+            // Réduction des déplacements pour moins de superposition
             val displacement = if ((0..1).random() == 0) {
-                (40f + rhythmIntensity * 50f) * branch.growthMultiplier
+                (25f + rhythmIntensity * 35f) * branch.growthMultiplier // Réduit
             } else {
-                -(40f + rhythmIntensity * 50f) * branch.growthMultiplier
+                -(25f + rhythmIntensity * 35f) * branch.growthMultiplier // Réduit
             }
             branch.offsetX += displacement
-            branch.offsetX = branch.offsetX.coerceIn(-150f, 150f)
+            branch.offsetX = branch.offsetX.coerceIn(-100f, 100f) // Plage réduite
             
-            // NOUVEAU : Créer des bourgeons de façon plus réaliste
-            if (branch.currentHeight > 40f && branch.tracedPath.size > 8) {
+            // Créer des bourgeons plus nombreux (pour plus de feuilles)
+            if (branch.currentHeight > 30f && branch.tracedPath.size > 6) { // Seuil réduit
                 createRealisticBud(branch)
             }
         }
@@ -276,9 +308,9 @@ class PlantGrowthLogic(
             branch.currentStrokeWidth = kotlin.math.max(branch.baseStrokeWidth, branch.currentStrokeWidth - strokeDecayRate)
         }
         
-        branch.offsetX *= 0.95f
+        branch.offsetX *= 0.96f // Légèrement plus de rétention pour éviter oscillations
         
-        if (branch.currentHeight < 50f && branches.size > 3) {
+        if (branch.currentHeight < 40f && branches.size > 4) { // Seuil légèrement réduit
             branch.isActive = false
         }
     }
@@ -320,8 +352,8 @@ class PlantGrowthLogic(
                     }
                     
                     if (!feuille.maxLargeurAtteinte) {
-                        val lengthGrowth = growthIncrement * 0.3f
-                        val widthGrowth = growthIncrement * 0.35f
+                        val lengthGrowth = growthIncrement * 0.4f * currentPlantType.leafLengthMultiplier
+                        val widthGrowth = growthIncrement * 0.45f
                         
                         feuille.longueur += lengthGrowth
                         feuille.largeur += widthGrowth
@@ -331,9 +363,9 @@ class PlantGrowthLogic(
                             feuille.maxLargeurAtteinte = true
                         }
                         
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 80f) // 100f * 0.8 = 80f
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 100f)
                     } else {
-                        val lengthGrowth = growthIncrement * 0.5f
+                        val lengthGrowth = growthIncrement * 0.6f * currentPlantType.leafLengthMultiplier
                         feuille.longueur += lengthGrowth
                         feuille.longueur = kotlin.math.min(feuille.longueur, maxLeafLength)
                     }
@@ -369,65 +401,62 @@ class PlantGrowthLogic(
         }
     }
     
-    // NOUVELLE méthode réaliste pour créer des bourgeons
+    // Méthode améliorée pour créer plus de bourgeons
     private fun createRealisticBud(branch: Branch) {
-        // Ne pas créer trop de bourgeons sur une même branche
+        // Plus de bourgeons selon la densité du type de plante
         val existingBudsOnBranch = bourgeons.count { bourgeon ->
             branch.tracedPath.any { point ->
                 val distance = kotlin.math.sqrt(
                     (point.x - bourgeon.x) * (point.x - bourgeon.x) + 
                     (point.y - bourgeon.y) * (point.y - bourgeon.y)
                 )
-                distance < 50f // Bourgeon appartient à cette branche si < 50px
+                distance < 50f
             }
         }
         
-        // Maximum 3-4 bourgeons par branche selon sa taille
-        val maxBudsForBranch = kotlin.math.min(4, (branch.currentHeight / 100f).toInt() + 1)
+        // Plus de bourgeons pour plus de feuilles
+        val maxBudsForBranch = kotlin.math.min(6, (branch.currentHeight / 80f * currentPlantType.leafDensity).toInt() + 2)
         if (existingBudsOnBranch >= maxBudsForBranch) return
         
-        // Placement le long de la branche avec espacement naturel
-        val minSegmentFromTop = 5 // Pas trop près du sommet
-        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 3, 15) // Pas trop près de la base
+        // Placement plus fréquent le long de la branche
+        val minSegmentFromTop = 3 // Plus près du sommet
+        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 2, 12)
         
         if (maxSegmentFromTop <= minSegmentFromTop) return
         
         val segmentIndex = branch.tracedPath.size - (minSegmentFromTop..maxSegmentFromTop).random()
         val budPoint = branch.tracedPath[segmentIndex]
         
-        // Alternance naturelle mais pas systématique
+        // Alternance mais avec plus de variation
         leafSideCounter++
         val preferredSide = leafSideCounter % 2 == 0
         
-        // Vérifier s'il n'y a pas déjà un bourgeon proche de ce côté
-        val sameHeightBuds = bourgeons.filter { kotlin.math.abs(it.y - budPoint.y) < 30f }
+        // Espacement vertical réduit pour plus de densité
+        val sameHeightBuds = bourgeons.filter { kotlin.math.abs(it.y - budPoint.y) < 25f } // Réduit de 30f à 25f
         val hasRightBud = sameHeightBuds.any { it.x > budPoint.x }
         val hasLeftBud = sameHeightBuds.any { it.x < budPoint.x }
         
-        // Choisir le côté selon la préférence et la disponibilité
         val isRightSide = when {
             preferredSide && !hasRightBud -> true
             !preferredSide && !hasLeftBud -> false
             !hasRightBud -> true
             !hasLeftBud -> false
-            else -> (0..1).random() == 0 // Aléatoire si les deux côtés occupés
+            else -> (0..1).random() == 0
         }
         
-        // Position plus naturelle : directement sur la tige mais légèrement décalée
+        // Position avec moins de décalage pour réduire superpositions
         val naturalOffset = if (isRightSide) {
-            (3..8).random().toFloat()
+            (2..6).random().toFloat() // Réduit
         } else {
-            -(3..8).random().toFloat()
+            -(2..6).random().toFloat() // Réduit
         }
         
-        // Petit décalage vertical pour plus de naturel
-        val verticalJitter = ((-5..5).random()).toFloat()
+        val verticalJitter = ((-3..3).random()).toFloat() // Réduit
         
         val budX = budPoint.x + naturalOffset
         val budY = budPoint.y + verticalJitter
         
-        // S'assurer que le bourgeon reste dans l'écran
-        val clampedBudX = budX.coerceIn(80f, screenWidth - 80f)
+        val clampedBudX = budX.coerceIn(100f, screenWidth - 100f)
         
         bourgeons.add(Bourgeon(clampedBudX, budY, 3f))
     }
