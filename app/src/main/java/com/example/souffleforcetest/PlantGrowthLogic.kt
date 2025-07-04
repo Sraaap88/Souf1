@@ -53,8 +53,10 @@ class PlantGrowthLogic(
     }
     
     fun updateForce(force: Float, lightState: String) {
+        println("*** LIGHT STATE: $lightState ***")
         when (lightState) {
             "GREEN_GROW" -> {
+                println("*** GROWING STEMS ***")
                 growthEngine.updateForce(force, lightState)
                 // Créer des bourgeons pendant la croissance
                 createBudsForActiveBranches(force)
