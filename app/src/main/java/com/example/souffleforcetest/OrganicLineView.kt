@@ -18,7 +18,7 @@ class OrganicLineView @JvmOverloads constructor(
     // Renderer pour le dessin
     private val plantRenderer = PlantRenderer(context)
     
-    // Chargement des bitmaps
+    // Chargement des bitmaps (gardés pour compatibilité mais pas utilisés)
     private lateinit var stemBitmap: Bitmap
     private lateinit var leafBitmap: Bitmap
     private lateinit var flowerBitmap: Bitmap
@@ -64,7 +64,7 @@ class OrganicLineView @JvmOverloads constructor(
     )
     
     data class Bourgeon(val x: Float, val y: Float, var taille: Float)
-    data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float)
+    data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float, var maxLargeurAtteinte: Boolean = false)
     data class Fleur(var x: Float, var y: Float, var taille: Float, var petalCount: Int)
     
     private val tracedPath = mutableListOf<TracePoint>()
@@ -75,13 +75,17 @@ class OrganicLineView @JvmOverloads constructor(
     // PARAMÈTRES DE CROISSANCE - MODIFIABLES
     private val forceThreshold = 0.08f
     private val growthRate = 174.6f
-    private val baseStrokeWidth = 9.6f // Tige 20% plus mince
-    private val maxStrokeWidth = 25.6f // Tige 20% plus mince
+    private val baseStrokeWidth = 9.6f
+    private val maxStrokeWidth = 25.6f
     private val strokeDecayRate = 0.2f
     private val abruptThreshold = 0.15f
-    private val centeringRate = 0.99f // Retour 2x moins rapide
+    private val centeringRate = 0.99f
     private val waveThreshold = 0.03f
     private val maxWaveAmplitude = 15f
+    
+    // NOUVEAUX paramètres pour feuilles réalistes
+    private val maxLeafWidth = 45f  // Largeur max avant de plafonner
+    private val maxLeafLength = 120f // Longueur max finale
     
     init {
         try {
@@ -232,7 +236,6 @@ class OrganicLineView @JvmOverloads constructor(
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
         if (rhythmIntensity > abruptThreshold) {
-            // Déplacements plus forts (coups de vent)
             val displacement = if ((0..1).random() == 0) 90f else -90f
             offsetX += displacement
             
@@ -260,11 +263,11 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // AMÉLIORÉ : Feuilles encore plus longues
+    // NOUVELLE logique de croissance des feuilles en 2 phases
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.05f
+            val growthIncrement = adjustedForce * growthRate * 0.06f
             
             for (bourgeon in bourgeons) {
                 if (bourgeon.taille > 2f) {
@@ -284,25 +287,33 @@ class OrganicLineView @JvmOverloads constructor(
                             210f + ((-20..20).random()).toFloat()
                         }
                         
-                        feuille = Feuille(bourgeon, 0f, 0f, angleToStem)
+                        feuille = Feuille(bourgeon, 0f, 0f, angleToStem, false)
                         feuilles.add(feuille)
                     }
                     
-                    val lengthGrowth = growthIncrement * 0.2f
-                    val widthGrowth = growthIncrement * 0.15f
-                    
-                    feuille.longueur += lengthGrowth
-                    feuille.largeur += widthGrowth
-                    
-                    if (feuille.longueur >= 120f) {
-                        feuille.longueur += lengthGrowth * 0.4f
-                        feuille.largeur += widthGrowth * 0.8f
-                        // Limites encore plus élevées pour feuilles plus longues
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 650f) // Encore plus long
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 280f)   // Plus large aussi
-                    } else {
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 200f) // Augmenté
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 130f)   // Augmenté
+                    // PHASE 1 : Croissance largeur ET longueur jusqu'à largeur max
+                    if (!feuille.maxLargeurAtteinte) {
+                        val lengthGrowth = growthIncrement * 0.25f
+                        val widthGrowth = growthIncrement * 0.3f  // Croît plus vite en largeur
+                        
+                        feuille.longueur += lengthGrowth
+                        feuille.largeur += widthGrowth
+                        
+                        // Vérifier si largeur max atteinte
+                        if (feuille.largeur >= maxLeafWidth) {
+                            feuille.largeur = maxLeafWidth
+                            feuille.maxLargeurAtteinte = true
+                        }
+                        
+                        // Limites pour phase 1
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 60f)
+                    } 
+                    // PHASE 2 : Seulement croissance en longueur
+                    else {
+                        val lengthGrowth = growthIncrement * 0.4f  // Plus rapide maintenant
+                        feuille.longueur += lengthGrowth
+                        feuille.longueur = kotlin.math.min(feuille.longueur, maxLeafLength)
+                        // Largeur reste fixe à maxLeafWidth
                     }
                 }
             }
@@ -317,7 +328,7 @@ class OrganicLineView @JvmOverloads constructor(
             if (tracedPath.isNotEmpty()) {
                 val topPoint = tracedPath.last()
                 if (fleur == null) {
-                    fleur = Fleur(topPoint.x, topPoint.y, 0f, 5)
+                    fleur = Fleur(topPoint.x, topPoint.y, 0f, 6)
                 }
                 fleur?.let {
                     it.taille += growthIncrement * 0.15f
@@ -375,11 +386,8 @@ class OrganicLineView @JvmOverloads constructor(
         
         val time = System.currentTimeMillis() * 0.002f
         
-        // Tige naturelle
+        // Tige réaliste
         plantRenderer.drawRealisticStem(canvas, tracedPath, time, baseStrokeWidth, maxStrokeWidth)
-        
-        // NOUVEAU : Ajouter les petits pics aléatoires
-        plantRenderer.drawStemSpikes(canvas, tracedPath, time)
         
         if (tracedPath.isNotEmpty()) {
             plantRenderer.drawGrowthPoint(canvas, tracedPath.last(), time)
@@ -387,13 +395,11 @@ class OrganicLineView @JvmOverloads constructor(
         
         plantRenderer.drawAttachmentPoints(canvas, bourgeons, time)
         
-        if (::leafBitmap.isInitialized) {
-            plantRenderer.drawLeaves(canvas, feuilles, leafBitmap, time)
-        }
+        // Feuilles 3D réalistes (géométriques)
+        plantRenderer.drawRealistic3DLeaves(canvas, feuilles, time)
         
-        if (::flowerBitmap.isInitialized) {
-            plantRenderer.drawFlower(canvas, fleur, flowerBitmap, time)
-        }
+        // Fleur géométrique réaliste
+        plantRenderer.drawRealisticFlower(canvas, fleur, time)
         
         drawTrafficLight(canvas)
     }
