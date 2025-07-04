@@ -261,12 +261,12 @@ class PlantGrowthEngine(
             }
         }
         
-        // Quantité de bourgeons PROPORTIONNELLE à la hauteur de cette branche
-        val maxBudsForBranch = kotlin.math.min(15, (branch.currentHeight / 60f).toInt() + 2) // Proportionnel à la hauteur
+        // Plus de bourgeons pour 25% plus de feuilles (version qui marchait)
+        val maxBudsForBranch = kotlin.math.min(8, (branch.currentHeight / 64f * 1.875f).toInt() + 3)
         if (existingBudsOnBranch >= maxBudsForBranch) return
         
-        val minSegmentFromTop = 4 // Arrêter les feuilles avant les derniers 20% (1 → 4)
-        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 2, 25) // Plus large pour beaucoup plus de feuilles
+        val minSegmentFromTop = 2 // Version qui marchait
+        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 1, 15)
         
         if (maxSegmentFromTop <= minSegmentFromTop) return
         
