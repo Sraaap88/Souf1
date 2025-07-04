@@ -210,8 +210,8 @@ class PlantGrowthEngine(
             branch.offsetX += displacement
             branch.offsetX = branch.offsetX.coerceIn(-100f, 100f)
             
-            // Créer des bourgeons plus nombreux (pour plus de feuilles)
-            if (branch.currentHeight > 30f && branch.tracedPath.size > 6) {
+            // Créer des bourgeons plus nombreux et plus haut (20% plus haut sur la tige)
+            if (branch.currentHeight > 24f && branch.tracedPath.size > 5) { // 30f * 0.8 = 24f (20% plus haut)
                 createRealisticBud(branch)
             }
         }
@@ -244,12 +244,12 @@ class PlantGrowthEngine(
             }
         }
         
-        // Plus de bourgeons pour plus de feuilles
-        val maxBudsForBranch = kotlin.math.min(6, (branch.currentHeight / 80f * 1.5f).toInt() + 2)
+        // Plus de bourgeons pour 25% plus de feuilles
+        val maxBudsForBranch = kotlin.math.min(8, (branch.currentHeight / 64f * 1.875f).toInt() + 3) // 25% plus
         if (existingBudsOnBranch >= maxBudsForBranch) return
         
-        val minSegmentFromTop = 3
-        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 2, 12)
+        val minSegmentFromTop = 2 // Plus près du sommet pour pousser plus haut
+        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 1, 15) // Plus large pour plus de feuilles
         
         if (maxSegmentFromTop <= minSegmentFromTop) return
         
