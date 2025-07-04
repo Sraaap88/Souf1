@@ -254,8 +254,8 @@ class PlantRenderer(private val context: Context) {
                 val progressRatio = (flower.taille / 175f).coerceAtMost(1f)
                 val petalCount = 14 // Marguerite: 12-16 pétales
                 
-                // FLEURS 25% plus grandes encore
-                val sizeMultiplier = 6.5f // 25% plus grandes (5.2f * 1.25 = 6.5f)
+                // FLEURS 15% plus grandes encore
+                val sizeMultiplier = 7.5f // 15% plus grandes (6.5f * 1.15 = 7.5f)
                 val petalLength = (20f + progressRatio * 50f) * sizeMultiplier * flowerPulse
                 val petalWidth = (6f + progressRatio * 12f) * sizeMultiplier * flowerPulse
                 
