@@ -101,16 +101,16 @@ class PlantRenderer(private val context: Context) {
                     )
                 }
                 
-                // NOUVEAU : Texture velue (petits poils)
-                if (i % 2 == 0) { // Tous les 2 points pour éviter la surcharge
-                    stemPaint.strokeWidth = 1.5f
-                    stemPaint.color = android.graphics.Color.rgb(baseGreen + 15, 89, baseGreen + 15)
+                // NOUVEAU : Texture velue (petits poils) - PLUS VISIBLES
+                if (i % 1 == 0) { // Sur chaque point
+                    stemPaint.strokeWidth = 3f // Plus épais
+                    stemPaint.color = android.graphics.Color.rgb(baseGreen + 25, 99, baseGreen + 25)
                     
-                    for (j in 0..6) {
-                        val hairAngle = (j * 60f) + (time * 15f + point.y * 0.1f) % 360f
-                        val hairLength = thickness * 0.12f
+                    for (j in 0..8) { // Plus de poils
+                        val hairAngle = (j * 45f) + (time * 10f + point.y * 0.05f) % 360f
+                        val hairLength = thickness * 0.25f // Plus longs
                         val hairX = kotlin.math.cos(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength
-                        val hairY = kotlin.math.sin(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength * 0.4f
+                        val hairY = kotlin.math.sin(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength * 0.3f
                         
                         canvas.drawLine(
                             adjustedX, point.y,
@@ -194,31 +194,31 @@ class PlantRenderer(private val context: Context) {
     ) {
         for (feuille in feuilles) {
             if (feuille.longueur > 5) {
-                val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
+                val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 5f
                 
-                // Calculer la position de la feuille : décalée pour que le pétiole touche le point d'attache
-                val scale = kotlin.math.min(feuille.longueur / 400f, 0.055f)
+                val scale = kotlin.math.min(feuille.longueur / 400f, 0.08f)
                 val leafW = leafBitmap.width.toFloat() * scale
-                val petioleOffset = leafW * 0.3f
+                val leafH = leafBitmap.height.toFloat() * scale
                 
-                // Position de la feuille décalée
-                val angleRad = feuille.angle * kotlin.math.PI / 180.0
-                val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleOffset
-                val leafY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * petioleOffset
+                // Le pétiole de la feuille PNG représente environ 15% de la largeur
+                // On positionne la feuille pour que le pétiole touche le bourgeon
+                val petioleOffsetX = leafW * 0.15f // Distance depuis le bord gauche jusqu'au point d'attache
                 
                 canvas.save()
-                canvas.translate(leafX, leafY)
-                canvas.rotate(feuille.angle + leafOscillation * 0.5f)
-                
-                val leafH = leafBitmap.height.toFloat() * scale
+                canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
+                canvas.rotate(feuille.angle + leafOscillation * 0.3f)
                 
                 val paint = Paint().apply {
                     isAntiAlias = true
                     isFilterBitmap = true
-                    alpha = 220
+                    alpha = 240
                 }
                 
-                val dstRect = RectF(-leafW/2, -leafH/2, leafW/2, leafH/2)
+                // Positionner la feuille pour que le pétiole soit au point d'attache
+                val dstRect = RectF(
+                    -petioleOffsetX, -leafH/2, 
+                    leafW - petioleOffsetX, leafH/2
+                )
                 canvas.drawBitmap(leafBitmap, null, dstRect, paint)
                 canvas.restore()
             }
