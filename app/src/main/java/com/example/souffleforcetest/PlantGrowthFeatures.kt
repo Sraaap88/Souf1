@@ -23,10 +23,10 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                         var closestBranchX = findClosestBranchX(bourgeon)
                         
                         val isRightSide = bourgeon.x > closestBranchX
-                        val baseAngle = if (isRightSide) -15f else 195f // Plus horizontal (-25f → -15f et 205f → 195f)
+                        val baseAngle = if (isRightSide) 0f else 180f // Parfaitement horizontales
                         val heightFactor = bourgeon.y / 2400f // screenHeight approximé
-                        val heightVariation = (heightFactor - 0.5f) * 20f // Réduit pour plus d'horizontalité
-                        val randomVariation = ((-10..10).random()).toFloat() // Moins de variation
+                        val heightVariation = (heightFactor - 0.5f) * 5f // Très peu de variation
+                        val randomVariation = ((-2..2).random()).toFloat() // Très peu de variation
                         val finalAngle = baseAngle + heightVariation + randomVariation
                         
                         feuille = Feuille(bourgeon, 0f, 0f, finalAngle, false)
@@ -34,8 +34,8 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                     }
                     
                     if (!feuille.maxLargeurAtteinte) {
-                        val lengthGrowth = growthIncrement * 0.5f * 1.3f // Plus longues (0.4f → 0.5f)
-                        val widthGrowth = growthIncrement * 0.35f // Moins larges (0.45f → 0.35f)
+                        val lengthGrowth = growthIncrement * 1.0f * 1.3f // 2x plus longues (0.5f → 1.0f)
+                        val widthGrowth = growthIncrement * 0.35f // Même largeur qu'avant
                         
                         feuille.longueur += lengthGrowth
                         feuille.largeur += widthGrowth
@@ -47,7 +47,7 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                         
                         feuille.longueur = kotlin.math.min(feuille.longueur, 100f)
                     } else {
-                        val lengthGrowth = growthIncrement * 0.7f * 1.3f // Plus longues (0.6f → 0.7f)
+                        val lengthGrowth = growthIncrement * 1.4f * 1.3f // 2x plus longues (0.7f → 1.4f)
                         feuille.longueur += lengthGrowth
                         feuille.longueur = kotlin.math.min(feuille.longueur, maxLeafLength)
                     }
