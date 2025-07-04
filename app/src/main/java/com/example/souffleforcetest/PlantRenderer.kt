@@ -2,6 +2,7 @@ package com.example.souffleforcetest
 
 import android.graphics.*
 import android.content.Context
+import java.lang.Math
 
 class PlantRenderer(private val context: Context) {
     
@@ -24,7 +25,7 @@ class PlantRenderer(private val context: Context) {
     // NOUVELLE tige organique avec animation naturelle
     fun drawRealisticStem(
         canvas: Canvas, 
-        tracedPath: List<OrganicLineView.TracePoint>,
+        tracedPath: List<PlantGrowthLogic.TracePoint>,
         time: Float,
         baseStrokeWidth: Float,
         maxStrokeWidth: Float
@@ -80,14 +81,14 @@ class PlantRenderer(private val context: Context) {
         }
     }
     
-    fun drawGrowthPoint(canvas: Canvas, topPoint: OrganicLineView.TracePoint, time: Float) {
+    fun drawGrowthPoint(canvas: Canvas, topPoint: PlantGrowthLogic.TracePoint, time: Float) {
         val pointOscillation = kotlin.math.sin(time * 2f) * 3f
         basePaint.color = 0xFF90EE90.toInt()
         basePaint.style = Paint.Style.FILL
         canvas.drawCircle(topPoint.x + pointOscillation, topPoint.y, 4f, basePaint)
     }
     
-    fun drawAttachmentPoints(canvas: Canvas, bourgeons: List<OrganicLineView.Bourgeon>, time: Float) {
+    fun drawAttachmentPoints(canvas: Canvas, bourgeons: List<PlantGrowthLogic.Bourgeon>, time: Float) {
         basePaint.color = 0xFF6B4423.toInt()
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
@@ -105,7 +106,7 @@ class PlantRenderer(private val context: Context) {
     // NOUVELLES feuilles 3D réalistes 10x plus grandes avec animations
     fun drawRealistic3DLeaves(
         canvas: Canvas, 
-        feuilles: List<OrganicLineView.Feuille>, 
+        feuilles: List<PlantGrowthLogic.Feuille>, 
         time: Float
     ) {
         for (feuille in feuilles) {
@@ -118,7 +119,7 @@ class PlantRenderer(private val context: Context) {
                 // Orientation 3D basée sur la position
                 val leafIndex = feuille.hashCode() % 1000
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
-                val perspectiveFactor = kotlin.math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
+                val perspectiveFactor = Math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
                 // CORRIGÉ : Tailles encore réduites de 20%
                 val sizeMultiplier = 1.34f // 1.67f * 0.8 = 1.34f
@@ -224,7 +225,7 @@ class PlantRenderer(private val context: Context) {
     // NOUVELLE fleur géométrique réaliste 10x plus grande avec animations
     fun drawRealisticFlower(
         canvas: Canvas, 
-        fleur: OrganicLineView.Fleur?, 
+        fleur: PlantGrowthLogic.Fleur?, 
         time: Float
     ) {
         fleur?.let { flower ->
@@ -334,8 +335,8 @@ class PlantRenderer(private val context: Context) {
                     val stamenBob = kotlin.math.sin(time * 3f + i * 0.4f) * 1f
                     val finalStamenRadius = stamenRadius + stamenBob
                     
-                    val stamenX = kotlin.math.cos(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
-                    val stamenY = kotlin.math.sin(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
+                    val stamenX = Math.cos(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
+                    val stamenY = Math.sin(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
                     canvas.drawCircle(stamenX, stamenY, centerSize * 0.15f, centerPaint) // Proportionnel
                 }
                 
