@@ -30,8 +30,8 @@ class PlantGrowthEngine(
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.055f // Plus sensible encore (0.068f → 0.055f)
-    private val growthRate = 174.6f
+    private val forceThreshold = 0.035f // Plus sensible (0.055f → 0.035f)
+    private val growthRate = 220f // Plus rapide (174.6f → 220f)
     private val baseStrokeWidth = 9.6f
     private val maxStrokeWidth = 25.6f
     private val strokeDecayRate = 0.2f
