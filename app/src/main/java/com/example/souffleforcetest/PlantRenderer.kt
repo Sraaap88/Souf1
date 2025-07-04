@@ -101,23 +101,6 @@ class PlantRenderer(private val context: Context) {
                     )
                 }
                 
-                // TEXTURE VELUE - TRÈS VISIBLE
-                stemPaint.strokeWidth = 4f // Plus épais
-                stemPaint.color = android.graphics.Color.rgb(baseGreen + 35, 109, baseGreen + 35) // Plus clair
-                
-                for (j in 0..12) { // Beaucoup plus de poils
-                    val hairAngle = (j * 30f) + (time * 8f + point.y * 0.03f) % 360f
-                    val hairLength = thickness * 0.4f // Très longs
-                    val hairX = kotlin.math.cos(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength
-                    val hairY = kotlin.math.sin(Math.toRadians(hairAngle.toDouble())).toFloat() * hairLength * 0.2f
-                    
-                    canvas.drawLine(
-                        adjustedX, point.y,
-                        adjustedX + hairX, point.y + hairY,
-                        stemPaint
-                    )
-                }
-                
                 // Ombre (côté sombre)
                 stemPaint.strokeWidth = thickness * 0.6f
                 stemPaint.color = android.graphics.Color.rgb(baseGreen - 15, 79, baseGreen - 15)
@@ -166,6 +149,64 @@ class PlantRenderer(private val context: Context) {
         }
     }
     
+    // NOUVEAU : Fonction pour dessiner les poils de la tige
+    fun drawStemHairs(
+        canvas: Canvas,
+        tracedPath: List<OrganicLineView.TracePoint>,
+        time: Float
+    ) {
+        val hairPaint = Paint().apply {
+            color = 0xFF1F3F1F.toInt() // Vert très sombre
+            strokeWidth = 1f
+            isAntiAlias = true
+            strokeCap = Paint.Cap.ROUND
+            style = Paint.Style.STROKE
+        }
+        
+        if (tracedPath.size > 1) {
+            for (i in 1 until tracedPath.size) {
+                val point = tracedPath[i]
+                val prevPoint = tracedPath[i-1]
+                
+                // Densité des poils - un poil tous les 15 pixels environ
+                val segmentLength = kotlin.math.sqrt(
+                    (point.x - prevPoint.x) * (point.x - prevPoint.x) + 
+                    (point.y - prevPoint.y) * (point.y - prevPoint.y)
+                )
+                
+                if (segmentLength > 15f && i % 2 == 0) {
+                    val oscillation = kotlin.math.sin(time + point.y * 0.01f) * 2f
+                    val adjustedX = point.x + oscillation
+                    
+                    // Calcul de l'angle perpendiculaire au segment
+                    val dx = point.x - prevPoint.x
+                    val dy = point.y - prevPoint.y
+                    val angle = kotlin.math.atan2(dy, dx)
+                    val perpAngle1 = angle + kotlin.math.PI / 2
+                    val perpAngle2 = angle - kotlin.math.PI / 2
+                    
+                    // Longueur des poils variable selon la hauteur
+                    val heightRatio = i.toFloat() / tracedPath.size.toFloat()
+                    val hairLength = 8f + heightRatio * 12f
+                    
+                    // Poils de chaque côté avec légère variation
+                    val variation1 = (kotlin.math.sin(time * 2f + i * 0.5f) * 0.3f).toFloat()
+                    val variation2 = (kotlin.math.cos(time * 1.8f + i * 0.7f) * 0.3f).toFloat()
+                    
+                    // Poil côté gauche
+                    val hairX1 = adjustedX + kotlin.math.cos(perpAngle1).toFloat() * (hairLength + variation1)
+                    val hairY1 = point.y + kotlin.math.sin(perpAngle1).toFloat() * (hairLength + variation1)
+                    canvas.drawLine(adjustedX, point.y, hairX1, hairY1, hairPaint)
+                    
+                    // Poil côté droit
+                    val hairX2 = adjustedX + kotlin.math.cos(perpAngle2).toFloat() * (hairLength + variation2)
+                    val hairY2 = point.y + kotlin.math.sin(perpAngle2).toFloat() * (hairLength + variation2)
+                    canvas.drawLine(adjustedX, point.y, hairX2, hairY2, hairPaint)
+                }
+            }
+        }
+    }
+    
     fun drawGrowthPoint(canvas: Canvas, topPoint: OrganicLineView.TracePoint, time: Float) {
         val pointOscillation = kotlin.math.sin(time * 2f) * 3f
         basePaint.color = 0xFF90EE90.toInt()
@@ -179,8 +220,7 @@ class PlantRenderer(private val context: Context) {
         for (bourgeon in bourgeons) {
             if (bourgeon.taille > 1f) {
                 val oscillation = kotlin.math.sin(time + bourgeon.y * 0.01f) * 1f
-                // Points bruns EXACTEMENT sur la tige (pas de décalage)
-                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, 3f, basePaint)
+                canvas.drawCircle(bourgeon.x + oscillation, bourgeon.y, 2f, basePaint)
             }
         }
     }
@@ -193,33 +233,37 @@ class PlantRenderer(private val context: Context) {
     ) {
         for (feuille in feuilles) {
             if (feuille.longueur > 5) {
-                val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 3f
+                val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
-                // Calcul de l'échelle basé sur la LONGUEUR (pas largeur)
-                val lengthScale = kotlin.math.min(feuille.longueur / 300f, 1.2f) // S'allonge beaucoup plus
-                val widthScale = kotlin.math.min(feuille.largeur / 150f, 0.6f) // S'élargit moins
+                // AMÉLIORATION : Calcul séparé largeur/longueur au lieu d'un scale uniforme
+                val baseScale = 0.055f
+                val lengthScale = kotlin.math.min(feuille.longueur / 400f, baseScale * 2f) // Plus d'extension en longueur
+                val widthScale = kotlin.math.min(feuille.largeur / 200f, baseScale * 1.2f)  // Moins d'extension en largeur
                 
-                val leafW = leafBitmap.width.toFloat() * lengthScale
-                val leafH = leafBitmap.height.toFloat() * widthScale
+                val leafW = leafBitmap.width.toFloat() * widthScale
+                val leafH = leafBitmap.height.toFloat() * lengthScale
                 
-                // Le pétiole fait environ 20% de la largeur de l'image
-                val petioleLength = leafW * 0.2f
+                // AMÉLIORATION : Ajustement du pétiole - décalage pour compenser sa position dans l'image
+                val petioleOffsetInImage = 0.15f // Le pétiole est à 15% du bord gauche dans l'image
+                val actualPetioleOffset = leafW * petioleOffsetInImage
+                
+                // Position de la feuille avec correction du pétiole
+                val angleRad = feuille.angle * kotlin.math.PI / 180.0
+                val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * actualPetioleOffset
+                val leafY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * actualPetioleOffset
                 
                 canvas.save()
-                canvas.translate(feuille.bourgeon.x + leafOscillation, feuille.bourgeon.y)
-                canvas.rotate(feuille.angle + leafOscillation * 0.2f)
+                canvas.translate(leafX, leafY)
+                canvas.rotate(feuille.angle + leafOscillation * 0.5f)
                 
                 val paint = Paint().apply {
                     isAntiAlias = true
                     isFilterBitmap = true
-                    alpha = 250
+                    alpha = 220
                 }
                 
-                // Positionner la feuille pour que l'EXTRÉMITÉ du pétiole soit au bourgeon
-                val dstRect = RectF(
-                    petioleLength, -leafH/2, 
-                    leafW + petioleLength, leafH/2
-                )
+                // AMÉLIORATION : Rectangle avec largeur et hauteur séparées
+                val dstRect = RectF(-leafW/2, -leafH/2, leafW/2, leafH/2)
                 canvas.drawBitmap(leafBitmap, null, dstRect, paint)
                 canvas.restore()
             }
