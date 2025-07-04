@@ -63,14 +63,32 @@ class OrganicLineView @JvmOverloads constructor(
         val waveFrequency: Float, val waveAmplitude: Float, val curvature: Float
     )
     
+    // NOUVEAU : Structure pour les branches
+    data class Branch(
+        val id: Int,
+        val startPoint: TracePoint,
+        val tracedPath: MutableList<TracePoint>,
+        var isActive: Boolean = true,
+        val growthMultiplier: Float = 1f, // Variation de vitesse
+        var currentHeight: Float = 0f,
+        var offsetX: Float = 0f,
+        var currentStrokeWidth: Float = 0f,
+        var fleur: Fleur? = null
+    )
+    
     data class Bourgeon(val x: Float, val y: Float, var taille: Float)
     data class Feuille(val bourgeon: Bourgeon, var longueur: Float, var largeur: Float, val angle: Float, var maxLargeurAtteinte: Boolean = false)
-    data class Fleur(var x: Float, var y: Float, var taille: Float, var petalCount: Int)
+    data class Fleur(var x: Float, var y: Float, var taille: Float, var petalCount: Int, val sizeMultiplier: Float = 1f) // Variation de taille
     
-    private val tracedPath = mutableListOf<TracePoint>()
+    // NOUVEAU : Système de branches multiples
+    private val branches = mutableListOf<Branch>()
+    private var branchIdCounter = 0
+    private var mainBranch: Branch? = null
+    
+    private val tracedPath = mutableListOf<TracePoint>() // Gardé pour compatibilité
     private val bourgeons = mutableListOf<Bourgeon>()
     private val feuilles = mutableListOf<Feuille>()
-    private var fleur: Fleur? = null
+    private var fleur: Fleur? = null // Gardé pour compatibilité
     
     // PARAMÈTRES DE CROISSANCE - MODIFIABLES
     private val forceThreshold = 0.08f
@@ -83,9 +101,9 @@ class OrganicLineView @JvmOverloads constructor(
     private val waveThreshold = 0.03f
     private val maxWaveAmplitude = 15f
     
-    // NOUVEAUX paramètres pour feuilles réalistes 10x plus grandes
-    private val maxLeafWidth = 450f  // Largeur max 10x plus grande
-    private val maxLeafLength = 1200f // Longueur max 10x plus grande
+    // NOUVEAUX paramètres pour feuilles réalistes réduites au 1/3
+    private val maxLeafWidth = 150f  // 450f / 3 = 150f
+    private val maxLeafLength = 400f // 1200f / 3 = 400f
     
     // Compteur pour alternance des feuilles
     private var leafSideCounter = 0
@@ -177,7 +195,18 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         if (tracedPath.isEmpty()) {
-            tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
+            val initialPoint = TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f)
+            tracedPath.add(initialPoint)
+            
+            // NOUVEAU : Créer la branche principale
+            mainBranch = Branch(
+                id = branchIdCounter++,
+                startPoint = initialPoint,
+                tracedPath = mutableListOf(initialPoint),
+                growthMultiplier = 1f,
+                currentStrokeWidth = baseStrokeWidth
+            )
+            branches.add(mainBranch!!)
         }
     }
     
@@ -192,94 +221,124 @@ class OrganicLineView @JvmOverloads constructor(
         
         when (lightState) {
             LightState.YELLOW -> return
-            LightState.GREEN_GROW -> growStem(force)
+            LightState.GREEN_GROW -> growAllBranches(force)
             LightState.GREEN_LEAVES -> growLeaves(force)
-            LightState.GREEN_FLOWER -> growFlowerOnly(force)
+            LightState.GREEN_FLOWER -> growAllFlowers(force)
             LightState.RED -> return
         }
         
         invalidate()
     }
     
-    // LOGIQUE DE CROISSANCE avec comportement naturel amélioré
-    private fun growStem(force: Float) {
-        previousForce = currentForce
-        currentForce = force
+    // NOUVELLE logique de croissance multi-branches
+    private fun growAllBranches(force: Float) {
+        val rhythmIntensity = kotlin.math.abs(force - previousForce)
+        previousForce = force
         
-        if (force > forceThreshold) {
-            val adjustedForce = force - forceThreshold
-            val previousHeight = currentHeight
-            currentHeight += adjustedForce * growthRate
-            currentHeight = kotlin.math.min(currentHeight, maxHeight)
+        // Créer nouvelle branche si bruit saccadé
+        if (rhythmIntensity > abruptThreshold && branches.isNotEmpty()) {
+            createNewBranch()
+        }
+        
+        // Faire pousser toutes les branches actives
+        for (branch in branches.filter { it.isActive }) {
+            growBranch(branch, force, rhythmIntensity)
+        }
+        
+        // Mettre à jour la compatibilité (branche principale)
+        mainBranch?.let { main ->
+            if (main.tracedPath.isNotEmpty()) {
+                tracedPath.clear()
+                tracedPath.addAll(main.tracedPath)
+                currentHeight = main.currentHeight
+                fleur = main.fleur
+            }
+        }
+    }
+    
+    private fun createNewBranch() {
+        // Choisir une branche existante aléatoirement pour la ramification
+        val parentBranch = branches.filter { it.isActive && it.tracedPath.size > 5 }.randomOrNull()
+        parentBranch?.let { parent ->
+            // Point de ramification au milieu/haut de la branche parente
+            val branchPointIndex = (parent.tracedPath.size * 0.6f).toInt().coerceAtMost(parent.tracedPath.size - 1)
+            val branchPoint = parent.tracedPath[branchPointIndex]
             
-            if (currentHeight > previousHeight && currentHeight > 0) {
-                val currentY = baseY - currentHeight
-                val currentX = baseX + offsetX
-                
-                val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
+            // Variations naturelles pour la nouvelle branche
+            val growthVariation = 0.7f + (0..6).random() * 0.1f // 0.7x à 1.3x
+            val sizeVariation = 0.8f + (0..4).random() * 0.1f   // 0.8x à 1.2x
+            
+            // Angle de ramification naturel
+            val branchAngle = (30..60).random().toFloat() * if ((0..1).random() == 0) 1f else -1f
+            val branchOffset = kotlin.math.sin(Math.toRadians(branchAngle.toDouble())).toFloat() * 20f
+            
+            val newBranchPoint = TracePoint(
+                branchPoint.x + branchOffset,
+                branchPoint.y,
+                baseStrokeWidth * 0.8f, // Branches plus fines
+                0f, 0f, 0f
+            )
+            
+            val newBranch = Branch(
+                id = branchIdCounter++,
+                startPoint = newBranchPoint,
+                tracedPath = mutableListOf(newBranchPoint),
+                growthMultiplier = growthVariation,
+                currentStrokeWidth = baseStrokeWidth * 0.8f
+            )
+            
+            branches.add(newBranch)
+        }
+    }
+    
+    private fun growBranch(branch: Branch, force: Float, rhythmIntensity: Float) {
+        if (force > forceThreshold) {
+            val adjustedForce = (force - forceThreshold) * branch.growthMultiplier
+            val previousHeight = branch.currentHeight
+            branch.currentHeight += adjustedForce * growthRate * 0.8f // Branches un peu plus lentes
+            branch.currentHeight = kotlin.math.min(branch.currentHeight, maxHeight)
+            
+            if (branch.currentHeight > previousHeight && branch.currentHeight > 0) {
+                val lastPoint = branch.tracedPath.last()
+                val currentY = lastPoint.y - (branch.currentHeight - previousHeight)
+                val currentX = lastPoint.x + branch.offsetX
                 
                 var waveFreq = 0f
                 var waveAmp = 0f
                 var curvature = 0f
                 
-                // Réponse plus naturelle au souffle
+                // Réponse aux ondulations (chaque branche réagit différemment)
                 if (rhythmIntensity > 0.01f && rhythmIntensity < abruptThreshold) {
-                    waveFreq = (rhythmIntensity * 12f) + 1f
-                    waveAmp = (rhythmIntensity * 150f).coerceAtMost(maxWaveAmplitude)
+                    waveFreq = (rhythmIntensity * 12f * branch.growthMultiplier) + 1f
+                    waveAmp = (rhythmIntensity * 150f * branch.growthMultiplier).coerceAtMost(maxWaveAmplitude)
                 }
                 
                 if (rhythmIntensity > 0.04f) {
-                    curvature = (rhythmIntensity * 30f).coerceAtMost(15f)
+                    curvature = (rhythmIntensity * 30f * branch.growthMultiplier).coerceAtMost(15f)
                     if ((0..1).random() == 0) curvature = -curvature
                 }
                 
-                tracedPath.add(TracePoint(currentX, currentY, currentStrokeWidth, waveFreq, waveAmp, curvature))
+                val newPoint = TracePoint(currentX, currentY, branch.currentStrokeWidth, waveFreq, waveAmp, curvature)
+                branch.tracedPath.add(newPoint)
             }
         }
         
-        val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
-        
+        // Oscillations individuelles par branche
         if (rhythmIntensity > abruptThreshold) {
-            // Déplacements plus naturels et progressifs
             val displacement = if ((0..1).random() == 0) {
-                75f + rhythmIntensity * 100f
+                (75f + rhythmIntensity * 100f) * branch.growthMultiplier
             } else {
-                -(75f + rhythmIntensity * 100f)
+                -(75f + rhythmIntensity * 100f) * branch.growthMultiplier
             }
-            offsetX += displacement
-            
-            if (currentHeight > 60f && tracedPath.size > 3) {
-                val recentPoint = tracedPath[tracedPath.size - (2..5).random()]
-                val attachY = recentPoint.y + ((-20..20).random()).toFloat()
-                
-                // AMÉLIORATION : Alternance systématique droite/gauche pour répartition naturelle
-                leafSideCounter++
-                val isRightSide = leafSideCounter % 2 == 0
-                
-                // Espacement plus naturel selon le côté
-                val lateralOffset = if (isRightSide) {
-                    (15..30).random().toFloat()
-                } else {
-                    -(15..30).random().toFloat()
-                }
-                
-                val bourgeonnX = recentPoint.x + lateralOffset
-                bourgeons.add(Bourgeon(bourgeonnX, attachY, 3f))
-            }
-        } else if (rhythmIntensity > 0.02f) {
-            val thicknessIncrease = rhythmIntensity * 40f
-            currentStrokeWidth = kotlin.math.min(maxStrokeWidth, baseStrokeWidth + thicknessIncrease)
+            branch.offsetX += displacement
         }
         
-        if (currentStrokeWidth > baseStrokeWidth) {
-            currentStrokeWidth = kotlin.math.max(baseStrokeWidth, currentStrokeWidth - strokeDecayRate)
-        }
+        // Retour au centre pour chaque branche
+        branch.offsetX *= centeringRate
         
-        // Retour au centre plus progressif et naturel
-        offsetX *= centeringRate
-        
-        if (!showResetButton && currentHeight > 30f) {
-            showResetButton = true
+        // Désactiver les branches trop courtes après un certain temps
+        if (branch.currentHeight < 50f && branches.size > 3) {
+            branch.isActive = false
         }
     }
     
@@ -333,8 +392,8 @@ class OrganicLineView @JvmOverloads constructor(
                             feuille.maxLargeurAtteinte = true
                         }
                         
-                        // Limites pour phase 1 (10x plus grandes)
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 600f)
+                        // Limites pour phase 1 (réduites au 1/3)
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 200f)
                     } 
                     // PHASE 2 : Seulement croissance en longueur
                     else {
@@ -348,24 +407,33 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    private fun growFlowerOnly(force: Float) {
+    private fun growAllFlowers(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
             val growthIncrement = adjustedForce * growthRate * 0.08f
             
-            if (tracedPath.isNotEmpty()) {
-                val topPoint = tracedPath.last()
-                if (fleur == null) {
-                    fleur = Fleur(topPoint.x, topPoint.y, 0f, 6)
+            // Faire pousser une fleur au bout de chaque branche active
+            for (branch in branches.filter { it.isActive && it.tracedPath.isNotEmpty() }) {
+                val topPoint = branch.tracedPath.last()
+                
+                if (branch.fleur == null) {
+                    // Variation de taille finale pour chaque fleur
+                    val sizeVariation = 0.7f + (0..6).random() * 0.1f // 0.7x à 1.3x
+                    branch.fleur = Fleur(topPoint.x, topPoint.y, 0f, 6, sizeVariation)
                 }
-                fleur?.let {
-                    it.taille += growthIncrement * 0.15f
-                    it.taille = kotlin.math.min(it.taille, 175f)
-                    it.petalCount = kotlin.math.max(5, (it.taille * 0.05f).toInt())
-                    it.x = topPoint.x
-                    it.y = topPoint.y
+                
+                branch.fleur?.let { flower ->
+                    val branchGrowthIncrement = growthIncrement * branch.growthMultiplier
+                    flower.taille += branchGrowthIncrement * 0.15f
+                    flower.taille = kotlin.math.min(flower.taille, 175f * flower.sizeMultiplier)
+                    flower.petalCount = kotlin.math.max(5, (flower.taille * 0.05f).toInt())
+                    flower.x = topPoint.x
+                    flower.y = topPoint.y
                 }
             }
+            
+            // Mettre à jour la fleur principale pour compatibilité
+            mainBranch?.fleur?.let { fleur = it }
         }
     }
     
@@ -414,20 +482,20 @@ class OrganicLineView @JvmOverloads constructor(
         
         val time = System.currentTimeMillis() * 0.002f
         
-        // Tige réaliste
-        plantRenderer.drawRealisticStem(canvas, tracedPath, time, baseStrokeWidth, maxStrokeWidth)
-        
-        if (tracedPath.isNotEmpty()) {
-            plantRenderer.drawGrowthPoint(canvas, tracedPath.last(), time)
+        // Dessiner toutes les branches
+        for (branch in branches.filter { it.isActive }) {
+            plantRenderer.drawRealisticStem(canvas, branch.tracedPath, time, baseStrokeWidth, maxStrokeWidth)
+            
+            if (branch.tracedPath.isNotEmpty()) {
+                plantRenderer.drawGrowthPoint(canvas, branch.tracedPath.last(), time)
+            }
+            
+            // Dessiner la fleur de cette branche
+            plantRenderer.drawRealisticFlower(canvas, branch.fleur, time)
         }
         
         plantRenderer.drawAttachmentPoints(canvas, bourgeons, time)
-        
-        // Feuilles 3D réalistes (géométriques)
         plantRenderer.drawRealistic3DLeaves(canvas, feuilles, time)
-        
-        // Fleur géométrique réaliste
-        plantRenderer.drawRealisticFlower(canvas, fleur, time)
         
         drawTrafficLight(canvas)
     }
@@ -455,18 +523,32 @@ class OrganicLineView @JvmOverloads constructor(
         bourgeons.clear()
         feuilles.clear()
         fleur = null
+        branches.clear()
+        branchIdCounter = 0
+        mainBranch = null
         
         currentHeight = 0f
         currentStrokeWidth = baseStrokeWidth
         offsetX = 0f
         showResetButton = false
-        leafSideCounter = 0  // Reset du compteur d'alternance
+        leafSideCounter = 0
         
         lightState = LightState.YELLOW
         stateStartTime = System.currentTimeMillis()
         canGrow = false
         
-        tracedPath.add(TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f))
+        // Recréer la branche principale
+        val initialPoint = TracePoint(baseX, baseY, baseStrokeWidth, 0f, 0f, 0f)
+        tracedPath.add(initialPoint)
+        mainBranch = Branch(
+            id = branchIdCounter++,
+            startPoint = initialPoint,
+            tracedPath = mutableListOf(initialPoint),
+            growthMultiplier = 1f,
+            currentStrokeWidth = baseStrokeWidth
+        )
+        branches.add(mainBranch!!)
+        
         invalidate()
     }
 }
