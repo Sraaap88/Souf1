@@ -35,7 +35,7 @@ class PlantGrowthEngine(
     private val baseStrokeWidth = 9.6f
     private val maxStrokeWidth = 25.6f
     private val strokeDecayRate = 0.2f
-    private val abruptThreshold = 0.15f
+    private val abruptThreshold = 0.18f // Plus difficile de créer branches (0.15f → 0.18f)
     private val maxWaveAmplitude = 15f
     private val maxLeafWidth = 75f
     private val maxLeafLength = 200f
@@ -128,14 +128,26 @@ class PlantGrowthEngine(
     }
     
     private fun createNewBranchFromBase() {
-        // MARGUERITE : Ramification PROGRESSIVE depuis la base (pas dès le début)
+        // MARGUERITE : Ramification PROGRESSIVE avec difficulté croissante
         val baseBranches = branches.filter { it.isFromBase }
         if (baseBranches.size >= 3) return // Maximum 3 branches
         
-        // NOUVEAU : Vérifier que la branche principale a assez poussé avant de créer une nouvelle
+        // NOUVEAU : Difficulté progressive selon le nombre de branches
         val mainBranchHeight = mainBranch?.currentHeight ?: 0f
-        if (mainBranchHeight < 100f && baseBranches.size >= 1) return // Attendre que la principale pousse
-        if (mainBranchHeight < 200f && baseBranches.size >= 2) return // Attendre encore plus pour la 3ème
+        when (baseBranches.size) {
+            1 -> {
+                // 2ème branche : facile mais pas immédiat
+                if (mainBranchHeight < 120f) return
+            }
+            2 -> {
+                // 3ème branche : plus difficile
+                if (mainBranchHeight < 280f) return
+                
+                // Condition supplémentaire : vérifier que les autres branches ont aussi poussé
+                val otherBranchesHeight = baseBranches.filter { it != mainBranch }.minOfOrNull { it.currentHeight } ?: 0f
+                if (otherBranchesHeight < 80f) return // Les autres doivent avoir poussé aussi
+            }
+        }
         
         // Créer une nouvelle branche depuis la base avec angle varié
         val branchAngle = when (baseBranches.size) {
