@@ -152,12 +152,13 @@ class PlantRenderer(private val context: Context) {
                     
                     val midLength = displayLength * 0.65f // Partie lisse rallongée
                     
-                    // COURBURE GRAVITATIONNELLE : calcul de la trajectoire naturelle
+                    // COURBURE GRAVITATIONNELLE : calcul de la trajectoire naturelle PLUS PRONONCÉE
                     fun getGravityCurveY(progress: Float, baseY: Float): Float {
-                        // Courbe parabolique : monte au début, redescend à la fin
-                        val lift = -displayLength * 0.15f * kotlin.math.sin(progress * kotlin.math.PI.toFloat()) // Monte puis descend
-                        val gravity = displayLength * 0.1f * (progress * progress) // Effet gravitationnel croissant
-                        return baseY + lift + gravity
+                        // Courbe parabolique ACCENTUÉE : monte au début, redescend plus fortement à la fin
+                        val lift = -displayLength * 0.25f * kotlin.math.sin(progress * kotlin.math.PI.toFloat()) // Plus de montée initiale
+                        val gravity = displayLength * 0.25f * (progress * progress * progress) // Gravité plus forte (au cube)
+                        val weightEffect = displayLength * 0.15f * kotlin.math.max(0f, progress - 0.4f) // Poids s'accentue après 40%
+                        return baseY + lift + gravity + weightEffect
                     }
                     
                     // PREMIÈRE MOITIÉ : LISSE, effilée avec courbure naturelle
@@ -193,9 +194,9 @@ class PlantRenderer(private val context: Context) {
                         leafPath.lineTo(x, curvedY)
                     }
                     
-                    // POINTE avec courbure vers le bas (recourbée)
-                    val tipY = getGravityCurveY(1.0f, displayLength) + displayLength * 0.05f // Légèrement plus bas
-                    leafPath.quadTo(-displayWidth * 0.05f, tipY + displayLength * 0.02f, 0f, tipY) // Courbure de la pointe
+                    // POINTE avec courbure vers le bas PLUS PRONONCÉE (recourbée + pesante)
+                    val tipY = getGravityCurveY(1.0f, displayLength) + displayLength * 0.12f // Encore plus bas à cause du poids
+                    leafPath.quadTo(-displayWidth * 0.08f, tipY + displayLength * 0.06f, 0f, tipY) // Courbure plus marquée
                     
                     // Côté droit symétrique avec ondulations
                     val rightDentPoints = arrayOf(
@@ -357,7 +358,6 @@ class PlantRenderer(private val context: Context) {
                     
                     canvas.restore()
                 }
-                
                 // CORRIGÉ : Centre proportionnel aux pétales
                 val centerPaint = Paint().apply {
                     isAntiAlias = true
