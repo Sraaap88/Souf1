@@ -149,62 +149,6 @@ class PlantRenderer(private val context: Context) {
         }
     }
     
-    // CORRIGÉ : Fonction pour dessiner des petits poils partout sur la tige
-    fun drawStemHairs(
-        canvas: Canvas,
-        tracedPath: List<OrganicLineView.TracePoint>,
-        time: Float
-    ) {
-        val hairPaint = Paint().apply {
-            color = 0xFF0F2F0F.toInt() // Vert encore plus sombre pour être visible
-            strokeWidth = 2f // Plus épais pour être visible
-            isAntiAlias = true
-            strokeCap = Paint.Cap.ROUND
-            style = Paint.Style.STROKE
-        }
-        
-        if (tracedPath.size > 1) {
-            for (i in tracedPath.indices) {
-                val point = tracedPath[i]
-                val oscillation = kotlin.math.sin(time + point.y * 0.01f) * 2f
-                val adjustedX = point.x + oscillation
-                
-                // Densité augmentée - poils partout
-                if (i % 1 == 0) { // Chaque point a des poils
-                    
-                    // Plusieurs poils autour de chaque point de la tige
-                    for (hairIndex in 0..2) {
-                        val angleOffset = (hairIndex * 120f) * kotlin.math.PI / 180f // 3 poils à 120° d'écart
-                        val variation = kotlin.math.sin(time * 1.5f + i * 0.3f + hairIndex) * 2f
-                        
-                        // Longueur des poils plus courte mais plus visible
-                        val hairLength = 6f + variation
-                        
-                        // Position du poil
-                        val hairX = adjustedX + kotlin.math.cos(angleOffset).toFloat() * hairLength
-                        val hairY = point.y + kotlin.math.sin(angleOffset).toFloat() * hairLength
-                        
-                        // Dessiner le poil
-                        canvas.drawLine(adjustedX, point.y, hairX, hairY, hairPaint)
-                    }
-                    
-                    // Poils supplémentaires plus courts
-                    for (shortHair in 0..1) {
-                        val randomAngle = ((i * 137 + shortHair * 73) % 360) * kotlin.math.PI / 180f
-                        val shortLength = 3f + kotlin.math.sin(time + i * 0.1f) * 1f
-                        
-                        val shortHairX = adjustedX + kotlin.math.cos(randomAngle).toFloat() * shortLength
-                        val shortHairY = point.y + kotlin.math.sin(randomAngle).toFloat() * shortLength
-                        
-                        hairPaint.strokeWidth = 1f
-                        canvas.drawLine(adjustedX, point.y, shortHairX, shortHairY, hairPaint)
-                        hairPaint.strokeWidth = 2f
-                    }
-                }
-            }
-        }
-    }
-    
     fun drawGrowthPoint(canvas: Canvas, topPoint: OrganicLineView.TracePoint, time: Float) {
         val pointOscillation = kotlin.math.sin(time * 2f) * 3f
         basePaint.color = 0xFF90EE90.toInt()
@@ -223,7 +167,6 @@ class PlantRenderer(private val context: Context) {
         }
     }
     
-    // CORRIGÉ : drawLeaves avec meilleur positionnement du pétiole
     fun drawLeaves(
         canvas: Canvas, 
         feuilles: List<OrganicLineView.Feuille>, 
@@ -234,24 +177,18 @@ class PlantRenderer(private val context: Context) {
             if (feuille.longueur > 5) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
-                // Calcul séparé largeur/longueur
+                // Feuilles 30% plus longues
                 val baseScale = 0.055f
-                val lengthScale = kotlin.math.min(feuille.longueur / 400f, baseScale * 2f)
+                val lengthScale = kotlin.math.min(feuille.longueur / 300f, baseScale * 2.6f)
                 val widthScale = kotlin.math.min(feuille.largeur / 200f, baseScale * 1.2f)
                 
                 val leafW = leafBitmap.width.toFloat() * widthScale
                 val leafH = leafBitmap.height.toFloat() * lengthScale
                 
-                // CORRECTION MAJEURE : Le pétiole part vraiment du point d'attache
-                // On place la feuille de façon à ce que le début de l'image (le pétiole) touche le bourgeon
+                // Le pétiole part EXACTEMENT du bourgeon
                 val angleRad = feuille.angle * kotlin.math.PI / 180.0
-                
-                // Distance du pétiole depuis le centre de l'image vers le bord
-                val petioleDistance = leafW * 0.4f // Le pétiole est à 40% du bord dans l'image
-                
-                // Position de la feuille décalée pour que le pétiole touche le bourgeon
-                val leafCenterX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleDistance
-                val leafCenterY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * petioleDistance
+                val leafCenterX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * (leafW * 0.5f)
+                val leafCenterY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * (leafW * 0.5f)
                 
                 canvas.save()
                 canvas.translate(leafCenterX, leafCenterY)
@@ -281,11 +218,11 @@ class PlantRenderer(private val context: Context) {
                 val flowerOscillation = kotlin.math.sin(time * 0.8f) * 5f
                 
                 val progressRatio = flower.taille / 175f
-                val scale = progressRatio * 1.44f
+                val scale = progressRatio * 1.87f // Fleurs 30% plus grandes
                 val w = flowerBitmap.width.toFloat() * scale
                 val h = flowerBitmap.height.toFloat() * scale
                 
-                val maxSize = 500f
+                val maxSize = 650f // Augmenté de 30%
                 val finalW = kotlin.math.min(w, maxSize)
                 val finalH = kotlin.math.min(h, maxSize)
                 
