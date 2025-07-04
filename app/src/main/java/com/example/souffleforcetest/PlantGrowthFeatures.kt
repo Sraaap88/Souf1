@@ -89,31 +89,39 @@ class PlantGrowthFeatures(
     // ==================== CROISSANCE DES FLEURS ====================
     
     fun growFlowers(force: Float) {
+        println("*** growFlowers appelé avec force: $force ***")
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
             val growthIncrement = adjustedForce * growthRate * 0.08f
+            println("*** growthIncrement: $growthIncrement ***")
             
             for (branch in engine.getBranches().filter { it.tracedPath.isNotEmpty() }) {
                 val topPoint = branch.tracedPath.last()
+                println("*** Branch ${branch.id} - topPoint: (${topPoint.x}, ${topPoint.y}) ***")
                 
                 if (branch.fleur == null) {
                     val sizeVariation = 0.7f + (0..6).random() * 0.1f
-                    branch.fleur = Fleur(topPoint.x, topPoint.y, 0f, 6, sizeVariation)
+                    branch.fleur = Fleur(topPoint.x, topPoint.y, 5f, 6, sizeVariation) // FORCÉ à 5f au lieu de 0f
+                    println("*** FLEUR CRÉÉE pour branch ${branch.id} ***")
                 }
                 
                 branch.fleur?.let { flower ->
                     val branchGrowthIncrement = growthIncrement * branch.growthMultiplier
-                    flower.taille += branchGrowthIncrement * 0.15f
+                    flower.taille += branchGrowthIncrement * 0.15f + 1f // FORCÉ +1f
                     flower.taille = kotlin.math.min(flower.taille, 175f * flower.sizeMultiplier)
                     flower.petalCount = kotlin.math.max(5, (flower.taille * 0.05f).toInt())
                     flower.x = topPoint.x
                     flower.y = topPoint.y
+                    println("*** FLEUR grandit - taille: ${flower.taille} ***")
                 }
             }
             
             // Mettre à jour la fleur principale pour compatibilité
             val mainBranch = engine.getBranches().firstOrNull()
-            mainBranch?.fleur?.let { engine.fleur = it }
+            mainBranch?.fleur?.let { 
+                engine.fleur = it 
+                println("*** FLEUR PRINCIPALE mise à jour ***")
+            }
         }
     }
     
