@@ -30,12 +30,12 @@ class PlantGrowthEngine(
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.068f // 15% moins de souffle (0.08f * 0.85 = 0.068f)
+    private val forceThreshold = 0.055f // Plus sensible encore (0.068f → 0.055f)
     private val growthRate = 174.6f
     private val baseStrokeWidth = 9.6f
     private val maxStrokeWidth = 25.6f
     private val strokeDecayRate = 0.2f
-    private val abruptThreshold = 0.18f // Plus difficile de créer branches (0.15f → 0.18f)
+    private val abruptThreshold = 0.22f // Plus difficile pour 2ème branche (0.18f → 0.22f)
     private val maxWaveAmplitude = 15f
     private val maxLeafWidth = 75f
     private val maxLeafLength = 200f
@@ -136,16 +136,16 @@ class PlantGrowthEngine(
         val mainBranchHeight = mainBranch?.currentHeight ?: 0f
         when (baseBranches.size) {
             1 -> {
-                // 2ème branche : facile mais pas immédiat
-                if (mainBranchHeight < 120f) return
+                // 2ème branche : DIFFICILE
+                if (mainBranchHeight < 180f) return // Plus élevé (120f → 180f)
             }
             2 -> {
-                // 3ème branche : plus difficile
-                if (mainBranchHeight < 280f) return
+                // 3ème branche : UN PEU PLUS DIFFICILE (pas impossible)
+                if (mainBranchHeight < 220f) return // Juste un peu plus (280f → 220f)
                 
-                // Condition supplémentaire : vérifier que les autres branches ont aussi poussé
+                // Condition supplémentaire réduite
                 val otherBranchesHeight = baseBranches.filter { it != mainBranch }.minOfOrNull { it.currentHeight } ?: 0f
-                if (otherBranchesHeight < 80f) return // Les autres doivent avoir poussé aussi
+                if (otherBranchesHeight < 60f) return // Réduit (80f → 60f)
             }
         }
         
@@ -227,8 +227,8 @@ class PlantGrowthEngine(
             branch.offsetX += displacement
             branch.offsetX = branch.offsetX.coerceIn(-100f, 100f)
             
-            // Créer des bourgeons plus nombreux et plus haut (20% plus haut sur la tige)
-            if (branch.currentHeight > 24f && branch.tracedPath.size > 5) { // 30f * 0.8 = 24f (20% plus haut)
+            // Créer des bourgeons plus nombreux et PLUS HAUT (jusqu'à 20% du haut)
+            if (branch.currentHeight > 20f && branch.tracedPath.size > 4) { // Seuil encore réduit (24f → 20f)
                 createRealisticBud(branch)
             }
         }
@@ -265,8 +265,8 @@ class PlantGrowthEngine(
         val maxBudsForBranch = kotlin.math.min(8, (branch.currentHeight / 64f * 1.875f).toInt() + 3) // 25% plus
         if (existingBudsOnBranch >= maxBudsForBranch) return
         
-        val minSegmentFromTop = 2 // Plus près du sommet pour pousser plus haut
-        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 1, 15) // Plus large pour plus de feuilles
+        val minSegmentFromTop = 1 // TRÈS près du sommet pour feuilles jusqu'à 20% du haut
+        val maxSegmentFromTop = kotlin.math.min(branch.tracedPath.size - 1, 18) // Plus large pour plus de feuilles
         
         if (maxSegmentFromTop <= minSegmentFromTop) return
         
