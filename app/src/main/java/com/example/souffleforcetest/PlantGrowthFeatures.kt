@@ -8,6 +8,7 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
     private val growthRate = 174.6f
     private val maxLeafWidth = 75f
     private val maxLeafLength = 200f
+    private val baseY = 2300f // Approximation de la base (screenHeight - 100f)
     
     // ==================== CROISSANCE DES FEUILLES ====================
     
@@ -20,7 +21,8 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                 if (bourgeon.taille > 2f) {
                     var feuille = engine.feuilles.find { it.bourgeon == bourgeon }
                     if (feuille == null) {
-                        var closestBranchX = findClosestBranchX(bourgeon)
+                        val closestBranch = findClosestBranch(bourgeon)
+                        val closestBranchX = closestBranch?.startPoint?.x ?: 540f
                         
                         val isRightSide = bourgeon.x > closestBranchX
                         val baseAngle = if (isRightSide) 95f else 265f // 95° et 265° (plus vers le bas)
@@ -34,9 +36,17 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                     }
                     
                     if (!feuille.maxLargeurAtteinte) {
-                        // Feuilles graduées : GROSSES à la base, FINES en haut
-                        val heightRatio = bourgeon.y / 2400f // Position relative sur l'écran
-                        val sizeMultiplier = 2.5f - (heightRatio * 1.8f) // 2.5x en bas, 0.7x en haut (plus de contraste)
+                        // Feuilles graduées : PROPORTIONNELLES à la hauteur de CETTE tige
+                        val closestBranch = findClosestBranch(bourgeon)
+                        val branchHeight = closestBranch?.currentHeight ?: 100f
+                        val branchBaseY = closestBranch?.startPoint?.y ?: baseY
+                        
+                        // Position relative sur CETTE branche (0 = base, 1 = sommet)
+                        val relativePosition = (bourgeon.y - branchBaseY) / branchHeight
+                        val clampedPosition = relativePosition.coerceIn(0f, 1f)
+                        
+                        // Gradient proportionnel à cette tige : grosse à la base, fine en haut
+                        val sizeMultiplier = 2.5f - (clampedPosition * 1.8f) // 2.5x à la base, 0.7x en haut
                         
                         val lengthGrowth = growthIncrement * 1.0f * 1.3f * sizeMultiplier
                         val widthGrowth = growthIncrement * 0.35f * sizeMultiplier
@@ -51,9 +61,14 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                         
                         feuille.longueur = kotlin.math.min(feuille.longueur, 100f)
                     } else {
-                        // Même logique de taille graduée ACCENTUÉE pour la phase finale
-                        val heightRatio = bourgeon.y / 2400f
-                        val sizeMultiplier = 2.5f - (heightRatio * 1.8f) // Même gradient : grosses → fines
+                        // Même logique proportionnelle pour la phase finale
+                        val closestBranch = findClosestBranch(bourgeon)
+                        val branchHeight = closestBranch?.currentHeight ?: 100f
+                        val branchBaseY = closestBranch?.startPoint?.y ?: baseY
+                        
+                        val relativePosition = (bourgeon.y - branchBaseY) / branchHeight
+                        val clampedPosition = relativePosition.coerceIn(0f, 1f)
+                        val sizeMultiplier = 2.5f - (clampedPosition * 1.8f)
                         
                         val lengthGrowth = growthIncrement * 1.4f * 1.3f * sizeMultiplier
                         feuille.longueur += lengthGrowth
@@ -64,8 +79,8 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
         }
     }
     
-    private fun findClosestBranchX(bourgeon: Bourgeon): Float {
-        var closestBranchX = 540f // screenWidth / 2 approximé
+    private fun findClosestBranch(bourgeon: Bourgeon): Branch? {
+        var closestBranch: Branch? = null
         var minDistance = Float.MAX_VALUE
         
         for (branch in engine.getBranches()) {
@@ -76,11 +91,11 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                 )
                 if (distance < minDistance) {
                     minDistance = distance
-                    closestBranchX = point.x
+                    closestBranch = branch
                 }
             }
         }
-        return closestBranchX
+        return closestBranch
     }
     
     // ==================== CROISSANCE DES FLEURS ====================
