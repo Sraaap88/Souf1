@@ -75,8 +75,8 @@ class OrganicLineView @JvmOverloads constructor(
     // PARAMÈTRES DE CROISSANCE - MODIFIABLES
     private val forceThreshold = 0.08f
     private val growthRate = 174.6f
-    private val baseStrokeWidth = 9.6f // Réduit de 20%
-    private val maxStrokeWidth = 25.6f // Réduit de 20%
+    private val baseStrokeWidth = 9.6f // Tige 20% plus mince
+    private val maxStrokeWidth = 25.6f // Tige 20% plus mince
     private val strokeDecayRate = 0.2f
     private val abruptThreshold = 0.15f
     private val centeringRate = 0.99f // Retour 2x moins rapide
@@ -260,6 +260,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
+    // AMÉLIORÉ : Feuilles encore plus longues
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
@@ -296,12 +297,12 @@ class OrganicLineView @JvmOverloads constructor(
                     if (feuille.longueur >= 120f) {
                         feuille.longueur += lengthGrowth * 0.4f
                         feuille.largeur += widthGrowth * 0.8f
-                        // Limites augmentées de 30% pour les feuilles
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 455f)
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 234f)
+                        // Limites encore plus élevées pour feuilles plus longues
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 650f) // Encore plus long
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 280f)   // Plus large aussi
                     } else {
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 156f)
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 104f)
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 200f) // Augmenté
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 130f)   // Augmenté
                     }
                 }
             }
@@ -374,8 +375,11 @@ class OrganicLineView @JvmOverloads constructor(
         
         val time = System.currentTimeMillis() * 0.002f
         
-        // Dessiner sans les poils
+        // Tige naturelle
         plantRenderer.drawRealisticStem(canvas, tracedPath, time, baseStrokeWidth, maxStrokeWidth)
+        
+        // NOUVEAU : Ajouter les petits pics aléatoires
+        plantRenderer.drawStemSpikes(canvas, tracedPath, time)
         
         if (tracedPath.isNotEmpty()) {
             plantRenderer.drawGrowthPoint(canvas, tracedPath.last(), time)
