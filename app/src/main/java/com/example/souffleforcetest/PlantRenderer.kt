@@ -122,8 +122,8 @@ class PlantRenderer(private val context: Context) {
                 val perspectiveFactor = Math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
                 // FEUILLES 2x plus longues, même largeur
-                val sizeMultiplier = 2.4f // 2x plus longues (1.84f → 2.4f)
-                val displayWidth = feuille.largeur * sizeMultiplier * 0.5f * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f) // Même largeur (0.8f → 0.5f)
+                val sizeMultiplier = 2.4f // 2x plus longues
+                val displayWidth = feuille.largeur * sizeMultiplier * 0.5f * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
                 val displayLength = feuille.longueur * sizeMultiplier
                 
                 canvas.save()
@@ -133,11 +133,11 @@ class PlantRenderer(private val context: Context) {
                 val rotationWave = kotlin.math.sin(time * 0.8f + feuille.bourgeon.y * 0.01f) * 8f
                 canvas.rotate(feuille.angle + rotationWave)
                 
-                // Couleur selon éclairage et perspective avec animation (vert foncé marguerite)
+                // Couleur selon éclairage et perspective avec animation
                 val lightingFactor = kotlin.math.abs(perspectiveFactor)
                 val colorPulse = kotlin.math.sin(time * 0.5f + feuille.hashCode() * 0.01f) * 0.1f
                 val brightness = (0.5f + lightingFactor * 0.3f + colorPulse).coerceIn(0.3f, 0.8f)
-                val greenValue = (25 + brightness * 30).toInt() // Plus sombre pour marguerite
+                val greenValue = (25 + brightness * 30).toInt() // Conversion en Int
                 
                 val leafPaint = Paint().apply {
                     isAntiAlias = true
@@ -285,7 +285,7 @@ class PlantRenderer(private val context: Context) {
                     }
                     
                     // MARGUERITE : BLANC FIXE seulement
-                    val brightness = 0.9f + finalPerspectiveFactor * 0.1f // Légère variation selon perspective
+                    val brightness = 0.9f + 0.1f // Couleur uniforme blanche
                     val whiteValue = (255 * brightness).toInt().coerceIn(240, 255)
                     petalPaint.color = Color.rgb(whiteValue, whiteValue, whiteValue)
                     
