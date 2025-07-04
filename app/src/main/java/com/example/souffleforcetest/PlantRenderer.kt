@@ -133,71 +133,79 @@ class PlantRenderer(private val context: Context) {
                 val rotationWave = kotlin.math.sin(time * 0.8f + feuille.bourgeon.y * 0.01f) * 8f
                 canvas.rotate(feuille.angle + rotationWave)
                 
-                // Couleur selon éclairage et perspective avec animation
+                // Couleur selon éclairage et perspective avec animation (vert foncé marguerite)
                 val lightingFactor = kotlin.math.abs(perspectiveFactor)
                 val colorPulse = kotlin.math.sin(time * 0.5f + feuille.hashCode() * 0.01f) * 0.1f
-                val brightness = (0.6f + lightingFactor * 0.4f + colorPulse).coerceIn(0.4f, 1f)
-                val greenValue = (40 + brightness * 35).toInt()
+                val brightness = (0.5f + lightingFactor * 0.3f + colorPulse).coerceIn(0.3f, 0.8f)
+                val greenValue = (25 + brightness * 30).toInt() // Plus sombre pour marguerite
                 
                 val leafPaint = Paint().apply {
                     isAntiAlias = true
                     style = Paint.Style.FILL
-                    color = Color.rgb(greenValue, (85 + brightness * 25).toInt(), greenValue)
+                    color = Color.rgb(greenValue, (70 + brightness * 20).toInt(), greenValue)
                 }
                 
                 if (perspectiveFactor > 0.3f) {
-                    // Feuille vue de face - forme organique animée
+                    // MARGUERITE : Feuille dentelée caractéristique
                     val leafPath = Path()
                     leafPath.moveTo(0f, 0f)
                     
                     // Ondulation des bords pour effet vivant
-                    val edgeWave = kotlin.math.sin(time * 2f) * 0.05f
+                    val edgeWave = kotlin.math.sin(time * 2f) * 0.03f
                     
-                    // Côté gauche avec courbe naturelle animée
-                    leafPath.cubicTo(
-                        -displayWidth * (0.3f + edgeWave), displayLength * 0.2f,
-                        -displayWidth * (0.5f - edgeWave), displayLength * 0.6f,
-                        -displayWidth * (0.2f + edgeWave), displayLength * 0.9f
-                    )
-                    leafPath.cubicTo(
-                        -displayWidth * 0.1f, displayLength * 0.95f,
-                        0f, displayLength,
-                        0f, displayLength
+                    // Côté gauche avec bords fortement dentelés
+                    val leftPoints = arrayOf(
+                        Pair(-displayWidth * (0.15f + edgeWave), displayLength * 0.2f),
+                        Pair(-displayWidth * (0.4f - edgeWave), displayLength * 0.3f),
+                        Pair(-displayWidth * (0.25f + edgeWave), displayLength * 0.45f), // Dent
+                        Pair(-displayWidth * (0.45f - edgeWave), displayLength * 0.6f),
+                        Pair(-displayWidth * (0.3f + edgeWave), displayLength * 0.75f), // Dent
+                        Pair(-displayWidth * (0.35f - edgeWave), displayLength * 0.9f),
+                        Pair(-displayWidth * 0.1f, displayLength * 0.95f)
                     )
                     
-                    // Côté droit symétrique avec animation
-                    leafPath.cubicTo(
-                        0f, displayLength,
-                        displayWidth * 0.1f, displayLength * 0.95f,
-                        displayWidth * (0.2f + edgeWave), displayLength * 0.9f
+                    for ((x, y) in leftPoints) {
+                        leafPath.lineTo(x, y)
+                    }
+                    leafPath.lineTo(0f, displayLength)
+                    
+                    // Côté droit symétrique avec dentelures
+                    val rightPoints = arrayOf(
+                        Pair(displayWidth * 0.1f, displayLength * 0.95f),
+                        Pair(displayWidth * (0.35f - edgeWave), displayLength * 0.9f),
+                        Pair(displayWidth * (0.3f + edgeWave), displayLength * 0.75f), // Dent
+                        Pair(displayWidth * (0.45f - edgeWave), displayLength * 0.6f),
+                        Pair(displayWidth * (0.25f + edgeWave), displayLength * 0.45f), // Dent
+                        Pair(displayWidth * (0.4f - edgeWave), displayLength * 0.3f),
+                        Pair(displayWidth * (0.15f + edgeWave), displayLength * 0.2f)
                     )
-                    leafPath.cubicTo(
-                        displayWidth * (0.5f - edgeWave), displayLength * 0.6f,
-                        displayWidth * (0.3f + edgeWave), displayLength * 0.2f,
-                        0f, 0f
-                    )
+                    
+                    for ((x, y) in rightPoints) {
+                        leafPath.lineTo(x, y)
+                    }
+                    leafPath.close()
                     
                     canvas.drawPath(leafPath, leafPaint)
                     
-                    // Nervure centrale animée
+                    // Nervure centrale plus marquée
                     val nervurePaint = Paint().apply {
-                        color = Color.rgb(greenValue - 15, 70, greenValue - 15)
-                        strokeWidth = (4f + sizeMultiplier * 0.3f) * lightingFactor
+                        color = Color.rgb(greenValue - 10, 50, greenValue - 10)
+                        strokeWidth = (3f + sizeMultiplier * 0.2f) * lightingFactor
                         style = Paint.Style.STROKE
                         isAntiAlias = true
                     }
                     canvas.drawLine(0f, 0f, 0f, displayLength, nervurePaint)
                     
-                    // Nervures secondaires plus détaillées
-                    nervurePaint.strokeWidth = (2f + sizeMultiplier * 0.15f) * lightingFactor
-                    for (i in 1..6) {
-                        val progress = i.toFloat() / 7f
+                    // Nervures secondaires plus visibles
+                    nervurePaint.strokeWidth = (1.5f + sizeMultiplier * 0.1f) * lightingFactor
+                    for (i in 1..5) {
+                        val progress = i.toFloat() / 6f
                         val nervureY = displayLength * progress
-                        val nervureLength = displayWidth * 0.35f * (1f - progress * 0.3f)
-                        val nervureWave = kotlin.math.sin(time + i * 0.5f) * 2f
+                        val nervureLength = displayWidth * 0.3f * (1f - progress * 0.3f)
+                        val nervureWave = kotlin.math.sin(time + i * 0.5f) * 1f
                         
-                        canvas.drawLine(0f, nervureY, -nervureLength + nervureWave, nervureY + displayLength * 0.08f, nervurePaint)
-                        canvas.drawLine(0f, nervureY, nervureLength + nervureWave, nervureY + displayLength * 0.08f, nervurePaint)
+                        canvas.drawLine(0f, nervureY, -nervureLength + nervureWave, nervureY + displayLength * 0.05f, nervurePaint)
+                        canvas.drawLine(0f, nervureY, nervureLength + nervureWave, nervureY + displayLength * 0.05f, nervurePaint)
                     }
                     
                 } else {
@@ -238,12 +246,12 @@ class PlantRenderer(private val context: Context) {
                 canvas.translate(flower.x + flowerOscillation, flower.y)
                 
                 val progressRatio = (flower.taille / 175f).coerceAtMost(1f)
-                val petalCount = 8
+                val petalCount = 14 // Marguerite: 12-16 pétales
                 
                 // CORRIGÉ : Tailles augmentées de 20% pour les fleurs
                 val sizeMultiplier = 4f // 3.33f * 1.2 = 4f
-                val petalLength = (25f + progressRatio * 60f) * sizeMultiplier * flowerPulse
-                val petalWidth = (12f + progressRatio * 30f) * sizeMultiplier * flowerPulse
+                val petalLength = (20f + progressRatio * 50f) * sizeMultiplier * flowerPulse // Plus étroits
+                val petalWidth = (6f + progressRatio * 12f) * sizeMultiplier * flowerPulse    // Plus fins
                 
                 // Dessiner chaque pétale avec animation individuelle
                 for (i in 0 until petalCount) {
@@ -265,41 +273,51 @@ class PlantRenderer(private val context: Context) {
                         style = Paint.Style.FILL
                     }
                     
-                    // Dégradé animé du rose au blanc
-                    val colorShift = kotlin.math.sin(time * 0.8f + i * 0.3f) * 0.1f
+                    // MARGUERITE : Dégradé blanc avec base légèrement crème
+                    val colorShift = kotlin.math.sin(time * 0.8f + i * 0.3f) * 0.05f
                     val gradient = LinearGradient(
                         0f, 0f, 0f, currentPetalLength,
                         intArrayOf(
-                            Color.rgb((255 * (0.7f + colorShift)).toInt(), (182 * (0.9f + colorShift)).toInt(), (193 * (0.9f + colorShift)).toInt()),
-                            Color.rgb((248 * (0.9f + colorShift)).toInt(), (187 * (0.95f + colorShift)).toInt(), (208 * (0.95f + colorShift)).toInt()),
-                            0xFFFFFFFF.toInt()
+                            Color.rgb((255 * (0.95f + colorShift)).toInt(), (248 * (0.95f + colorShift)).toInt(), (220 * (0.9f + colorShift)).toInt()), // Base crème
+                            Color.rgb((255 * (0.98f + colorShift)).toInt(), (255 * (0.98f + colorShift)).toInt(), (250 * (0.95f + colorShift)).toInt()), // Milieu blanc cassé
+                            0xFFFFFFFF.toInt() // Pointe blanc pur
                         ),
-                        floatArrayOf(0f, 0.5f, 1f),
+                        floatArrayOf(0f, 0.3f, 1f),
                         Shader.TileMode.CLAMP
                     )
                     petalPaint.shader = gradient
                     
-                    // Forme de pétale avec variation organique
-                    val organicVariation = kotlin.math.sin(time + i * 0.7f) * 0.05f
+                    // MARGUERITE : Forme de pétale étroite et allongée
+                    val organicVariation = kotlin.math.sin(time + i * 0.7f) * 0.03f
                     val petalPath = Path()
                     petalPath.moveTo(0f, 0f)
                     petalPath.cubicTo(
-                        -currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f, 
-                        -currentPetalWidth * (0.3f - organicVariation), currentPetalLength * 0.8f, 
+                        -currentPetalWidth * (0.4f + organicVariation), currentPetalLength * 0.2f, 
+                        -currentPetalWidth * (0.25f - organicVariation), currentPetalLength * 0.7f, 
+                        -currentPetalWidth * 0.1f, currentPetalLength * 0.95f
+                    )
+                    petalPath.cubicTo(
+                        0f, currentPetalLength,
+                        0f, currentPetalLength,
                         0f, currentPetalLength
                     )
                     petalPath.cubicTo(
-                        currentPetalWidth * (0.3f - organicVariation), currentPetalLength * 0.8f, 
-                        currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f, 
+                        currentPetalWidth * 0.1f, currentPetalLength * 0.95f,
+                        currentPetalWidth * (0.25f - organicVariation), currentPetalLength * 0.7f, 
+                        currentPetalWidth * (0.4f + organicVariation), currentPetalLength * 0.2f
+                    )
+                    petalPath.cubicTo(
+                        currentPetalWidth * 0.2f, currentPetalLength * 0.1f,
+                        0f, 0f,
                         0f, 0f
                     )
                     
                     canvas.drawPath(petalPath, petalPaint)
                     
-                    // Nervure centrale du pétale animée
+                    // MARGUERITE : Nervure centrale très fine
                     val nervurePaint = Paint().apply {
-                        color = Color.rgb((232 + kotlin.math.sin(time + i).toFloat() * 10).toInt().coerceIn(220, 240), 160, 184)
-                        strokeWidth = 2f + sizeMultiplier * 0.1f
+                        color = Color.rgb(245, 245, 240) // Blanc cassé très discret
+                        strokeWidth = 1f + sizeMultiplier * 0.05f
                         style = Paint.Style.STROKE
                         isAntiAlias = true
                     }
@@ -317,12 +335,12 @@ class PlantRenderer(private val context: Context) {
                 // Centre plus petit et proportionnel
                 val centerSize = petalLength * 0.12f * flowerPulse // Beaucoup plus petit
                 
-                // Base du centre avec animation de couleur
-                val centerColorShift = kotlin.math.sin(time * 1.2f) * 0.1f
+                // MARGUERITE : Centre jaune vif caractéristique
+                val centerColorShift = kotlin.math.sin(time * 1.2f) * 0.05f
                 centerPaint.color = Color.rgb(
-                    (255 * (0.9f + centerColorShift)).toInt(),
-                    (215 * (0.9f + centerColorShift)).toInt(),
-                    0
+                    (255 * (0.95f + centerColorShift)).toInt(),
+                    (230 * (0.95f + centerColorShift)).toInt(),
+                    (0 * (0.1f + centerColorShift)).toInt()
                 )
                 canvas.drawCircle(0f, 0f, centerSize, centerPaint)
                 
