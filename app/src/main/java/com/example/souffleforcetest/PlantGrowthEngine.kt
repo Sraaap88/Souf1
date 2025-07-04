@@ -96,6 +96,9 @@ class PlantGrowthEngine(
         bourgeons.add(bourgeon)
     }
     
+    fun getBourgeons(): MutableList<Bourgeon> = bourgeons
+    fun getFeuilles(): MutableList<Feuille> = feuilles
+    
     // ==================== CROISSANCE DES BRANCHES ====================
     
     private fun initializePlant() {
