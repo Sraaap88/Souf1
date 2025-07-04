@@ -59,8 +59,7 @@ class PlantGrowthEngine(
     fun updateForce(force: Float, lightState: String) {
         when (lightState) {
             "GREEN_GROW" -> growAllBranches(force)
-            "GREEN_LEAVES" -> growLeaves(force)
-            "GREEN_FLOWER" -> growAllFlowers(force)
+            // Les feuilles et fleurs sont gérées par PlantGrowthFeatures
         }
     }
     
@@ -91,6 +90,10 @@ class PlantGrowthEngine(
     
     fun getBranches(): List<Branch> {
         return branches.filter { it.isActive }
+    }
+    
+    fun addBourgeon(bourgeon: Bourgeon) {
+        bourgeons.add(bourgeon)
     }
     
     // ==================== CROISSANCE DES BRANCHES ====================
@@ -216,7 +219,7 @@ class PlantGrowthEngine(
             branch.offsetX = branch.offsetX.coerceIn(-100f, 100f)
             
             if (branch.currentHeight > 30f && branch.tracedPath.size > 6) {
-                createRealisticBud(branch)
+                // La création de bourgeons sera gérée par PlantGrowthFeatures
             }
         }
         
