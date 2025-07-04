@@ -75,11 +75,11 @@ class OrganicLineView @JvmOverloads constructor(
     // PARAMÈTRES DE CROISSANCE - MODIFIABLES
     private val forceThreshold = 0.08f
     private val growthRate = 174.6f
-    private val baseStrokeWidth = 12f
-    private val maxStrokeWidth = 32f
+    private val baseStrokeWidth = 9.6f // Réduit de 20%
+    private val maxStrokeWidth = 25.6f // Réduit de 20%
     private val strokeDecayRate = 0.2f
     private val abruptThreshold = 0.15f
-    private val centeringRate = 0.98f
+    private val centeringRate = 0.99f // Retour 2x moins rapide
     private val waveThreshold = 0.03f
     private val maxWaveAmplitude = 15f
     
@@ -232,7 +232,8 @@ class OrganicLineView @JvmOverloads constructor(
         val rhythmIntensity = kotlin.math.abs(currentForce - previousForce)
         
         if (rhythmIntensity > abruptThreshold) {
-            val displacement = if ((0..1).random() == 0) 60f else -60f
+            // Déplacements plus forts (coups de vent)
+            val displacement = if ((0..1).random() == 0) 90f else -90f
             offsetX += displacement
             
             if (currentHeight > 80f && tracedPath.size > 3) {
@@ -240,16 +241,8 @@ class OrganicLineView @JvmOverloads constructor(
                 val attachX = recentPoint.x + ((-25..25).random()).toFloat()
                 val attachY = recentPoint.y + ((-15..15).random()).toFloat()
                 
-                // CORRIGÉ : Position plus proche de la tige pour les bourgeons
-                val distanceFromStem = 15f // Plus proche de la tige
-                val isRightSide = attachX > recentPoint.x
-                val finalX = if (isRightSide) {
-                    recentPoint.x + distanceFromStem
-                } else {
-                    recentPoint.x - distanceFromStem
-                }
-                
-                bourgeons.add(Bourgeon(finalX, attachY, 3f))
+                // Bourgeons directement sur la tige
+                bourgeons.add(Bourgeon(recentPoint.x, attachY, 3f))
             }
         } else if (rhythmIntensity > 0.02f) {
             val thicknessIncrease = rhythmIntensity * 50f
@@ -267,7 +260,6 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // CORRIGÉ : Fonction growLeaves avec angles mieux orientés
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
@@ -285,12 +277,9 @@ class OrganicLineView @JvmOverloads constructor(
                         
                         val isRightSide = bourgeon.x > stemX
                         
-                        // CORRIGÉ : Angles plus réalistes pour que les feuilles partent du bourgeon
                         val angleToStem = if (isRightSide) {
-                            // Feuille va vers la droite et légèrement vers le haut
                             -30f + ((-20..20).random()).toFloat()
                         } else {
-                            // Feuille va vers la gauche et légèrement vers le haut  
                             210f + ((-20..20).random()).toFloat()
                         }
                         
@@ -298,7 +287,6 @@ class OrganicLineView @JvmOverloads constructor(
                         feuilles.add(feuille)
                     }
                     
-                    // Croissance équilibrée
                     val lengthGrowth = growthIncrement * 0.2f
                     val widthGrowth = growthIncrement * 0.15f
                     
@@ -308,11 +296,12 @@ class OrganicLineView @JvmOverloads constructor(
                     if (feuille.longueur >= 120f) {
                         feuille.longueur += lengthGrowth * 0.4f
                         feuille.largeur += widthGrowth * 0.8f
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 350f)
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 180f)
+                        // Limites augmentées de 30% pour les feuilles
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 455f)
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 234f)
                     } else {
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 120f)
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 80f)
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 156f)
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 104f)
                     }
                 }
             }
@@ -380,17 +369,13 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // CORRIGÉ : Fonction onDraw() avec poils plus visibles
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
         val time = System.currentTimeMillis() * 0.002f
         
-        // Utiliser le renderer pour dessiner
+        // Dessiner sans les poils
         plantRenderer.drawRealisticStem(canvas, tracedPath, time, baseStrokeWidth, maxStrokeWidth)
-        
-        // CORRIGÉ : Ajouter les poils partout sur la tige
-        plantRenderer.drawStemHairs(canvas, tracedPath, time)
         
         if (tracedPath.isNotEmpty()) {
             plantRenderer.drawGrowthPoint(canvas, tracedPath.last(), time)
