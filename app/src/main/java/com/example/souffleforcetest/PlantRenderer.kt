@@ -120,8 +120,8 @@ class PlantRenderer(private val context: Context) {
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
                 val perspectiveFactor = kotlin.math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
-                // Calcul de la taille 10x plus grande
-                val sizeMultiplier = 10f
+                // Tailles réduites au 1/3
+                val sizeMultiplier = 3.33f // au lieu de 10f
                 val displayWidth = feuille.largeur * sizeMultiplier * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
                 val displayLength = feuille.longueur * sizeMultiplier
                 
@@ -239,10 +239,10 @@ class PlantRenderer(private val context: Context) {
                 val progressRatio = (flower.taille / 175f).coerceAtMost(1f)
                 val petalCount = 8
                 
-                // Tailles 10x plus grandes
-                val sizeMultiplier = 10f
-                val petalLength = (25f + progressRatio * 35f) * sizeMultiplier * flowerPulse
-                val petalWidth = (12f + progressRatio * 18f) * sizeMultiplier * flowerPulse
+                // Tailles réduites au 1/3 avec pétales plus rapides
+                val sizeMultiplier = 3.33f
+                val petalLength = (25f + progressRatio * 60f) * sizeMultiplier * flowerPulse
+                val petalWidth = (12f + progressRatio * 30f) * sizeMultiplier * flowerPulse
                 
                 // Dessiner chaque pétale avec animation individuelle
                 for (i in 0 until petalCount) {
@@ -253,8 +253,8 @@ class PlantRenderer(private val context: Context) {
                     canvas.save()
                     canvas.rotate(angle)
                     
-                    // Animation d'ouverture progressive des pétales
-                    val openingFactor = kotlin.math.min(1f, progressRatio * 1.5f)
+                    // Animation d'ouverture plus rapide des pétales
+                    val openingFactor = kotlin.math.min(1f, progressRatio * 2.5f)
                     val currentPetalLength = petalLength * openingFactor
                     val currentPetalWidth = petalWidth * openingFactor
                     
@@ -307,13 +307,14 @@ class PlantRenderer(private val context: Context) {
                     canvas.restore()
                 }
                 
-                // Centre de la fleur animé (pistil et étamines)
+                // CORRIGÉ : Centre proportionnel aux pétales
                 val centerPaint = Paint().apply {
                     isAntiAlias = true
                     style = Paint.Style.FILL
                 }
                 
-                val centerSize = (8f + progressRatio * 4f) * sizeMultiplier * flowerPulse
+                // Centre plus petit et proportionnel
+                val centerSize = petalLength * 0.12f * flowerPulse // Beaucoup plus petit
                 
                 // Base du centre avec animation de couleur
                 val centerColorShift = kotlin.math.sin(time * 1.2f) * 0.1f
@@ -324,24 +325,24 @@ class PlantRenderer(private val context: Context) {
                 )
                 canvas.drawCircle(0f, 0f, centerSize, centerPaint)
                 
-                // Petites étamines animées autour
+                // Petites étamines plus proportionnelles
                 centerPaint.color = 0xFFFFA500.toInt()
-                val stamenCount = 12
+                val stamenCount = 8
+                val stamenRadius = centerSize * 0.6f // Proportionnel au centre
                 for (i in 0 until stamenCount) {
                     val stamenAngle = i * 360f / stamenCount + time * 15f
-                    val stamenRadius = (6f + progressRatio * 2f) * sizeMultiplier
-                    val stamenBob = kotlin.math.sin(time * 3f + i * 0.4f) * 2f
+                    val stamenBob = kotlin.math.sin(time * 3f + i * 0.4f) * 1f
                     val finalStamenRadius = stamenRadius + stamenBob
                     
                     val stamenX = kotlin.math.cos(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
                     val stamenY = kotlin.math.sin(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
-                    canvas.drawCircle(stamenX, stamenY, 3f + sizeMultiplier * 0.1f, centerPaint)
+                    canvas.drawCircle(stamenX, stamenY, centerSize * 0.15f, centerPaint) // Proportionnel
                 }
                 
-                // Point central animé (pistil)
+                // Point central plus petit
                 val pistilPulse = 1f + kotlin.math.sin(time * 2.5f) * 0.2f
                 centerPaint.color = 0xFFFF6347.toInt()
-                canvas.drawCircle(0f, 0f, (2f + progressRatio * 1f) * sizeMultiplier * pistilPulse, centerPaint)
+                canvas.drawCircle(0f, 0f, centerSize * 0.3f * pistilPulse, centerPaint) // Beaucoup plus petit
                 
                 canvas.restore()
             }
