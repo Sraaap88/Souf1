@@ -237,9 +237,18 @@ class OrganicLineView @JvmOverloads constructor(
             
             if (currentHeight > 80f && tracedPath.size > 3) {
                 val recentPoint = tracedPath[tracedPath.size - (2..4).random()]
+                val attachX = recentPoint.x + ((-25..25).random()).toFloat()
+                val attachY = recentPoint.y + ((-15..15).random()).toFloat()
                 
-                // CORRECTION : Bourgeon EXACTEMENT sur la tige (pas de décalage)
-                bourgeons.add(Bourgeon(recentPoint.x, recentPoint.y, 3f))
+                val distanceFromStem = -40f
+                val isRightSide = attachX > recentPoint.x
+                val finalX = if (isRightSide) {
+                    recentPoint.x + distanceFromStem
+                } else {
+                    recentPoint.x - distanceFromStem
+                }
+                
+                bourgeons.add(Bourgeon(finalX, attachY, 3f))
             }
         } else if (rhythmIntensity > 0.02f) {
             val thicknessIncrease = rhythmIntensity * 50f
@@ -257,6 +266,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
+    // AMÉLIORATION : Fonction growLeaves() avec meilleur équilibre largeur/longueur
     private fun growLeaves(force: Float) {
         if (force > forceThreshold) {
             val adjustedForce = force - forceThreshold
@@ -284,16 +294,22 @@ class OrganicLineView @JvmOverloads constructor(
                         feuilles.add(feuille)
                     }
                     
-                    // CORRECTION : Les feuilles s'ALLONGENT plus qu'elles ne s'élargissent
-                    feuille.longueur += growthIncrement * 0.8f // Beaucoup plus d'allongement
-                    feuille.largeur += growthIncrement * 0.1f // Très peu d'élargissement
+                    // AMÉLIORATION : Croissance plus équilibrée largeur/longueur
+                    val lengthGrowth = growthIncrement * 0.2f  // Augmenté pour plus de longueur
+                    val widthGrowth = growthIncrement * 0.15f   // Plus de largeur aussi
                     
-                    if (feuille.longueur >= 150f) {
-                        feuille.longueur += growthIncrement * 1.2f // Accélération de l'allongement
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 600f) // Max plus élevé
+                    feuille.longueur += lengthGrowth
+                    feuille.largeur += widthGrowth
+                    
+                    // Phases de croissance avec meilleur équilibre
+                    if (feuille.longueur >= 120f) {
+                        feuille.longueur += lengthGrowth * 0.4f  // Ralentir la longueur
+                        feuille.largeur += widthGrowth * 0.8f    // Favoriser la largeur
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 350f) // Limite réduite
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 180f)   // Limite augmentée
                     } else {
-                        feuille.longueur = kotlin.math.min(feuille.longueur, 150f)
-                        feuille.largeur = kotlin.math.min(feuille.largeur, 40f) // Largeur limitée
+                        feuille.longueur = kotlin.math.min(feuille.longueur, 120f)
+                        feuille.largeur = kotlin.math.min(feuille.largeur, 80f)    // Limite augmentée
                     }
                 }
             }
@@ -361,6 +377,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
+    // AMÉLIORATION : Fonction onDraw() avec ajout des poils
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
@@ -368,6 +385,9 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Utiliser le renderer pour dessiner
         plantRenderer.drawRealisticStem(canvas, tracedPath, time, baseStrokeWidth, maxStrokeWidth)
+        
+        // NOUVEAU : Ajouter les poils sur la tige
+        plantRenderer.drawStemHairs(canvas, tracedPath, time)
         
         if (tracedPath.isNotEmpty()) {
             plantRenderer.drawGrowthPoint(canvas, tracedPath.last(), time)
