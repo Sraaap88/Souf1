@@ -149,59 +149,57 @@ class PlantRenderer(private val context: Context) {
         }
     }
     
-    // NOUVEAU : Fonction pour dessiner les poils de la tige
+    // CORRIGÉ : Fonction pour dessiner des petits poils partout sur la tige
     fun drawStemHairs(
         canvas: Canvas,
         tracedPath: List<OrganicLineView.TracePoint>,
         time: Float
     ) {
         val hairPaint = Paint().apply {
-            color = 0xFF1F3F1F.toInt() // Vert très sombre
-            strokeWidth = 1f
+            color = 0xFF0F2F0F.toInt() // Vert encore plus sombre pour être visible
+            strokeWidth = 2f // Plus épais pour être visible
             isAntiAlias = true
             strokeCap = Paint.Cap.ROUND
             style = Paint.Style.STROKE
         }
         
         if (tracedPath.size > 1) {
-            for (i in 1 until tracedPath.size) {
+            for (i in tracedPath.indices) {
                 val point = tracedPath[i]
-                val prevPoint = tracedPath[i-1]
+                val oscillation = kotlin.math.sin(time + point.y * 0.01f) * 2f
+                val adjustedX = point.x + oscillation
                 
-                // Densité des poils - un poil tous les 15 pixels environ
-                val segmentLength = kotlin.math.sqrt(
-                    (point.x - prevPoint.x) * (point.x - prevPoint.x) + 
-                    (point.y - prevPoint.y) * (point.y - prevPoint.y)
-                )
-                
-                if (segmentLength > 15f && i % 2 == 0) {
-                    val oscillation = kotlin.math.sin(time + point.y * 0.01f) * 2f
-                    val adjustedX = point.x + oscillation
+                // Densité augmentée - poils partout
+                if (i % 1 == 0) { // Chaque point a des poils
                     
-                    // Calcul de l'angle perpendiculaire au segment
-                    val dx = point.x - prevPoint.x
-                    val dy = point.y - prevPoint.y
-                    val angle = kotlin.math.atan2(dy, dx)
-                    val perpAngle1 = angle + kotlin.math.PI / 2
-                    val perpAngle2 = angle - kotlin.math.PI / 2
+                    // Plusieurs poils autour de chaque point de la tige
+                    for (hairIndex in 0..2) {
+                        val angleOffset = (hairIndex * 120f) * kotlin.math.PI / 180f // 3 poils à 120° d'écart
+                        val variation = kotlin.math.sin(time * 1.5f + i * 0.3f + hairIndex) * 2f
+                        
+                        // Longueur des poils plus courte mais plus visible
+                        val hairLength = 6f + variation
+                        
+                        // Position du poil
+                        val hairX = adjustedX + kotlin.math.cos(angleOffset).toFloat() * hairLength
+                        val hairY = point.y + kotlin.math.sin(angleOffset).toFloat() * hairLength
+                        
+                        // Dessiner le poil
+                        canvas.drawLine(adjustedX, point.y, hairX, hairY, hairPaint)
+                    }
                     
-                    // Longueur des poils variable selon la hauteur
-                    val heightRatio = i.toFloat() / tracedPath.size.toFloat()
-                    val hairLength = 8f + heightRatio * 12f
-                    
-                    // Poils de chaque côté avec légère variation
-                    val variation1 = (kotlin.math.sin(time * 2f + i * 0.5f) * 0.3f).toFloat()
-                    val variation2 = (kotlin.math.cos(time * 1.8f + i * 0.7f) * 0.3f).toFloat()
-                    
-                    // Poil côté gauche
-                    val hairX1 = adjustedX + kotlin.math.cos(perpAngle1).toFloat() * (hairLength + variation1)
-                    val hairY1 = point.y + kotlin.math.sin(perpAngle1).toFloat() * (hairLength + variation1)
-                    canvas.drawLine(adjustedX, point.y, hairX1, hairY1, hairPaint)
-                    
-                    // Poil côté droit
-                    val hairX2 = adjustedX + kotlin.math.cos(perpAngle2).toFloat() * (hairLength + variation2)
-                    val hairY2 = point.y + kotlin.math.sin(perpAngle2).toFloat() * (hairLength + variation2)
-                    canvas.drawLine(adjustedX, point.y, hairX2, hairY2, hairPaint)
+                    // Poils supplémentaires plus courts
+                    for (shortHair in 0..1) {
+                        val randomAngle = ((i * 137 + shortHair * 73) % 360) * kotlin.math.PI / 180f
+                        val shortLength = 3f + kotlin.math.sin(time + i * 0.1f) * 1f
+                        
+                        val shortHairX = adjustedX + kotlin.math.cos(randomAngle).toFloat() * shortLength
+                        val shortHairY = point.y + kotlin.math.sin(randomAngle).toFloat() * shortLength
+                        
+                        hairPaint.strokeWidth = 1f
+                        canvas.drawLine(adjustedX, point.y, shortHairX, shortHairY, hairPaint)
+                        hairPaint.strokeWidth = 2f
+                    }
                 }
             }
         }
@@ -225,6 +223,7 @@ class PlantRenderer(private val context: Context) {
         }
     }
     
+    // CORRIGÉ : drawLeaves avec meilleur positionnement du pétiole
     fun drawLeaves(
         canvas: Canvas, 
         feuilles: List<OrganicLineView.Feuille>, 
@@ -235,25 +234,27 @@ class PlantRenderer(private val context: Context) {
             if (feuille.longueur > 5) {
                 val leafOscillation = kotlin.math.sin(time * 1.5f + feuille.bourgeon.y * 0.01f) * 8f
                 
-                // AMÉLIORATION : Calcul séparé largeur/longueur au lieu d'un scale uniforme
+                // Calcul séparé largeur/longueur
                 val baseScale = 0.055f
-                val lengthScale = kotlin.math.min(feuille.longueur / 400f, baseScale * 2f) // Plus d'extension en longueur
-                val widthScale = kotlin.math.min(feuille.largeur / 200f, baseScale * 1.2f)  // Moins d'extension en largeur
+                val lengthScale = kotlin.math.min(feuille.longueur / 400f, baseScale * 2f)
+                val widthScale = kotlin.math.min(feuille.largeur / 200f, baseScale * 1.2f)
                 
                 val leafW = leafBitmap.width.toFloat() * widthScale
                 val leafH = leafBitmap.height.toFloat() * lengthScale
                 
-                // AMÉLIORATION : Ajustement du pétiole - décalage pour compenser sa position dans l'image
-                val petioleOffsetInImage = 0.15f // Le pétiole est à 15% du bord gauche dans l'image
-                val actualPetioleOffset = leafW * petioleOffsetInImage
-                
-                // Position de la feuille avec correction du pétiole
+                // CORRECTION MAJEURE : Le pétiole part vraiment du point d'attache
+                // On place la feuille de façon à ce que le début de l'image (le pétiole) touche le bourgeon
                 val angleRad = feuille.angle * kotlin.math.PI / 180.0
-                val leafX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * actualPetioleOffset
-                val leafY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * actualPetioleOffset
+                
+                // Distance du pétiole depuis le centre de l'image vers le bord
+                val petioleDistance = leafW * 0.4f // Le pétiole est à 40% du bord dans l'image
+                
+                // Position de la feuille décalée pour que le pétiole touche le bourgeon
+                val leafCenterX = feuille.bourgeon.x + leafOscillation + kotlin.math.cos(angleRad).toFloat() * petioleDistance
+                val leafCenterY = feuille.bourgeon.y + kotlin.math.sin(angleRad).toFloat() * petioleDistance
                 
                 canvas.save()
-                canvas.translate(leafX, leafY)
+                canvas.translate(leafCenterX, leafCenterY)
                 canvas.rotate(feuille.angle + leafOscillation * 0.5f)
                 
                 val paint = Paint().apply {
@@ -262,7 +263,6 @@ class PlantRenderer(private val context: Context) {
                     alpha = 220
                 }
                 
-                // AMÉLIORATION : Rectangle avec largeur et hauteur séparées
                 val dstRect = RectF(-leafW/2, -leafH/2, leafW/2, leafH/2)
                 canvas.drawBitmap(leafBitmap, null, dstRect, paint)
                 canvas.restore()
