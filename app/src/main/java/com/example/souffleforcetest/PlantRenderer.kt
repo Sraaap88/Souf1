@@ -146,51 +146,81 @@ class PlantRenderer(private val context: Context) {
                 }
                 
                 if (perspectiveFactor > 0.3f) {
-                    // MARGUERITE : Feuille avec première moitié lisse rallongée, deuxième moitié dentelée
+                    // MARGUERITE : Feuille avec courbure gravitationnelle naturelle
                     val leafPath = Path()
                     leafPath.moveTo(0f, 0f)
                     
-                    val midLength = displayLength * 0.65f // Partie lisse rallongée de 30% (0.5f → 0.65f)
+                    val midLength = displayLength * 0.65f // Partie lisse rallongée
                     
-                    // PREMIÈRE MOITIÉ : LISSE, effilée et PLUS FINE à la jonction
-                    leafPath.lineTo(-displayWidth * 0.08f, midLength * 0.3f)  // Plus effilée
-                    leafPath.lineTo(-displayWidth * 0.2f, midLength * 0.7f)   // Élargissement progressif
-                    leafPath.lineTo(-displayWidth * 0.25f, midLength)        // PLUS FINE à la jonction (0.35f → 0.25f)
+                    // COURBURE GRAVITATIONNELLE : calcul de la trajectoire naturelle
+                    fun getGravityCurveY(progress: Float, baseY: Float): Float {
+                        // Courbe parabolique : monte au début, redescend à la fin
+                        val lift = -displayLength * 0.15f * kotlin.math.sin(progress * kotlin.math.PI.toFloat()) // Monte puis descend
+                        val gravity = displayLength * 0.1f * (progress * progress) // Effet gravitationnel croissant
+                        return baseY + lift + gravity
+                    }
                     
-                    // DEUXIÈME MOITIÉ : DENTELÉE (plus large)
+                    // PREMIÈRE MOITIÉ : LISSE, effilée avec courbure naturelle
+                    val smooth1Progress = 0.3f
+                    val smooth1Y = getGravityCurveY(smooth1Progress, midLength * 0.3f)
+                    leafPath.quadTo(-displayWidth * 0.04f, smooth1Y, -displayWidth * 0.08f, smooth1Y) // Courbe douce
+                    
+                    val smooth2Progress = 0.7f
+                    val smooth2Y = getGravityCurveY(smooth2Progress, midLength * 0.7f)
+                    leafPath.quadTo(-displayWidth * 0.15f, smooth2Y, -displayWidth * 0.2f, smooth2Y)
+                    
+                    val junctionY = getGravityCurveY(1.0f, midLength)
+                    leafPath.quadTo(-displayWidth * 0.22f, junctionY, -displayWidth * 0.25f, junctionY) // Jonction plus fine
+                    
+                    // DEUXIÈME MOITIÉ : DENTELÉE avec plus d'ondulations (6 au lieu de 4)
                     val edgeWave = kotlin.math.sin(time * 2f) * 0.03f
                     
-                    // Côté gauche avec dentelures seulement sur la deuxième moitié
-                    val leftPoints = arrayOf(
-                        Pair(-displayWidth * (0.45f - edgeWave), displayLength * 0.7f),  // Plus large après jonction
-                        Pair(-displayWidth * (0.3f + edgeWave), displayLength * 0.8f),   // Dent
-                        Pair(-displayWidth * (0.5f - edgeWave), displayLength * 0.85f),
-                        Pair(-displayWidth * (0.35f + edgeWave), displayLength * 0.95f), // Dent
-                        Pair(-displayWidth * 0.1f, displayLength * 0.98f)
+                    // 6 ondulations sur le côté gauche
+                    val leftDentPoints = arrayOf(
+                        Pair(-displayWidth * (0.35f - edgeWave), displayLength * 0.7f),   // Ondulation 1
+                        Pair(-displayWidth * (0.45f + edgeWave), displayLength * 0.75f),  // Dent 1
+                        Pair(-displayWidth * (0.3f - edgeWave), displayLength * 0.8f),    // Ondulation 2
+                        Pair(-displayWidth * (0.5f + edgeWave), displayLength * 0.84f),   // Dent 2
+                        Pair(-displayWidth * (0.32f - edgeWave), displayLength * 0.88f),  // Ondulation 3
+                        Pair(-displayWidth * (0.47f + edgeWave), displayLength * 0.92f),  // Dent 3
+                        Pair(-displayWidth * (0.28f - edgeWave), displayLength * 0.96f),  // Ondulation 4
+                        Pair(-displayWidth * (0.4f + edgeWave), displayLength * 0.98f),   // Dent 4
+                        Pair(-displayWidth * 0.15f, displayLength * 0.995f)               // Avant pointe
                     )
                     
-                    for ((x, y) in leftPoints) {
-                        leafPath.lineTo(x, y)
+                    for ((x, y) in leftDentPoints) {
+                        val curvedY = getGravityCurveY((y / displayLength), y)
+                        leafPath.lineTo(x, curvedY)
                     }
-                    leafPath.lineTo(0f, displayLength)
                     
-                    // Côté droit symétrique
-                    val rightPoints = arrayOf(
-                        Pair(displayWidth * 0.1f, displayLength * 0.98f),
-                        Pair(displayWidth * (0.35f + edgeWave), displayLength * 0.95f), // Dent
-                        Pair(displayWidth * (0.5f - edgeWave), displayLength * 0.85f),
-                        Pair(displayWidth * (0.3f + edgeWave), displayLength * 0.8f),   // Dent
-                        Pair(displayWidth * (0.45f - edgeWave), displayLength * 0.7f),  // Plus large après jonction
-                        Pair(displayWidth * 0.25f, midLength),        // PLUS FINE à la jonction
-                        Pair(displayWidth * 0.2f, midLength * 0.7f),  // Première moitié lisse
-                        Pair(displayWidth * 0.08f, midLength * 0.3f)  // Plus effilée
+                    // POINTE avec courbure vers le bas (recourbée)
+                    val tipY = getGravityCurveY(1.0f, displayLength) + displayLength * 0.05f // Légèrement plus bas
+                    leafPath.quadTo(-displayWidth * 0.05f, tipY + displayLength * 0.02f, 0f, tipY) // Courbure de la pointe
+                    
+                    // Côté droit symétrique avec ondulations
+                    val rightDentPoints = arrayOf(
+                        Pair(displayWidth * 0.15f, displayLength * 0.995f),               // Avant pointe
+                        Pair(displayWidth * (0.4f + edgeWave), displayLength * 0.98f),    // Dent 4
+                        Pair(displayWidth * (0.28f - edgeWave), displayLength * 0.96f),   // Ondulation 4
+                        Pair(displayWidth * (0.47f + edgeWave), displayLength * 0.92f),   // Dent 3
+                        Pair(displayWidth * (0.32f - edgeWave), displayLength * 0.88f),   // Ondulation 3
+                        Pair(displayWidth * (0.5f + edgeWave), displayLength * 0.84f),    // Dent 2
+                        Pair(displayWidth * (0.3f - edgeWave), displayLength * 0.8f),     // Ondulation 2
+                        Pair(displayWidth * (0.45f + edgeWave), displayLength * 0.75f),   // Dent 1
+                        Pair(displayWidth * (0.35f - edgeWave), displayLength * 0.7f)     // Ondulation 1
                     )
                     
-                    for ((x, y) in rightPoints) {
-                        leafPath.lineTo(x, y)
+                    for ((x, y) in rightDentPoints) {
+                        val curvedY = getGravityCurveY((y / displayLength), y)
+                        leafPath.lineTo(x, curvedY)
                     }
+                    
+                    // Retour à la base avec courbure
+                    leafPath.quadTo(displayWidth * 0.22f, junctionY, displayWidth * 0.25f, junctionY) // Jonction
+                    leafPath.quadTo(displayWidth * 0.15f, smooth2Y, displayWidth * 0.2f, smooth2Y)   // Partie lisse
+                    leafPath.quadTo(displayWidth * 0.04f, smooth1Y, displayWidth * 0.08f, smooth1Y)  // Effilée
+                    
                     leafPath.close()
-                    
                     canvas.drawPath(leafPath, leafPaint)
                     
                     // Nervure centrale plus marquée
@@ -335,38 +365,4 @@ class PlantRenderer(private val context: Context) {
                 }
                 
                 // Centre plus petit et proportionnel
-                val centerSize = petalLength * 0.12f * flowerPulse // Beaucoup plus petit
-                
-                // MARGUERITE : Centre jaune vif caractéristique
-                val centerColorShift = kotlin.math.sin(time * 1.2f) * 0.05f
-                centerPaint.color = Color.rgb(
-                    (255 * (0.95f + centerColorShift)).toInt(),
-                    (230 * (0.95f + centerColorShift)).toInt(),
-                    (0 * (0.1f + centerColorShift)).toInt()
-                )
-                canvas.drawCircle(0f, 0f, centerSize, centerPaint)
-                
-                // Petites étamines plus proportionnelles
-                centerPaint.color = 0xFFFFA500.toInt()
-                val stamenCount = 8
-                val stamenRadius = centerSize * 0.6f // Proportionnel au centre
-                for (i in 0 until stamenCount) {
-                    val stamenAngle = i * 360f / stamenCount + time * 15f
-                    val stamenBob = kotlin.math.sin(time * 3f + i * 0.4f) * 1f
-                    val finalStamenRadius = stamenRadius + stamenBob
-                    
-                    val stamenX = Math.cos(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
-                    val stamenY = Math.sin(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
-                    canvas.drawCircle(stamenX, stamenY, centerSize * 0.15f, centerPaint) // Proportionnel
-                }
-                
-                // Point central plus petit
-                val pistilPulse = 1f + kotlin.math.sin(time * 2.5f) * 0.2f
-                centerPaint.color = 0xFFFF6347.toInt()
-                canvas.drawCircle(0f, 0f, centerSize * 0.3f * pistilPulse, centerPaint) // Beaucoup plus petit
-                
-                canvas.restore()
-            }
-        }
-    }
-}
+                val centerSize = petalLen
