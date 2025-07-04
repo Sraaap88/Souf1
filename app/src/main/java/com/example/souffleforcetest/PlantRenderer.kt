@@ -365,4 +365,38 @@ class PlantRenderer(private val context: Context) {
                 }
                 
                 // Centre plus petit et proportionnel
-                val centerSize = petalLen
+                val centerSize = petalLength * 0.12f * flowerPulse // Beaucoup plus petit
+                
+                // MARGUERITE : Centre jaune vif caractéristique
+                val centerColorShift = kotlin.math.sin(time * 1.2f) * 0.05f
+                centerPaint.color = Color.rgb(
+                    (255 * (0.95f + centerColorShift)).toInt(),
+                    (230 * (0.95f + centerColorShift)).toInt(),
+                    (0 * (0.1f + centerColorShift)).toInt()
+                )
+                canvas.drawCircle(0f, 0f, centerSize, centerPaint)
+                
+                // Petites étamines plus proportionnelles
+                centerPaint.color = 0xFFFFA500.toInt()
+                val stamenCount = 8
+                val stamenRadius = centerSize * 0.6f // Proportionnel au centre
+                for (i in 0 until stamenCount) {
+                    val stamenAngle = i * 360f / stamenCount + time * 15f
+                    val stamenBob = kotlin.math.sin(time * 3f + i * 0.4f) * 1f
+                    val finalStamenRadius = stamenRadius + stamenBob
+                    
+                    val stamenX = Math.cos(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
+                    val stamenY = Math.sin(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
+                    canvas.drawCircle(stamenX, stamenY, centerSize * 0.15f, centerPaint) // Proportionnel
+                }
+                
+                // Point central plus petit
+                val pistilPulse = 1f + kotlin.math.sin(time * 2.5f) * 0.2f
+                centerPaint.color = 0xFFFF6347.toInt()
+                canvas.drawCircle(0f, 0f, centerSize * 0.3f * pistilPulse, centerPaint) // Beaucoup plus petit
+                
+                canvas.restore()
+            }
+        }
+    }
+}
