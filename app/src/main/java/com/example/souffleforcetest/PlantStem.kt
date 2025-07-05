@@ -49,13 +49,13 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.15f // Augmenté de 0.05f à 0.15f (3x plus strict)
+    private val forceThreshold = 0.25f // Augmenté de 0.15f à 0.25f (moins sensible)
     private val maxStemHeight = 0.8f // Remis à la hauteur originale
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
-    private val branchThreshold = 0.12f // Augmenté de 0.05f à 0.12f pour éviter branches accidentelles
+    private val branchThreshold = 0.18f // Augmenté de 0.12f à 0.18f pour éviter branches accidentelles
     private val emergenceDuration = 1000L
     private val maxBranches = 2 // DEUX tiges secondaires (droite + gauche)
     
@@ -93,8 +93,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         // Phase de croissance normale - STRICTEMENT avec souffle actif
         if (force > forceThreshold && mainStem.isNotEmpty()) {
-            // Vérification supplémentaire : force doit être stable et suffisante
-            if (force > forceThreshold * 1.2f) { // 20% au-dessus du seuil minimum
+            // Vérification RENFORCÉE : force doit être stable et forte
+            if (force > forceThreshold * 1.5f) { // Augmenté de 1.2f à 1.5f - encore plus strict
                 growthManager.growMainStem(force)
                 
                 // Faire pousser TOUTES les branches actives
@@ -204,10 +204,10 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // Premier segment : DIVERGENCE IMMÉDIATE selon le côté
+        // Premier segment : DIVERGENCE TRÈS FORTE dès la base
         val initialHeight = 12f
-        val divergenceForce = if (forceLeft) -15f else +15f // Divergence forte dès le début
-        val initialX = startX + divergenceForce // Écartement immédiat
+        val divergenceForce = if (forceLeft) -35f else +35f // Augmenté de 15f à 35f - BEAUCOUP plus espacé
+        val initialX = startX + divergenceForce // Écartement immédiat et fort
         val initialY = stemBaseY - initialHeight
         val initialThickness = startThickness * 0.95f
         
