@@ -18,8 +18,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val points: MutableList<StemPoint> = mutableListOf(),
         val angle: Float,
         val startHeight: Float,
+        val baseOffset: Float = 0f,
         val isMainStem: Boolean = false,
-        var isActive: Boolean = true
+        var isActive: Boolean = true,
+        var currentHeight: Float = 0f,
+        val maxHeight: Float = 0f
     )
     
     // ==================== VARIABLES PRINCIPALES ====================
@@ -75,6 +78,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         // Phase de croissance normale
         if (force > forceThreshold && mainStem.isNotEmpty()) {
             growMainStem(force)
+            
+            // Faire pousser TOUTES les branches actives
+            growAllBranches(force)
             
             // Détection ramification (souffle saccadé) - max 4 branches
             if (abs(force - lastForce) > branchThreshold && stemHeight > 20f && branchCount < maxBranches) {
@@ -167,37 +173,87 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
+        // Position de base décalée pour éviter superposition
+        val baseSpacing = 15f // Espacement entre les bases
+        val baseOffset = branchCount * baseSpacing * if (branchSide) 1f else -1f
+        
         // Alternance des côtés pour les branches
-        val branchAngle = (25f + Math.random() * 20f).toFloat() * if (branchSide) 1f else -1f
-        val branchMaxHeight = maxPossibleHeight * 0.7f // Branches plus courtes que la principale
+        val branchAngle = (20f + Math.random() * 25f).toFloat() * if (branchSide) 1f else -1f
+        val branchMaxHeight = maxPossibleHeight * (0.6f + Math.random() * 0.2f).toFloat() // 60-80% de la principale
         
         val newBranch = Branch(
             angle = branchAngle, 
-            startHeight = 0f, // Toutes les branches partent de la base
-            isMainStem = false
+            startHeight = 0f,
+            baseOffset = baseOffset,
+            isMainStem = false,
+            currentHeight = 0f,
+            maxHeight = branchMaxHeight
         )
         
-        // Point de départ à la base
-        newBranch.points.add(StemPoint(stemBaseX, stemBaseY, baseThickness * 0.8f))
+        // Point de départ décalé à la base
+        val startX = stemBaseX + baseOffset
+        newBranch.points.add(StemPoint(startX, stemBaseY, baseThickness * 0.7f))
         
-        // Créer segments initiaux pour la branche
-        val branchSegments = 8
-        for (i in 1..branchSegments) {
-            val segmentProgress = i / branchSegments.toFloat()
-            val branchHeight = branchMaxHeight * segmentProgress * 0.3f // Croissance initiale modérée
-            
-            val branchX = stemBaseX + cos(Math.toRadians(branchAngle.toDouble())).toFloat() * branchHeight * 0.8f
-            val branchY = stemBaseY - branchHeight
-            val thickness = (baseThickness * 0.8f) * (1f - segmentProgress * 0.4f)
-            
-            // Branches plus courbées que la principale
-            val branchSway = sin(branchHeight * 0.03f) * 2f * if (branchSide) 1f else -1f
-            
-            newBranch.points.add(StemPoint(branchX + branchSway, branchY, thickness))
-        }
+        // Premier segment initial seulement
+        val initialHeight = 10f
+        val initialX = startX + cos(Math.toRadians(branchAngle.toDouble())).toFloat() * initialHeight * 0.6f
+        val initialY = stemBaseY - initialHeight
+        
+        newBranch.points.add(StemPoint(initialX, initialY, baseThickness * 0.6f))
+        newBranch.currentHeight = initialHeight
         
         branches.add(newBranch)
         branchSide = !branchSide // Alternance pour la prochaine branche
+    }
+    
+    private fun growAllBranches(force: Float) {
+        for (branch in branches.filter { it.isActive }) {
+            growBranch(branch, force)
+        }
+    }
+    
+    private fun growBranch(branch: Branch, force: Float) {
+        if (branch.currentHeight >= branch.maxHeight) return
+        
+        // Les branches poussent un peu moins vite que la principale
+        val branchGrowthMultiplier = 0.8f
+        val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
+        val qualityMultiplier = 0.5f + forceStability * 0.5f
+        
+        val growthProgress = branch.currentHeight / branch.maxHeight
+        val progressCurve = 1f - growthProgress * growthProgress
+        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.016f * 8f * branchGrowthMultiplier
+        
+        if (adjustedGrowth > 0) {
+            branch.currentHeight += adjustedGrowth
+            
+            val lastPoint = branch.points.lastOrNull() ?: return
+            val segmentHeight = 8f
+            val segments = (adjustedGrowth / segmentHeight).toInt().coerceAtLeast(1)
+            
+            for (i in 1..segments) {
+                val currentBranchHeight = branch.currentHeight - adjustedGrowth + (adjustedGrowth * i / segments)
+                val progressFromBase = currentBranchHeight / branch.maxHeight
+                
+                val thickness = (baseThickness * 0.7f) * (1f - progressFromBase * 0.5f)
+                
+                // Suivre la courbe de la branche
+                val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
+                val branchCurve = cos(Math.toRadians(branch.angle.toDouble())).toFloat() * currentBranchHeight * 0.7f
+                val naturalSway = sin(currentBranchHeight * 0.025f) * 1.5f * if (branch.angle > 0) 1f else -1f
+                
+                val currentX = (stemBaseX + branch.baseOffset) + branchCurve + naturalSway
+                val currentY = stemBaseY - currentBranchHeight
+                
+                // Oscillation des branches
+                val forceVariation = abs(force - lastForce) * 8f
+                val heightMultiplier = 1f + progressFromBase * 1.2f
+                val oscillation = sin(System.currentTimeMillis() * 0.006f + branch.angle) * forceVariation * 15f * heightMultiplier
+                
+                val newPoint = StemPoint(currentX, currentY, thickness, oscillation)
+                branch.points.add(newPoint)
+            }
+        }
     }
     
     private fun updateOscillations() {
