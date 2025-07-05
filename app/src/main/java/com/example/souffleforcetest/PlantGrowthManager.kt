@@ -164,16 +164,16 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 val branchDirection = if (branch.angle < 0) -1f else 1f
                 val heightRatio = currentBranchHeight / branch.maxHeight
                 
-                // PHASE 1: Divergence immédiate et forte (0-20%)
-                val earlyDivergence = if (heightRatio < 0.2f) {
-                    val divergenceRatio = heightRatio / 0.2f
-                    divergenceRatio * 25f * branchDirection // Divergence forte dès le début
-                } else 25f * branchDirection
+                // PHASE 1: Divergence TRÈS forte et immédiate (0-15%)
+                val earlyDivergence = if (heightRatio < 0.15f) {
+                    val divergenceRatio = heightRatio / 0.15f
+                    divergenceRatio * 50f * branchDirection // Augmenté de 25f à 50f - TRÈS espacé
+                } else 50f * branchDirection
                 
-                // PHASE 2: Courbure gracieuse (20-70%)
-                val midCurve = if (heightRatio > 0.2f && heightRatio < 0.7f) {
-                    val midRatio = (heightRatio - 0.2f) / 0.5f
-                    val additionalCurve = sin(midRatio * PI.toFloat()) * 15f
+                // PHASE 2: Courbure gracieuse continue (15-70%)
+                val midCurve = if (heightRatio > 0.15f && heightRatio < 0.7f) {
+                    val midRatio = (heightRatio - 0.15f) / 0.55f
+                    val additionalCurve = sin(midRatio * PI.toFloat()) * 20f // Augmenté de 15f à 20f
                     additionalCurve * branchDirection
                 } else 0f
                 
