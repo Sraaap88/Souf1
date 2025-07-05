@@ -226,7 +226,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             
             // Décroissance progressive de l'oscillation
             val timeDecay = min(1f, (currentTime - point.timestamp) / 2000f) // 2 secondes pour décroissance
-            val decayedOscillation = point.oscillation * pow(oscillationDecay, timeDecay)
+            val decayedOscillation = point.oscillation * oscillationDecay.pow(timeDecay)
             
             // Conversion progressive vers onde permanente (50% final)
             val permanentContribution = point.oscillation * 0.005f // 0.5% par frame vers permanent
