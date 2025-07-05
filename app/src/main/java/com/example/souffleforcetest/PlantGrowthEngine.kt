@@ -30,12 +30,12 @@ class PlantGrowthEngine(
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.035f // Plus sensible (0.055f → 0.035f)
-    private val growthRate = 220f // Plus rapide (174.6f → 220f)
+    private val forceThreshold = 0.01f // TRÈS bas pour micro faible
+    private val growthRate = 174.6f
     private val baseStrokeWidth = 9.6f
     private val maxStrokeWidth = 25.6f
     private val strokeDecayRate = 0.2f
-    private val abruptThreshold = 0.22f // Plus difficile pour 2ème branche (0.18f → 0.22f)
+    private val abruptThreshold = 0.05f // Très bas pour créer facilement des branches
     private val maxWaveAmplitude = 15f
     private val maxLeafWidth = 75f
     private val maxLeafLength = 200f
@@ -179,10 +179,13 @@ class PlantGrowthEngine(
     }
     
     private fun growBranch(branch: Branch, force: Float, rhythmIntensity: Float) {
-        if (force > forceThreshold) {
-            val adjustedForce = (force - forceThreshold) * branch.growthMultiplier
+        // FORCÉ : Amplifier le signal faible
+        val amplifiedForce = kotlin.math.max(force * 10f, 0.1f)
+        
+        if (amplifiedForce > forceThreshold) {
+            val adjustedForce = (amplifiedForce - forceThreshold) * branch.growthMultiplier
             val previousHeight = branch.currentHeight
-            branch.currentHeight += adjustedForce * growthRate * 0.8f
+            branch.currentHeight += adjustedForce * growthRate * 1.5f // Plus rapide
             branch.currentHeight = kotlin.math.min(branch.currentHeight, maxHeight)
             
             if (branch.currentHeight > previousHeight && branch.currentHeight > 0) {
@@ -227,8 +230,8 @@ class PlantGrowthEngine(
             branch.offsetX += displacement
             branch.offsetX = branch.offsetX.coerceIn(-100f, 100f)
             
-            // Créer des bourgeons plus nombreux et PLUS HAUT (jusqu'à 20% du haut)
-            if (branch.currentHeight > 20f && branch.tracedPath.size > 4) { // Seuil encore réduit (24f → 20f)
+            // Créer des bourgeons FACILEMENT
+            if (branch.currentHeight > 10f && branch.tracedPath.size > 2) { // Très bas
                 createRealisticBud(branch)
             }
         }
