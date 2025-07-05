@@ -197,8 +197,8 @@ class OrganicLineView @JvmOverloads constructor(
                 growStem(adjustedGrowth, force)
             }
             
-            // Détection ramification (souffle saccadé) - PLUS SENSIBLE
-            if (abs(force - lastForce) > branchThreshold && stemHeight > 30f) { // Seuil réduit (50f → 30f)
+            // Détection ramification (souffle saccadé) - TRÈS SENSIBLE POUR TEST
+            if (abs(force - lastForce) > 0.05f && stemHeight > 20f) { // TRÈS bas pour tester
                 createBranch()
             }
         }
@@ -244,9 +244,9 @@ class OrganicLineView @JvmOverloads constructor(
             val naturalSway = sin(currentHeight * 0.02f) * 3f
             val currentX = stemBaseX + naturalSway
             
-            // Oscillation temporaire selon fréquence du souffle (PLUS SENSIBLE)
-            val forceVariation = abs(force - 0.5f) * 4f // Plus sensible (2f → 4f)
-            val oscillation = sin(System.currentTimeMillis() * 0.01f * forceVariation) * force * 35f // Plus forte (15f → 35f)
+            // Oscillation temporaire selon fréquence du souffle (DEBUGGING)
+            val forceVariation = abs(force - lastForce) * 10f // BEAUCOUP plus sensible pour test
+            val oscillation = sin(System.currentTimeMillis() * 0.005f) * forceVariation * 50f // Plus visible
             
             val newY = stemBaseY - currentHeight
             val newPoint = StemPoint(currentX, newY, thickness, oscillation)
@@ -257,10 +257,29 @@ class OrganicLineView @JvmOverloads constructor(
     private fun createBranch() {
         if (branches.size >= 3) return // Max 3 branches
         
-        val branchStartHeight = stemHeight * (0.3f + branches.size * 0.2f)
+        val branchStartHeight = stemHeight
         val branchAngle = (30f + Math.random() * 30f).toFloat() * if (branchSide) 1f else -1f
         
-        branches.add(Branch(angle = branchAngle, startHeight = branchStartHeight))
+        // Créer la branche avec quelques points de base
+        val newBranch = Branch(angle = branchAngle, startHeight = branchStartHeight)
+        
+        // Point de départ depuis la tige principale
+        val mainPoint = mainStem.lastOrNull()
+        if (mainPoint != null) {
+            newBranch.points.add(StemPoint(mainPoint.x, mainPoint.y, mainPoint.thickness * 0.7f))
+            
+            // Ajouter quelques segments pour que la branche soit visible
+            for (i in 1..3) {
+                val branchLength = i * 15f
+                val branchX = mainPoint.x + cos(Math.toRadians(branchAngle.toDouble())).toFloat() * branchLength
+                val branchY = mainPoint.y - sin(Math.toRadians(branchAngle.toDouble())).toFloat() * branchLength * 0.5f
+                val thickness = mainPoint.thickness * 0.7f * (1f - i * 0.15f)
+                
+                newBranch.points.add(StemPoint(branchX, branchY, thickness))
+            }
+        }
+        
+        branches.add(newBranch)
         branchSide = !branchSide
     }
     
@@ -305,25 +324,7 @@ class OrganicLineView @JvmOverloads constructor(
     private fun drawStem(canvas: Canvas) {
         if (mainStem.size < 2) return
         
-        val path = Path()
-        var lastX = mainStem[0].x
-        var lastY = mainStem[0].y
-        path.moveTo(lastX, lastY)
-        
-        for (i in 1 until mainStem.size) {
-            val point = mainStem[i]
-            val adjustedX = point.x + point.oscillation + point.permanentWave
-            
-            // Courbe fluide entre les points
-            val controlX = (lastX + adjustedX) / 2f
-            val controlY = (lastY + point.y) / 2f
-            path.quadTo(controlX, controlY, adjustedX, point.y)
-            
-            lastX = adjustedX
-            lastY = point.y
-        }
-        
-        // Dessiner avec épaisseur variable
+        // Dessiner la tige principale avec oscillations
         for (i in 1 until mainStem.size) {
             val point = mainStem[i]
             val prevPoint = mainStem[i - 1]
@@ -334,6 +335,20 @@ class OrganicLineView @JvmOverloads constructor(
             
             canvas.drawLine(prevAdjustedX, prevPoint.y, adjustedX, point.y, stemPaint)
         }
+        
+        // Dessiner les branches
+        stemPaint.color = Color.rgb(40, 100, 40) // Vert plus foncé pour branches
+        for (branch in branches) {
+            if (branch.points.size >= 2) {
+                for (i in 1 until branch.points.size) {
+                    val point = branch.points[i]
+                    val prevPoint = branch.points[i - 1]
+                    stemPaint.strokeWidth = point.thickness
+                    canvas.drawLine(prevPoint.x, prevPoint.y, point.x, point.y, stemPaint)
+                }
+            }
+        }
+        stemPaint.color = Color.rgb(50, 120, 50) // Remettre couleur principale
     }
     
     private fun drawTrafficLight(canvas: Canvas) {
