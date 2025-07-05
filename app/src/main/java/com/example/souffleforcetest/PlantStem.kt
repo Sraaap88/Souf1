@@ -255,6 +255,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun growBranch(branch: Branch, force: Float) {
         if (branch.currentHeight >= branch.maxHeight) return
         
+        // DEBUG: Vérifier les valeurs de la branche
+        if (branch.points.size <= 2) { // Seulement au début
+            println("GROW BRANCH - baseOffset: ${branch.baseOffset}, angle: ${branch.angle}")
+        }
+        
         // Vitesse de croissance TRÈS PROCHE de la principale
         val branchGrowthMultiplier = 0.95f * branch.personalityFactor // 95% au lieu de 75%
         val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
@@ -305,6 +310,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 
                 val currentX = (stemBaseX + branch.baseOffset) + branchCurve + branchWeightBend + naturalCurve + tremble
                 val currentY = stemBaseY - currentBranchHeight
+                
+                // DEBUG: Position finale
+                if (branch.points.size <= 5) { // Premiers segments seulement
+                    println("Position finale X: ${currentX} (base: ${stemBaseX}, offset: ${branch.baseOffset})")
+                }
                 
                 // Oscillation adaptée à chaque tige
                 val forceVariation = abs(force - lastForce) * 2.5f * branch.personalityFactor
@@ -405,7 +415,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         }
     }
     
-    // ==================== UTILITAIRES ====================
+// ==================== UTILITAIRES ====================
     
     private fun lerp(start: Float, end: Float, fraction: Float): Float {
         return start + fraction * (end - start)
