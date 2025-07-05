@@ -179,11 +179,10 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // BASE COMPACTE avec espacement cumulatif pour éviter superposition
-        val baseSpacing = 8f + (Math.random() * 4f).toFloat() // 8-12px
-        val cumulativeOffset = (1..branchCount).sumOf { 
-            (8f + Math.random() * 4f).toDouble() 
-        }.toFloat() * if (branchSide) 1f else -1f
+        // ALTERNANCE RÉELLE des côtés avec espacement progressif
+        val sideMultiplier = if (branchSide) 1f else -1f
+        val baseDistance = 12f + (branchCount * 3f) // Distance croissante: 15, 18, 21, 24px
+        val cumulativeOffset = baseDistance * sideMultiplier
         
         // ANGLES TRÈS LÉGERS de vraie marguerite (2°-12° max)
         val minAngle = 2f + (branchCount * 1.5f) // 2°, 3.5°, 5°, 6.5°
@@ -214,8 +213,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             thicknessVariation = thicknessVar
         )
         
-        // Point de départ avec offset cumulatif pour éviter superposition
-        val startX = stemBaseX + cumulativeOffset + (Math.random() * 2f - 1f).toFloat()
+        // Point de départ avec alternance claire droite/gauche
+        val startX = stemBaseX + cumulativeOffset + (Math.random() * 1f - 0.5f).toFloat()
         val startThickness = baseThickness * 0.85f * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
@@ -319,22 +318,22 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             
             var newPermanentWave = point.permanentWave
             
-            // Transfert très réduit pour tige principale
-            if (abs(smoothedOscillation) > 0.5f) {
-                val transferRate = 0.01f // Réduit de 0.02f à 0.01f
+            // Transfert QUASI-NUL pour tige principale droite
+            if (abs(smoothedOscillation) > 0.3f) {
+                val transferRate = 0.005f // Ultra réduit
                 newPermanentWave += smoothedOscillation * transferRate
                 smoothedOscillation *= (1f - transferRate)
             }
             
-            // Effet de poids très réduit pour garder la tige droite
-            val accumulatedWeight = heightRatio * heightRatio * 2f // Réduit de 6f à 2f
+            // Effet de poids QUASI-NUL
+            val accumulatedWeight = heightRatio * heightRatio * 0.5f // Ultra réduit
             val weightDirection = if (point.x + newPermanentWave > stemBaseX) 1f else -1f
-            val weightInfluence = accumulatedWeight * weightDirection * 0.02f // Réduit de 0.05f à 0.02f
+            val weightInfluence = accumulatedWeight * weightDirection * 0.005f // Ultra réduit
             newPermanentWave += weightInfluence
             
-            // Limites TRÈS STRICTES pour tige principale droite
-            smoothedOscillation = smoothedOscillation.coerceIn(-8f, 8f) // Encore plus strict
-            newPermanentWave = newPermanentWave.coerceIn(-12f, 12f) // Encore plus strict
+            // Limites ULTRA STRICTES pour tige parfaitement droite
+            smoothedOscillation = smoothedOscillation.coerceIn(-3f, 3f) // Ultra strict
+            newPermanentWave = newPermanentWave.coerceIn(-6f, 6f) // Ultra strict
             
             mainStem[i] = point.copy(
                 oscillation = smoothedOscillation,
