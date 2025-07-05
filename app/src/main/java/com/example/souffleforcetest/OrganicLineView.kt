@@ -240,13 +240,19 @@ class OrganicLineView @JvmOverloads constructor(
             // Épaisseur qui diminue vers le haut
             val thickness = lerp(baseThickness, tipThickness, progressFromBase)
             
-            // Position X avec légère ondulation naturelle
+            // Position X avec ondulation naturelle + effet de poids
             val naturalSway = sin(currentHeight * 0.02f) * 3f
-            val currentX = stemBaseX + naturalSway
             
-            // Oscillation temporaire selon variation du souffle
-            val forceVariation = abs(force - lastForce) * 10f // BEAUCOUP plus sensible pour test
-            val oscillation = sin(System.currentTimeMillis() * 0.005f) * forceVariation * 50f // Plus visible
+            // NOUVEAU : Effet de courbure due au poids (plus prononcé en haut)
+            val weightFactor = (currentHeight / maxPossibleHeight) * (currentHeight / maxPossibleHeight) // Courbe quadratique
+            val weightBend = weightFactor * 25f * sign(naturalSway + stemBaseX - width/2f) // Plie dans la direction du poids
+            
+            val currentX = stemBaseX + naturalSway + weightBend
+            
+            // Oscillation temporaire selon variation du souffle (plus sensible au poids)
+            val forceVariation = abs(force - lastForce) * 10f
+            val heightMultiplier = 1f + weightFactor * 2f // Plus d'oscillation en haut (effet levier)
+            val oscillation = sin(System.currentTimeMillis() * 0.005f) * forceVariation * 50f * heightMultiplier
             
             val newY = stemBaseY - currentHeight
             val newPoint = StemPoint(currentX, newY, thickness, oscillation)
@@ -287,6 +293,10 @@ class OrganicLineView @JvmOverloads constructor(
         for (i in mainStem.indices) {
             val point = mainStem[i]
             
+            // Calcul de la hauteur relative pour effet de poids cumulatif
+            val heightFromBase = stemBaseY - point.y
+            val heightRatio = heightFromBase / maxPossibleHeight
+            
             // Décroissance plus organique avec lissage des voisins
             var smoothedOscillation = point.oscillation * oscillationDecay
             
@@ -298,17 +308,25 @@ class OrganicLineView @JvmOverloads constructor(
                 smoothedOscillation = (smoothedOscillation * 0.6f + prevOsc * 0.2f + nextOsc * 0.2f) * oscillationDecay
             }
             
-            // Conversion plus naturelle vers forme permanente
-            // Au lieu de revenir exactement au centre, on garde des courbes douces
+            // NOUVEAU : Effet de poids cumulatif - plus on monte, plus ça plie
+            val accumulatedWeight = heightRatio * heightRatio * 8f // Poids qui s'accumule
+            val weightDirection = if (point.x > stemBaseX) 1f else -1f // Direction de la courbure
+            val weightInfluence = accumulatedWeight * weightDirection
+            
+            // Conversion plus naturelle vers forme permanente avec poids
             var newPermanentWave = point.permanentWave
             if (abs(smoothedOscillation) < 5f) { // Seulement quand oscillation faible
                 val waveContribution = smoothedOscillation * 0.02f // Plus lent
-                newPermanentWave = (point.permanentWave + waveContribution) * 0.995f // Très lent retour
+                val weightContribution = weightInfluence * 0.1f // Contribution du poids
+                newPermanentWave = (point.permanentWave + waveContribution + weightContribution) * 0.995f
+            } else {
+                // Même pendant les oscillations, le poids continue d'agir
+                newPermanentWave = (point.permanentWave + weightInfluence * 0.05f) * 0.998f
             }
             
-            // Limiter les oscillations extrêmes pour éviter les cassures visuelles
-            smoothedOscillation = smoothedOscillation.coerceIn(-30f, 30f)
-            newPermanentWave = newPermanentWave.coerceIn(-15f, 15f)
+            // Limiter les oscillations mais permettre plus de courbure permanente
+            smoothedOscillation = smoothedOscillation.coerceIn(-40f, 40f) // Un peu plus de liberté
+            newPermanentWave = newPermanentWave.coerceIn(-35f, 35f) // Plus de courbure permanente
             
             mainStem[i] = point.copy(
                 oscillation = smoothedOscillation,
