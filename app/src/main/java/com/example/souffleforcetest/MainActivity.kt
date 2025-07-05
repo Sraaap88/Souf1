@@ -14,7 +14,7 @@ class MainActivity : Activity() {
 
     private var mediaRecorder: MediaRecorder? = null
     private var handler: Handler? = null
-    private var animationHandler: Handler? = null // Handler séparé pour animation
+    private var animationHandler: Handler? = null
     private var organicLineView: OrganicLineView? = null
     private var isRecording = false
     
@@ -29,7 +29,7 @@ class MainActivity : Activity() {
         
         organicLineView = findViewById(R.id.organicLineView)
         handler = Handler(Looper.getMainLooper())
-        animationHandler = Handler(Looper.getMainLooper()) // Handler pour animation continue
+        animationHandler = Handler(Looper.getMainLooper())
         
         // Démarrer l'animation continue
         startContinuousAnimation()
@@ -37,7 +37,6 @@ class MainActivity : Activity() {
         // Vérifier et demander les permissions
         if (checkPermissions()) {
             startRecording()
-            // Démarrer le cycle si permissions déjà accordées
             organicLineView?.startCycle()
         } else {
             requestPermissions()
@@ -59,7 +58,6 @@ class MainActivity : Activity() {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startRecording()
-                // DÉMARRER le timer maintenant que les permissions sont accordées
                 organicLineView?.startCycle()
             }
         }
@@ -90,11 +88,14 @@ class MainActivity : Activity() {
             try {
                 val amplitude = mediaRecorder?.maxAmplitude ?: 0
                 
-                // Normaliser l'amplitude (0-1)
+                // CORRIGÉ : Amplification pour signaux faibles
                 val normalizedAmplitude = minOf(amplitude / 32767.0f, 1.0f)
                 
-                // Mettre à jour la vue
-                organicLineView?.updateForce(normalizedAmplitude)
+                // NOUVEAU : Amplifier x4 pour compenser les micros faibles
+                val amplifiedForce = minOf(normalizedAmplitude * 4.0f, 1.0f)
+                
+                // Mettre à jour la vue avec le signal amplifié
+                organicLineView?.updateForce(amplifiedForce)
                 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -108,10 +109,8 @@ class MainActivity : Activity() {
     private fun startContinuousAnimation() {
         animationHandler?.post(object : Runnable {
             override fun run() {
-                // Forcer redessinage pour animation
                 organicLineView?.invalidate()
-                // Programmer le prochain redessinage
-                animationHandler?.postDelayed(this, 33) // 30 FPS pour animation
+                animationHandler?.postDelayed(this, 33) // 30 FPS
             }
         })
     }
@@ -127,5 +126,6 @@ class MainActivity : Activity() {
             }
         }
         handler?.removeCallbacksAndMessages(null)
+        animationHandler?.removeCallbacksAndMessages(null)
     }
 }
