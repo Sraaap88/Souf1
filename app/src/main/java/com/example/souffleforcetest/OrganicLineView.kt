@@ -4,9 +4,11 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
+import android.graphics.Path
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import kotlin.math.*
 
 class OrganicLineView @JvmOverloads constructor(
     context: Context,
@@ -28,11 +30,11 @@ class OrganicLineView @JvmOverloads constructor(
         textAlign = Paint.Align.LEFT
     }
     
-    // NOUVEAU : Paint pour le cercle de test
-    private val testCirclePaint = Paint().apply {
+    private val stemPaint = Paint().apply {
         isAntiAlias = true
-        style = Paint.Style.FILL
-        color = Color.BLUE
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        color = Color.rgb(50, 120, 50) // Vert marguerite
     }
     
     // ==================== ÉTATS DU SYSTÈME ====================
@@ -45,11 +47,44 @@ class OrganicLineView @JvmOverloads constructor(
     private var lightState = LightState.YELLOW
     private var stateStartTime = 0L
     
-    // NOUVEAU : Variables pour le test de détection
-    private var currentForce = 0f
-    private var maxForceDetected = 0f // NOUVEAU : Valeur maximum atteinte
-    private var centerX = 0f
-    private var centerY = 0f
+    // ==================== DONNÉES DE LA TIGE ====================
+    
+    data class StemPoint(
+        val x: Float,
+        val y: Float,
+        val thickness: Float,
+        val oscillation: Float = 0f,
+        val permanentWave: Float = 0f
+    )
+    
+    data class Branch(
+        val points: MutableList<StemPoint> = mutableListOf(),
+        val angle: Float,
+        val startHeight: Float,
+        var isActive: Boolean = true
+    )
+    
+    private val mainStem = mutableListOf<StemPoint>()
+    private val branches = mutableListOf<Branch>()
+    private var stemHeight = 0f
+    private var maxPossibleHeight = 0f
+    private var stemBaseX = 0f
+    private var stemBaseY = 0f
+    private var lastForce = 0f
+    private var isEmerging = false
+    private var emergenceStartTime = 0L
+    private var branchSide = true // true = droite, false = gauche
+    
+    // ==================== PARAMÈTRES DE CROISSANCE ====================
+    
+    private val forceThreshold = 0.05f // Seuil anti-bruit
+    private val maxStemHeight = 0.6f // 60% de la hauteur d'écran
+    private val baseThickness = 12f
+    private val tipThickness = 4f
+    private val growthRate = 120f
+    private val oscillationDecay = 0.95f
+    private val branchThreshold = 0.3f // Différence de force pour ramification
+    private val emergenceDuration = 1000L // 1 seconde
     
     enum class LightState {
         YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
@@ -63,9 +98,9 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonX = w - resetButtonRadius - 50f
         resetButtonY = resetButtonRadius + 80f
         
-        // Position du cercle de test au centre
-        centerX = w / 2f
-        centerY = h / 2f
+        stemBaseX = w / 2f
+        stemBaseY = h - 100f
+        maxPossibleHeight = h * maxStemHeight
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -74,24 +109,18 @@ class OrganicLineView @JvmOverloads constructor(
         lightState = LightState.YELLOW
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
-        maxForceDetected = 0f // Reset du maximum
+        resetStem()
         invalidate()
     }
     
     fun updateForce(force: Float) {
         updateLightState()
         
-        // Stocker la force pour le cercle de test
-        currentForce = force
-        
-        // NOUVEAU : Mettre à jour le maximum détecté
-        if (force > maxForceDetected) {
-            maxForceDetected = force
+        if (lightState == LightState.GREEN_GROW) {
+            processStemGrowth(force)
         }
         
-        // Afficher le bouton reset après les premières détections
-        if (!showResetButton && force > 0.01f && 
-            (lightState == LightState.GREEN_GROW || lightState == LightState.GREEN_LEAVES || lightState == LightState.GREEN_FLOWER)) {
+        if (!showResetButton && stemHeight > 30f) {
             showResetButton = true
         }
         
@@ -110,7 +139,7 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.GREEN_GROW -> {
-                if (elapsedTime >= 3000) {
+                if (elapsedTime >= 4000) { // 4 secondes : 1s émergence + 3s croissance
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                 }
@@ -127,10 +156,134 @@ class OrganicLineView @JvmOverloads constructor(
                     stateStartTime = currentTime
                 }
             }
-            LightState.RED -> {
-                // Reste en rouge jusqu'au reset
+            LightState.RED -> {}
+        }
+    }
+    
+    // ==================== LOGIQUE DE CROISSANCE ====================
+    
+    private fun processStemGrowth(force: Float) {
+        val currentTime = System.currentTimeMillis()
+        val phaseTime = currentTime - stateStartTime
+        
+        // Phase d'émergence (1 seconde)
+        if (phaseTime < emergenceDuration) {
+            if (force > forceThreshold && !isEmerging) {
+                isEmerging = true
+                emergenceStartTime = currentTime
+            }
+            
+            if (isEmerging) {
+                val emergenceProgress = (currentTime - emergenceStartTime) / emergenceDuration.toFloat()
+                if (emergenceProgress <= 1f) {
+                    createEmergenceStem(emergenceProgress)
+                }
+            }
+            return
+        }
+        
+        // Phase de croissance normale
+        if (force > forceThreshold && mainStem.isNotEmpty()) {
+            // Calcul de la qualité du souffle
+            val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
+            val qualityMultiplier = 0.5f + forceStability * 0.5f
+            
+            // Croissance avec courbe réaliste
+            val growthProgress = stemHeight / maxPossibleHeight
+            val progressCurve = 1f - growthProgress * growthProgress // Ralentit vers la fin
+            val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.016f
+            
+            if (adjustedGrowth > 0 && stemHeight < maxPossibleHeight) {
+                growStem(adjustedGrowth, force)
+            }
+            
+            // Détection ramification (souffle saccadé)
+            if (abs(force - lastForce) > branchThreshold && stemHeight > 50f) {
+                createBranch()
             }
         }
+        
+        // Decay des oscillations
+        decayOscillations()
+        lastForce = force
+    }
+    
+    private fun createEmergenceStem(progress: Float) {
+        mainStem.clear()
+        val emergenceHeight = 30f * progress
+        
+        for (i in 0..5) {
+            val segmentProgress = i / 5f
+            val y = stemBaseY - emergenceHeight * segmentProgress
+            val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
+            val wiggle = sin(progress * PI * 3 + i * 0.5) * 2f * progress
+            
+            mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
+        }
+        
+        if (progress >= 1f) {
+            stemHeight = emergenceHeight
+        }
+    }
+    
+    private fun growStem(growth: Float, force: Float) {
+        stemHeight += growth
+        
+        val lastPoint = mainStem.lastOrNull() ?: return
+        val segmentHeight = 8f
+        val segments = (growth / segmentHeight).toInt().coerceAtLeast(1)
+        
+        for (i in 1..segments) {
+            val currentHeight = stemHeight - growth + (growth * i / segments)
+            val progressFromBase = currentHeight / maxPossibleHeight
+            
+            // Épaisseur qui diminue vers le haut
+            val thickness = lerp(baseThickness, tipThickness, progressFromBase)
+            
+            // Position X avec légère ondulation naturelle
+            val naturalSway = sin(currentHeight * 0.02f) * 3f
+            val currentX = stemBaseX + naturalSway
+            
+            // Oscillation temporaire selon fréquence du souffle
+            val forceVariation = abs(force - 0.5f) * 2f // 0 à 1
+            val oscillation = sin(System.currentTimeMillis() * 0.01f * forceVariation) * force * 15f
+            
+            val newY = stemBaseY - currentHeight
+            val newPoint = StemPoint(currentX, newY, thickness, oscillation)
+            mainStem.add(newPoint)
+        }
+    }
+    
+    private fun createBranch() {
+        if (branches.size >= 3) return // Max 3 branches
+        
+        val branchStartHeight = stemHeight * (0.3f + branches.size * 0.2f)
+        val branchAngle = (30f + Math.random() * 30f).toFloat() * if (branchSide) 1f else -1f
+        
+        branches.add(Branch(angle = branchAngle, startHeight = branchStartHeight))
+        branchSide = !branchSide
+    }
+    
+    private fun decayOscillations() {
+        for (i in mainStem.indices) {
+            val point = mainStem[i]
+            val decayedOscillation = point.oscillation * oscillationDecay
+            val permanentWave = point.permanentWave + point.oscillation * 0.05f
+            
+            mainStem[i] = point.copy(
+                oscillation = decayedOscillation,
+                permanentWave = permanentWave * 0.5f
+            )
+        }
+    }
+    
+    private fun resetStem() {
+        mainStem.clear()
+        branches.clear()
+        stemHeight = 0f
+        lastForce = 0f
+        isEmerging = false
+        branchSide = true
     }
     
     // ==================== AFFICHAGE ====================
@@ -138,73 +291,66 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        // Dessiner le cercle de test SEULEMENT pendant les phases de souffle
-        if (lightState == LightState.GREEN_GROW || 
-            lightState == LightState.GREEN_LEAVES || 
-            lightState == LightState.GREEN_FLOWER) {
-            drawTestCircle(canvas)
+        if (lightState == LightState.GREEN_GROW) {
+            drawStem(canvas)
         }
         
         drawTrafficLight(canvas)
     }
     
-    private fun drawTestCircle(canvas: Canvas) {
-        // Rayon basé sur la force détectée (minimum 20, maximum 200)
-        val baseRadius = 20f
-        val maxRadius = 200f
-        val currentRadius = baseRadius + (currentForce * (maxRadius - baseRadius))
+    private fun drawStem(canvas: Canvas) {
+        if (mainStem.size < 2) return
         
-        // Couleur qui varie avec l'intensité
-        val intensity = (currentForce * 255).toInt().coerceIn(0, 255)
-        testCirclePaint.color = Color.rgb(intensity, 100, 255 - intensity)
+        val path = Path()
+        var lastX = mainStem[0].x
+        var lastY = mainStem[0].y
+        path.moveTo(lastX, lastY)
         
-        // Dessiner le cercle
-        canvas.drawCircle(centerX, centerY, currentRadius, testCirclePaint)
-        
-        // Texte pour afficher la valeur numérique actuelle
-        val textPaint = Paint().apply {
-            color = Color.WHITE
-            textSize = 40f
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
+        for (i in 1 until mainStem.size) {
+            val point = mainStem[i]
+            val adjustedX = point.x + point.oscillation + point.permanentWave
+            
+            // Courbe fluide entre les points
+            val controlX = (lastX + adjustedX) / 2f
+            val controlY = (lastY + point.y) / 2f
+            path.quadTo(controlX, controlY, adjustedX, point.y)
+            
+            lastX = adjustedX
+            lastY = point.y
         }
-        val forceText = String.format("%.3f", currentForce)
-        canvas.drawText(forceText, centerX, centerY + 15f, textPaint)
         
-        // NOUVEAU : Afficher la valeur maximum à côté
-        val maxTextPaint = Paint().apply {
-            color = Color.YELLOW
-            textSize = 35f
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
+        // Dessiner avec épaisseur variable
+        for (i in 1 until mainStem.size) {
+            val point = mainStem[i]
+            val prevPoint = mainStem[i - 1]
+            
+            stemPaint.strokeWidth = point.thickness
+            val adjustedX = point.x + point.oscillation + point.permanentWave
+            val prevAdjustedX = prevPoint.x + prevPoint.oscillation + prevPoint.permanentWave
+            
+            canvas.drawLine(prevAdjustedX, prevPoint.y, adjustedX, point.y, stemPaint)
         }
-        val maxText = String.format("MAX: %.3f", maxForceDetected)
-        canvas.drawText(maxText, centerX + 150f, centerY, maxTextPaint)
     }
     
     private fun drawTrafficLight(canvas: Canvas) {
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
         
-        val lightRadius = when (lightState) {
-            LightState.YELLOW -> width * 0.4f
-            else -> resetButtonRadius
-        }
-        
+        val lightRadius = if (lightState == LightState.YELLOW) width * 0.4f else resetButtonRadius
         val lightX = if (lightState == LightState.YELLOW) width / 2f else resetButtonX
         val lightY = if (lightState == LightState.YELLOW) height / 2f else resetButtonY
         
-        // Dessiner l'ombre
+        // Ombre
         resetButtonPaint.color = 0x40000000.toInt()
         canvas.drawCircle(lightX + 8f, lightY + 8f, lightRadius, resetButtonPaint)
         
         // Couleur selon l'état
-        when (lightState) {
-            LightState.YELLOW -> resetButtonPaint.color = 0xFFFFD700.toInt()
-            LightState.GREEN_GROW -> resetButtonPaint.color = 0xFF2F4F2F.toInt()
-            LightState.GREEN_LEAVES -> resetButtonPaint.color = 0xFF00FF00.toInt()
-            LightState.GREEN_FLOWER -> resetButtonPaint.color = 0xFFFF69B4.toInt()
-            LightState.RED -> resetButtonPaint.color = 0xFFFF0000.toInt()
+        resetButtonPaint.color = when (lightState) {
+            LightState.YELLOW -> 0xFFFFD700.toInt()
+            LightState.GREEN_GROW -> 0xFF2F4F2F.toInt()
+            LightState.GREEN_LEAVES -> 0xFF00FF00.toInt()
+            LightState.GREEN_FLOWER -> 0xFFFF69B4.toInt()
+            LightState.RED -> 0xFFFF0000.toInt()
         }
         canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
         
@@ -215,24 +361,15 @@ class OrganicLineView @JvmOverloads constructor(
         canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
         resetButtonPaint.style = Paint.Style.FILL
         
-        // Calcul du temps restant
+        // Texte et timer
         val timeRemaining = when (lightState) {
-            LightState.YELLOW -> kotlin.math.max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
-            LightState.GREEN_LEAVES -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
-            LightState.GREEN_FLOWER -> kotlin.math.max(0, 3 - (elapsedTime / 1000))
+            LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
+            LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))
+            LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000))
+            LightState.GREEN_FLOWER -> max(0, 3 - (elapsedTime / 1000))
             LightState.RED -> 0
         }
         
-        val mainText = when (lightState) {
-            LightState.YELLOW -> "INSPIREZ"
-            LightState.GREEN_GROW -> "SOUFFLEZ (TIGE)"
-            LightState.GREEN_LEAVES -> "SOUFFLEZ (FEUILLES)"
-            LightState.GREEN_FLOWER -> "SOUFFLEZ (FLEUR)"
-            LightState.RED -> "↻"
-        }
-        
-        // Texte sur le cercle
         if (lightState == LightState.YELLOW) {
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 180f
@@ -248,23 +385,6 @@ class OrganicLineView @JvmOverloads constructor(
             resetTextPaint.textSize = 120f
             resetTextPaint.color = 0xFF000000.toInt()
             canvas.drawText("↻", lightX, lightY, resetTextPaint)
-        } else {
-            // Pour les phases vertes, afficher le texte de façon plus compacte
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 60f
-            resetTextPaint.color = 0xFF000000.toInt()
-            
-            when (lightState) {
-                LightState.GREEN_GROW -> canvas.drawText("TIGE", lightX, lightY, resetTextPaint)
-                LightState.GREEN_LEAVES -> canvas.drawText("FEUILLES", lightX, lightY, resetTextPaint)
-                LightState.GREEN_FLOWER -> canvas.drawText("FLEUR", lightX, lightY, resetTextPaint)
-                else -> {}
-            }
-            
-            if (timeRemaining > 0) {
-                resetTextPaint.textSize = 40f
-                canvas.drawText(timeRemaining.toString(), lightX, lightY + 50f, resetTextPaint)
-            }
         }
     }
     
@@ -272,29 +392,21 @@ class OrganicLineView @JvmOverloads constructor(
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN && lightState == LightState.RED) {
-            val lightX = resetButtonX
-            val lightY = resetButtonY
-            val lightRadius = resetButtonRadius
+            val dx = event.x - resetButtonX
+            val dy = event.y - resetButtonY
+            val distance = sqrt(dx * dx + dy * dy)
             
-            val dx = event.x - lightX
-            val dy = event.y - lightY
-            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
-            
-            if (distance <= lightRadius) {
-                resetPlant()
+            if (distance <= resetButtonRadius) {
+                startCycle()
                 return true
             }
         }
         return super.onTouchEvent(event)
     }
     
-    private fun resetPlant() {
-        showResetButton = false
-        lightState = LightState.YELLOW
-        stateStartTime = System.currentTimeMillis()
-        currentForce = 0f
-        maxForceDetected = 0f // Reset du maximum
-        
-        invalidate()
+    // ==================== UTILITAIRES ====================
+    
+    private fun lerp(start: Float, end: Float, fraction: Float): Float {
+        return start + fraction * (end - start)
     }
 }
