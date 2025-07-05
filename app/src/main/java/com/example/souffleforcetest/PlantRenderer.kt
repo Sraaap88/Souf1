@@ -25,7 +25,7 @@ class PlantRenderer(private val context: Context) {
     // NOUVELLE tige organique avec animation naturelle
     fun drawRealisticStem(
         canvas: Canvas, 
-        tracedPath: List<TracePoint>,
+        tracedPath: List<PlantGrowthLogic.TracePoint>,
         time: Float,
         baseStrokeWidth: Float,
         maxStrokeWidth: Float
@@ -81,14 +81,14 @@ class PlantRenderer(private val context: Context) {
         }
     }
     
-    fun drawGrowthPoint(canvas: Canvas, topPoint: TracePoint, time: Float) {
+    fun drawGrowthPoint(canvas: Canvas, topPoint: PlantGrowthLogic.TracePoint, time: Float) {
         val pointOscillation = kotlin.math.sin(time * 2f) * 3f
         basePaint.color = 0xFF90EE90.toInt()
         basePaint.style = Paint.Style.FILL
         canvas.drawCircle(topPoint.x + pointOscillation, topPoint.y, 4f, basePaint)
     }
     
-    fun drawAttachmentPoints(canvas: Canvas, bourgeons: List<Bourgeon>, time: Float) {
+    fun drawAttachmentPoints(canvas: Canvas, bourgeons: List<PlantGrowthLogic.Bourgeon>, time: Float) {
         basePaint.color = 0xFF6B4423.toInt()
         basePaint.style = Paint.Style.FILL
         for (bourgeon in bourgeons) {
@@ -106,7 +106,7 @@ class PlantRenderer(private val context: Context) {
     // NOUVELLES feuilles 3D réalistes 10x plus grandes avec animations
     fun drawRealistic3DLeaves(
         canvas: Canvas, 
-        feuilles: List<Feuille>, 
+        feuilles: List<PlantGrowthLogic.Feuille>, 
         time: Float
     ) {
         for (feuille in feuilles) {
@@ -121,9 +121,9 @@ class PlantRenderer(private val context: Context) {
                 val tiltAngle = (leafIndex % 50 - 25).toFloat()
                 val perspectiveFactor = Math.cos(Math.toRadians(tiltAngle.toDouble())).toFloat()
                 
-                // FEUILLES 2x plus longues, même largeur
-                val sizeMultiplier = 2.4f // 2x plus longues
-                val displayWidth = feuille.largeur * sizeMultiplier * 0.5f * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
+                // CORRIGÉ : Tailles encore réduites de 20%
+                val sizeMultiplier = 1.34f // 1.67f * 0.8 = 1.34f
+                val displayWidth = feuille.largeur * sizeMultiplier * kotlin.math.abs(perspectiveFactor).coerceAtLeast(0.2f)
                 val displayLength = feuille.longueur * sizeMultiplier
                 
                 canvas.save()
@@ -133,11 +133,11 @@ class PlantRenderer(private val context: Context) {
                 val rotationWave = kotlin.math.sin(time * 0.8f + feuille.bourgeon.y * 0.01f) * 8f
                 canvas.rotate(feuille.angle + rotationWave)
                 
-                // Couleur selon éclairage et perspective avec animation
+                // Couleur selon éclairage et perspective avec animation (vert foncé marguerite)
                 val lightingFactor = kotlin.math.abs(perspectiveFactor)
                 val colorPulse = kotlin.math.sin(time * 0.5f + feuille.hashCode() * 0.01f) * 0.1f
                 val brightness = (0.5f + lightingFactor * 0.3f + colorPulse).coerceIn(0.3f, 0.8f)
-                val greenValue = (25 + brightness * 30).toInt() // Conversion en Int
+                val greenValue = (25 + brightness * 30).toInt() // Plus sombre pour marguerite
                 
                 val leafPaint = Paint().apply {
                     isAntiAlias = true
@@ -146,82 +146,45 @@ class PlantRenderer(private val context: Context) {
                 }
                 
                 if (perspectiveFactor > 0.3f) {
-                    // MARGUERITE : Feuille avec courbure gravitationnelle naturelle
+                    // MARGUERITE : Feuille dentelée caractéristique
                     val leafPath = Path()
                     leafPath.moveTo(0f, 0f)
                     
-                    val midLength = displayLength * 0.65f // Partie lisse rallongée
-                    
-                    // COURBURE GRAVITATIONNELLE : calcul de la trajectoire naturelle PLUS PRONONCÉE
-                    fun getGravityCurveY(progress: Float, baseY: Float): Float {
-                        // Courbe parabolique ACCENTUÉE : monte au début, redescend plus fortement à la fin
-                        val lift = -displayLength * 0.25f * kotlin.math.sin(progress * kotlin.math.PI.toFloat()) // Plus de montée initiale
-                        val gravity = displayLength * 0.25f * (progress * progress * progress) // Gravité plus forte (au cube)
-                        val weightEffect = displayLength * 0.15f * kotlin.math.max(0f, progress - 0.4f) // Poids s'accentue après 40%
-                        return baseY + lift + gravity + weightEffect
-                    }
-                    
-                    // PREMIÈRE MOITIÉ : LISSE, effilée avec courbure naturelle
-                    val smooth1Progress = 0.3f
-                    val smooth1Y = getGravityCurveY(smooth1Progress, midLength * 0.3f)
-                    leafPath.quadTo(-displayWidth * 0.04f, smooth1Y, -displayWidth * 0.08f, smooth1Y) // Courbe douce
-                    
-                    val smooth2Progress = 0.7f
-                    val smooth2Y = getGravityCurveY(smooth2Progress, midLength * 0.7f)
-                    leafPath.quadTo(-displayWidth * 0.15f, smooth2Y, -displayWidth * 0.2f, smooth2Y)
-                    
-                    val junctionY = getGravityCurveY(1.0f, midLength)
-                    leafPath.quadTo(-displayWidth * 0.22f, junctionY, -displayWidth * 0.25f, junctionY) // Jonction plus fine
-                    
-                    // DEUXIÈME MOITIÉ : DENTELÉE avec plus d'ondulations (6 au lieu de 4)
+                    // Ondulation des bords pour effet vivant
                     val edgeWave = kotlin.math.sin(time * 2f) * 0.03f
                     
-                    // 6 ondulations sur le côté gauche
-                    val leftDentPoints = arrayOf(
-                        Pair(-displayWidth * (0.35f - edgeWave), displayLength * 0.7f),   // Ondulation 1
-                        Pair(-displayWidth * (0.45f + edgeWave), displayLength * 0.75f),  // Dent 1
-                        Pair(-displayWidth * (0.3f - edgeWave), displayLength * 0.8f),    // Ondulation 2
-                        Pair(-displayWidth * (0.5f + edgeWave), displayLength * 0.84f),   // Dent 2
-                        Pair(-displayWidth * (0.32f - edgeWave), displayLength * 0.88f),  // Ondulation 3
-                        Pair(-displayWidth * (0.47f + edgeWave), displayLength * 0.92f),  // Dent 3
-                        Pair(-displayWidth * (0.28f - edgeWave), displayLength * 0.96f),  // Ondulation 4
-                        Pair(-displayWidth * (0.4f + edgeWave), displayLength * 0.98f),   // Dent 4
-                        Pair(-displayWidth * 0.15f, displayLength * 0.995f)               // Avant pointe
+                    // Côté gauche avec bords fortement dentelés
+                    val leftPoints = arrayOf(
+                        Pair(-displayWidth * (0.15f + edgeWave), displayLength * 0.2f),
+                        Pair(-displayWidth * (0.4f - edgeWave), displayLength * 0.3f),
+                        Pair(-displayWidth * (0.25f + edgeWave), displayLength * 0.45f), // Dent
+                        Pair(-displayWidth * (0.45f - edgeWave), displayLength * 0.6f),
+                        Pair(-displayWidth * (0.3f + edgeWave), displayLength * 0.75f), // Dent
+                        Pair(-displayWidth * (0.35f - edgeWave), displayLength * 0.9f),
+                        Pair(-displayWidth * 0.1f, displayLength * 0.95f)
                     )
                     
-                    for ((x, y) in leftDentPoints) {
-                        val curvedY = getGravityCurveY((y / displayLength), y)
-                        leafPath.lineTo(x, curvedY)
+                    for ((x, y) in leftPoints) {
+                        leafPath.lineTo(x, y)
                     }
+                    leafPath.lineTo(0f, displayLength)
                     
-                    // POINTE avec courbure vers le bas PLUS PRONONCÉE (recourbée + pesante)
-                    val tipY = getGravityCurveY(1.0f, displayLength) + displayLength * 0.12f // Encore plus bas à cause du poids
-                    leafPath.quadTo(-displayWidth * 0.08f, tipY + displayLength * 0.06f, 0f, tipY) // Courbure plus marquée
-                    
-                    // Côté droit symétrique avec ondulations
-                    val rightDentPoints = arrayOf(
-                        Pair(displayWidth * 0.15f, displayLength * 0.995f),               // Avant pointe
-                        Pair(displayWidth * (0.4f + edgeWave), displayLength * 0.98f),    // Dent 4
-                        Pair(displayWidth * (0.28f - edgeWave), displayLength * 0.96f),   // Ondulation 4
-                        Pair(displayWidth * (0.47f + edgeWave), displayLength * 0.92f),   // Dent 3
-                        Pair(displayWidth * (0.32f - edgeWave), displayLength * 0.88f),   // Ondulation 3
-                        Pair(displayWidth * (0.5f + edgeWave), displayLength * 0.84f),    // Dent 2
-                        Pair(displayWidth * (0.3f - edgeWave), displayLength * 0.8f),     // Ondulation 2
-                        Pair(displayWidth * (0.45f + edgeWave), displayLength * 0.75f),   // Dent 1
-                        Pair(displayWidth * (0.35f - edgeWave), displayLength * 0.7f)     // Ondulation 1
+                    // Côté droit symétrique avec dentelures
+                    val rightPoints = arrayOf(
+                        Pair(displayWidth * 0.1f, displayLength * 0.95f),
+                        Pair(displayWidth * (0.35f - edgeWave), displayLength * 0.9f),
+                        Pair(displayWidth * (0.3f + edgeWave), displayLength * 0.75f), // Dent
+                        Pair(displayWidth * (0.45f - edgeWave), displayLength * 0.6f),
+                        Pair(displayWidth * (0.25f + edgeWave), displayLength * 0.45f), // Dent
+                        Pair(displayWidth * (0.4f - edgeWave), displayLength * 0.3f),
+                        Pair(displayWidth * (0.15f + edgeWave), displayLength * 0.2f)
                     )
                     
-                    for ((x, y) in rightDentPoints) {
-                        val curvedY = getGravityCurveY((y / displayLength), y)
-                        leafPath.lineTo(x, curvedY)
+                    for ((x, y) in rightPoints) {
+                        leafPath.lineTo(x, y)
                     }
-                    
-                    // Retour à la base avec courbure
-                    leafPath.quadTo(displayWidth * 0.22f, junctionY, displayWidth * 0.25f, junctionY) // Jonction
-                    leafPath.quadTo(displayWidth * 0.15f, smooth2Y, displayWidth * 0.2f, smooth2Y)   // Partie lisse
-                    leafPath.quadTo(displayWidth * 0.04f, smooth1Y, displayWidth * 0.08f, smooth1Y)  // Effilée
-                    
                     leafPath.close()
+                    
                     canvas.drawPath(leafPath, leafPaint)
                     
                     // Nervure centrale plus marquée
@@ -270,11 +233,11 @@ class PlantRenderer(private val context: Context) {
     // NOUVELLE fleur géométrique réaliste 10x plus grande avec animations
     fun drawRealisticFlower(
         canvas: Canvas, 
-        fleur: Fleur?, 
+        fleur: PlantGrowthLogic.Fleur?, 
         time: Float
     ) {
         fleur?.let { flower ->
-            if (flower.taille > 1f) {
+            if (flower.taille > 5f) {
                 // Animation plus complexe
                 val flowerOscillation = kotlin.math.sin(time * 0.6f) * 8f
                 val flowerPulse = 1f + kotlin.math.sin(time * 1.5f) * 0.1f
@@ -282,17 +245,15 @@ class PlantRenderer(private val context: Context) {
                 canvas.save()
                 canvas.translate(flower.x + flowerOscillation, flower.y)
                 
-                val progressRatio = (flower.taille / 75f).coerceAtMost(1f)
+                val progressRatio = (flower.taille / 175f).coerceAtMost(1f)
                 val petalCount = 14 // Marguerite: 12-16 pétales
                 
-                // FLEURS plus grandes
-                val sizeMultiplier = 7.5f
-                val petalLength = kotlin.math.max(20f, (15f + progressRatio * 40f) * sizeMultiplier * flowerPulse)
-                val petalWidth = kotlin.math.max(10f, (4f + progressRatio * 10f) * sizeMultiplier * flowerPulse)
+                // CORRIGÉ : Tailles augmentées de 20% pour les fleurs
+                val sizeMultiplier = 4f // 3.33f * 1.2 = 4f
+                val petalLength = (20f + progressRatio * 50f) * sizeMultiplier * flowerPulse // Plus étroits
+                val petalWidth = (6f + progressRatio * 12f) * sizeMultiplier * flowerPulse    // Plus fins
                 
-                // Dessiner chaque pétale avec animation individuelle + perspective
-                val mainFlowerIndex = petalCount / 2 // Pétale principal (face)
-                
+                // Dessiner chaque pétale avec animation individuelle
                 for (i in 0 until petalCount) {
                     val baseAngle = i * 360f / petalCount
                     val petalWave = kotlin.math.sin(time * 2f + i * 0.8f) * 6f
@@ -304,7 +265,7 @@ class PlantRenderer(private val context: Context) {
                     // Animation d'ouverture plus rapide des pétales
                     val openingFactor = kotlin.math.min(1f, progressRatio * 2.5f)
                     val currentPetalLength = petalLength * openingFactor
-                    val currentPetalWidth = petalWidth * openingFactor * 1.3f
+                    val currentPetalWidth = petalWidth * openingFactor
                     
                     // Pétale en forme de goutte animé
                     val petalPaint = Paint().apply {
@@ -312,19 +273,28 @@ class PlantRenderer(private val context: Context) {
                         style = Paint.Style.FILL
                     }
                     
-                    // MARGUERITE : BLANC FIXE seulement
-                    val brightness = 0.9f + 0.1f // Couleur uniforme blanche
-                    val whiteValue = (255 * brightness).toInt().coerceIn(240, 255)
-                    petalPaint.color = Color.rgb(whiteValue, whiteValue, whiteValue)
+                    // MARGUERITE : Dégradé blanc avec base légèrement crème
+                    val colorShift = kotlin.math.sin(time * 0.8f + i * 0.3f) * 0.05f
+                    val gradient = LinearGradient(
+                        0f, 0f, 0f, currentPetalLength,
+                        intArrayOf(
+                            Color.rgb((255 * (0.95f + colorShift)).toInt(), (248 * (0.95f + colorShift)).toInt(), (220 * (0.9f + colorShift)).toInt()), // Base crème
+                            Color.rgb((255 * (0.98f + colorShift)).toInt(), (255 * (0.98f + colorShift)).toInt(), (250 * (0.95f + colorShift)).toInt()), // Milieu blanc cassé
+                            0xFFFFFFFF.toInt() // Pointe blanc pur
+                        ),
+                        floatArrayOf(0f, 0.3f, 1f),
+                        Shader.TileMode.CLAMP
+                    )
+                    petalPaint.shader = gradient
                     
-                    // MARGUERITE : Forme de pétale plus large et moins pointue
+                    // MARGUERITE : Forme de pétale étroite et allongée
                     val organicVariation = kotlin.math.sin(time + i * 0.7f) * 0.03f
                     val petalPath = Path()
                     petalPath.moveTo(0f, 0f)
                     petalPath.cubicTo(
-                        -currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f,
-                        -currentPetalWidth * (0.35f - organicVariation), currentPetalLength * 0.8f,
-                        -currentPetalWidth * 0.15f, currentPetalLength * 0.98f
+                        -currentPetalWidth * (0.4f + organicVariation), currentPetalLength * 0.2f, 
+                        -currentPetalWidth * (0.25f - organicVariation), currentPetalLength * 0.7f, 
+                        -currentPetalWidth * 0.1f, currentPetalLength * 0.95f
                     )
                     petalPath.cubicTo(
                         0f, currentPetalLength,
@@ -332,12 +302,12 @@ class PlantRenderer(private val context: Context) {
                         0f, currentPetalLength
                     )
                     petalPath.cubicTo(
-                        currentPetalWidth * 0.15f, currentPetalLength * 0.98f,
-                        currentPetalWidth * (0.35f - organicVariation), currentPetalLength * 0.8f, 
-                        currentPetalWidth * (0.5f + organicVariation), currentPetalLength * 0.3f
+                        currentPetalWidth * 0.1f, currentPetalLength * 0.95f,
+                        currentPetalWidth * (0.25f - organicVariation), currentPetalLength * 0.7f, 
+                        currentPetalWidth * (0.4f + organicVariation), currentPetalLength * 0.2f
                     )
                     petalPath.cubicTo(
-                        currentPetalWidth * 0.3f, currentPetalLength * 0.15f,
+                        currentPetalWidth * 0.2f, currentPetalLength * 0.1f,
                         0f, 0f,
                         0f, 0f
                     )
@@ -356,14 +326,15 @@ class PlantRenderer(private val context: Context) {
                     canvas.restore()
                 }
                 
-                // Centre proportionnel aux pétales
+                // CORRIGÉ : Centre proportionnel aux pétales
                 val centerPaint = Paint().apply {
                     isAntiAlias = true
                     style = Paint.Style.FILL
                 }
                 
                 // Centre plus petit et proportionnel
-                val centerSize = petalLength * 0.12f * flowerPulse
+                val centerSize = petalLength * 0.12f * flowerPulse // Beaucoup plus petit
+                
                 // MARGUERITE : Centre jaune vif caractéristique
                 val centerColorShift = kotlin.math.sin(time * 1.2f) * 0.05f
                 centerPaint.color = Color.rgb(
@@ -376,7 +347,7 @@ class PlantRenderer(private val context: Context) {
                 // Petites étamines plus proportionnelles
                 centerPaint.color = 0xFFFFA500.toInt()
                 val stamenCount = 8
-                val stamenRadius = centerSize * 0.6f
+                val stamenRadius = centerSize * 0.6f // Proportionnel au centre
                 for (i in 0 until stamenCount) {
                     val stamenAngle = i * 360f / stamenCount + time * 15f
                     val stamenBob = kotlin.math.sin(time * 3f + i * 0.4f) * 1f
@@ -384,13 +355,13 @@ class PlantRenderer(private val context: Context) {
                     
                     val stamenX = Math.cos(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
                     val stamenY = Math.sin(Math.toRadians(stamenAngle.toDouble())).toFloat() * finalStamenRadius
-                    canvas.drawCircle(stamenX, stamenY, centerSize * 0.15f, centerPaint)
+                    canvas.drawCircle(stamenX, stamenY, centerSize * 0.15f, centerPaint) // Proportionnel
                 }
                 
                 // Point central plus petit
                 val pistilPulse = 1f + kotlin.math.sin(time * 2.5f) * 0.2f
                 centerPaint.color = 0xFFFF6347.toInt()
-                canvas.drawCircle(0f, 0f, centerSize * 0.3f * pistilPulse, centerPaint)
+                canvas.drawCircle(0f, 0f, centerSize * 0.3f * pistilPulse, centerPaint) // Beaucoup plus petit
                 
                 canvas.restore()
             }
