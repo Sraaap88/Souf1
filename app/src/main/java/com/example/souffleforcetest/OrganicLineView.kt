@@ -47,6 +47,7 @@ class OrganicLineView @JvmOverloads constructor(
     
     // NOUVEAU : Variables pour le test de détection
     private var currentForce = 0f
+    private var maxForceDetected = 0f // NOUVEAU : Valeur maximum atteinte
     private var centerX = 0f
     private var centerY = 0f
     
@@ -73,6 +74,7 @@ class OrganicLineView @JvmOverloads constructor(
         lightState = LightState.YELLOW
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
+        maxForceDetected = 0f // Reset du maximum
         invalidate()
     }
     
@@ -81,6 +83,11 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Stocker la force pour le cercle de test
         currentForce = force
+        
+        // NOUVEAU : Mettre à jour le maximum détecté
+        if (force > maxForceDetected) {
+            maxForceDetected = force
+        }
         
         // Afficher le bouton reset après les premières détections
         if (!showResetButton && force > 0.01f && 
@@ -154,7 +161,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Dessiner le cercle
         canvas.drawCircle(centerX, centerY, currentRadius, testCirclePaint)
         
-        // Texte pour afficher la valeur numérique
+        // Texte pour afficher la valeur numérique actuelle
         val textPaint = Paint().apply {
             color = Color.WHITE
             textSize = 40f
@@ -163,6 +170,16 @@ class OrganicLineView @JvmOverloads constructor(
         }
         val forceText = String.format("%.3f", currentForce)
         canvas.drawText(forceText, centerX, centerY + 15f, textPaint)
+        
+        // NOUVEAU : Afficher la valeur maximum à côté
+        val maxTextPaint = Paint().apply {
+            color = Color.YELLOW
+            textSize = 35f
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+        val maxText = String.format("MAX: %.3f", maxForceDetected)
+        canvas.drawText(maxText, centerX + 150f, centerY, maxTextPaint)
     }
     
     private fun drawTrafficLight(canvas: Canvas) {
@@ -276,6 +293,7 @@ class OrganicLineView @JvmOverloads constructor(
         lightState = LightState.YELLOW
         stateStartTime = System.currentTimeMillis()
         currentForce = 0f
+        maxForceDetected = 0f // Reset du maximum
         
         invalidate()
     }
