@@ -286,12 +286,33 @@ class OrganicLineView @JvmOverloads constructor(
     private fun decayOscillations() {
         for (i in mainStem.indices) {
             val point = mainStem[i]
-            val decayedOscillation = point.oscillation * oscillationDecay
-            val permanentWave = point.permanentWave + point.oscillation * 0.05f
+            
+            // Décroissance plus organique avec lissage des voisins
+            var smoothedOscillation = point.oscillation * oscillationDecay
+            
+            // Lissage avec les points voisins pour éviter les zigzags
+            if (i > 0 && i < mainStem.size - 1) {
+                val prevOsc = mainStem[i - 1].oscillation
+                val nextOsc = mainStem[i + 1].oscillation
+                // Moyenne pondérée pour lisser
+                smoothedOscillation = (smoothedOscillation * 0.6f + prevOsc * 0.2f + nextOsc * 0.2f) * oscillationDecay
+            }
+            
+            // Conversion plus naturelle vers forme permanente
+            // Au lieu de revenir exactement au centre, on garde des courbes douces
+            var newPermanentWave = point.permanentWave
+            if (abs(smoothedOscillation) < 5f) { // Seulement quand oscillation faible
+                val waveContribution = smoothedOscillation * 0.02f // Plus lent
+                newPermanentWave = (point.permanentWave + waveContribution) * 0.995f // Très lent retour
+            }
+            
+            // Limiter les oscillations extrêmes pour éviter les cassures visuelles
+            smoothedOscillation = smoothedOscillation.coerceIn(-30f, 30f)
+            newPermanentWave = newPermanentWave.coerceIn(-15f, 15f)
             
             mainStem[i] = point.copy(
-                oscillation = decayedOscillation,
-                permanentWave = permanentWave * 0.5f
+                oscillation = smoothedOscillation,
+                permanentWave = newPermanentWave
             )
         }
     }
@@ -324,27 +345,62 @@ class OrganicLineView @JvmOverloads constructor(
     private fun drawStem(canvas: Canvas) {
         if (mainStem.size < 2) return
         
-        // Dessiner la tige principale avec oscillations
+        // Créer un chemin fluide pour la tige principale
+        val path = Path()
+        if (mainStem.isNotEmpty()) {
+            val firstPoint = mainStem[0]
+            val firstX = firstPoint.x + firstPoint.oscillation + firstPoint.permanentWave
+            path.moveTo(firstX, firstPoint.y)
+        }
+        
+        // Dessiner la tige principale avec courbes fluides
         for (i in 1 until mainStem.size) {
             val point = mainStem[i]
             val prevPoint = mainStem[i - 1]
             
-            stemPaint.strokeWidth = point.thickness
             val adjustedX = point.x + point.oscillation + point.permanentWave
             val prevAdjustedX = prevPoint.x + prevPoint.oscillation + prevPoint.permanentWave
             
-            canvas.drawLine(prevAdjustedX, prevPoint.y, adjustedX, point.y, stemPaint)
+            if (i == 1) {
+                // Premier segment : ligne simple
+                stemPaint.strokeWidth = point.thickness
+                canvas.drawLine(prevAdjustedX, prevPoint.y, adjustedX, point.y, stemPaint)
+            } else {
+                // Segments suivants : courbes fluides avec points de contrôle
+                val controlX = (prevAdjustedX + adjustedX) / 2f
+                val controlY = (prevPoint.y + point.y) / 2f
+                
+                // Ajuster le point de contrôle pour plus de fluidité
+                val curvatureOffset = (adjustedX - prevAdjustedX) * 0.3f
+                val finalControlX = controlX + curvatureOffset
+                
+                // Dessiner avec courbe quadratique pour fluidité
+                stemPaint.strokeWidth = point.thickness
+                canvas.drawLine(prevAdjustedX, prevPoint.y, finalControlX, controlY, stemPaint)
+                canvas.drawLine(finalControlX, controlY, adjustedX, point.y, stemPaint)
+            }
         }
         
-        // Dessiner les branches
+        // Dessiner les branches avec courbes aussi
         stemPaint.color = Color.rgb(40, 100, 40) // Vert plus foncé pour branches
         for (branch in branches) {
             if (branch.points.size >= 2) {
                 for (i in 1 until branch.points.size) {
                     val point = branch.points[i]
                     val prevPoint = branch.points[i - 1]
+                    
                     stemPaint.strokeWidth = point.thickness
-                    canvas.drawLine(prevPoint.x, prevPoint.y, point.x, point.y, stemPaint)
+                    
+                    if (i == 1 || branch.points.size <= 2) {
+                        // Premier segment ou branche courte : ligne simple
+                        canvas.drawLine(prevPoint.x, prevPoint.y, point.x, point.y, stemPaint)
+                    } else {
+                        // Courbe fluide pour les branches aussi
+                        val controlX = (prevPoint.x + point.x) / 2f
+                        val controlY = (prevPoint.y + point.y) / 2f
+                        canvas.drawLine(prevPoint.x, prevPoint.y, controlX, controlY, stemPaint)
+                        canvas.drawLine(controlX, controlY, point.x, point.y, stemPaint)
+                    }
                 }
             }
         }
