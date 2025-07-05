@@ -79,7 +79,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             return
         }
         
-        // Phase de croissance normale
+        // Phase de croissance normale - SEULEMENT avec souffle actif
         if (force > forceThreshold && mainStem.isNotEmpty()) {
             growMainStem(force)
             
@@ -92,7 +92,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             }
         }
         
-        // Mise à jour des oscillations
+        // Mise à jour des oscillations même sans souffle
         updateOscillations()
         lastForce = force
     }
@@ -179,9 +179,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // BASE ULTRA-COMPACTE comme vraie marguerite (1-3px d'espacement)
-        val baseSpacing = 1f + (Math.random() * 2f).toFloat() // 1-3px très serré
-        val baseOffset = branchCount * baseSpacing * if (branchSide) 1f else -1f
+        // BASE COMPACTE avec espacement cumulatif pour éviter superposition
+        val baseSpacing = 8f + (Math.random() * 4f).toFloat() // 8-12px
+        val cumulativeOffset = (1..branchCount).sumOf { 
+            (8f + Math.random() * 4f).toDouble() 
+        }.toFloat() * if (branchSide) 1f else -1f
         
         // ANGLES TRÈS LÉGERS de vraie marguerite (2°-12° max)
         val minAngle = 2f + (branchCount * 1.5f) // 2°, 3.5°, 5°, 6.5°
@@ -202,7 +204,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val newBranch = Branch(
             angle = branchAngle,
             startHeight = 0f,
-            baseOffset = baseOffset,
+            baseOffset = cumulativeOffset,
             isMainStem = false,
             currentHeight = 0f,
             maxHeight = branchMaxHeight,
@@ -212,9 +214,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             thicknessVariation = thicknessVar
         )
         
-        // Point de départ TRÈS PROCHE de la base principale
-        val startX = stemBaseX + baseOffset + (Math.random() * 1f - 0.5f).toFloat() // ±0.5px
-        val startThickness = baseThickness * 0.85f * thicknessVar // Épaisseur proche de la principale
+        // Point de départ avec offset cumulatif pour éviter superposition
+        val startX = stemBaseX + cumulativeOffset + (Math.random() * 2f - 1f).toFloat()
+        val startThickness = baseThickness * 0.85f * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
         // Premier segment TRÈS VERTICAL avec courbe très légère
@@ -330,9 +332,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             val weightInfluence = accumulatedWeight * weightDirection * 0.02f // Réduit de 0.05f à 0.02f
             newPermanentWave += weightInfluence
             
-            // Limites plus strictes pour tige principale
-            smoothedOscillation = smoothedOscillation.coerceIn(-15f, 15f) // Réduit de 30f à 15f
-            newPermanentWave = newPermanentWave.coerceIn(-25f, 25f) // Réduit de 60f à 25f
+            // Limites TRÈS STRICTES pour tige principale droite
+            smoothedOscillation = smoothedOscillation.coerceIn(-8f, 8f) // Encore plus strict
+            newPermanentWave = newPermanentWave.coerceIn(-12f, 12f) // Encore plus strict
             
             mainStem[i] = point.copy(
                 oscillation = smoothedOscillation,
