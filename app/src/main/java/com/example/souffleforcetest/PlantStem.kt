@@ -157,39 +157,30 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // ALTERNANCE SIMPLE ET CLAIRE : 1 = GAUCHE, 2 = DROITE
-        val isLeftSide = (branchCount == 1)  // Première branche = GAUCHE
-        val sideMultiplier = if (isLeftSide) -1f else 1f  // GAUCHE = -, DROITE = +
+        // FORÇAGE ABSOLU : première branche = GAUCHE, deuxième = DROITE
+        val forceLeft = (branchCount == 1)
+        val forcedOffset = if (forceLeft) -25f else +25f // Position FORCÉE
+        val forcedAngle = if (forceLeft) -10f else +10f // Angle FORCÉ
         
-        // Distance différenciée pour chaque côté
-        val baseDistance = if (isLeftSide) 20f else 18f
-        val cumulativeOffset = baseDistance * sideMultiplier  // GAUCHE = -20, DROITE = +18
+        println("=== CRÉATION FORCÉE BRANCHE ${branchCount} ===")
+        println("FORCÉ ${if (forceLeft) "GAUCHE" else "DROITE"}")
+        println("Offset forcé: ${forcedOffset}")
+        println("Angle forcé: ${forcedAngle}")
         
-        // ANGLES DIFFÉRENTS selon le côté
-        val minAngle = if (isLeftSide) 6f else 8f
-        val maxAngle = if (isLeftSide) 13f else 15f
-        val angleValue = minAngle + Math.random() * (maxAngle - minAngle)
-        val branchAngle = angleValue.toFloat() * sideMultiplier // GAUCHE = négatif, DROITE = positif
-        
-        // HAUTEURS ET CARACTÉRISTIQUES selon le côté
-        val baseHeightRatio = if (isLeftSide) 0.73f else 0.78f
+        // Caractéristiques selon le côté FORCÉ
+        val baseHeightRatio = if (forceLeft) 0.73f else 0.78f
         val heightVariation = (Math.random() * 0.06f - 0.03f).toFloat()
         val branchMaxHeight = maxPossibleHeight * (baseHeightRatio + heightVariation)
         
-        // PERSONNALITÉS DIFFÉRENTES pour chaque côté
-        val personalityFactor = if (isLeftSide) 
-            (1.0f + Math.random() * 0.2f).toFloat() else 
-            (0.9f + Math.random() * 0.15f).toFloat()
-        val trembleFreq = (0.95f + Math.random() * 0.1f).toFloat()
-        val curvatureDir = sideMultiplier // Courbe dans la direction du côté
-        val thicknessVar = if (isLeftSide) 
-            (0.83f + Math.random() * 0.1f).toFloat() else  
-            (0.88f + Math.random() * 0.1f).toFloat()
+        val personalityFactor = if (forceLeft) 1.1f else 0.95f
+        val trembleFreq = 1.0f
+        val curvatureDir = if (forceLeft) -1f else 1f
+        val thicknessVar = if (forceLeft) 0.85f else 0.90f
         
         val newBranch = Branch(
-            angle = branchAngle,
+            angle = forcedAngle,
             startHeight = 0f,
-            baseOffset = cumulativeOffset,
+            baseOffset = forcedOffset, // POSITION ABSOLUE
             isMainStem = false,
             currentHeight = 0f,
             maxHeight = branchMaxHeight,
@@ -199,15 +190,14 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             thicknessVariation = thicknessVar
         )
         
-        // Point de départ avec séparation claire
-        val startX = stemBaseX + cumulativeOffset + (Math.random() * 1f - 0.5f).toFloat()
+        // Point de départ FORCÉ
+        val startX = stemBaseX + forcedOffset // Position ABSOLUE
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // Premier segment avec direction claire selon le côté
-        val initialHeight = if (isLeftSide) 12f else 14f
-        val initialCurve = cos(Math.toRadians(abs(branchAngle).toDouble())).toFloat() * initialHeight * 0.2f
-        val initialX = startX + initialCurve * sideMultiplier // Direction selon le côté
+        // Premier segment FORCÉ dans la bonne direction
+        val initialHeight = 12f
+        val initialX = startX + (if (forceLeft) -8f else +8f) // FORCÉ vers le bon côté
         val initialY = stemBaseY - initialHeight
         val initialThickness = startThickness * 0.95f
         
@@ -216,12 +206,10 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        // Debug TRÈS CLAIR
-        println("=== BRANCHE ${branchCount} ===")
-        println("Côté: ${if (isLeftSide) "GAUCHE" else "DROITE"}")
-        println("Position X: ${cumulativeOffset} (${if (sideMultiplier < 0) "négatif = gauche" else "positif = droite"})")
-        println("Angle: ${branchAngle}° (${if (branchAngle < 0) "négatif = gauche" else "positif = droite"})")
-        println("========================")
+        println("Points créés:")
+        println("  Base: X=${startX} (${stemBaseX} + ${forcedOffset})")
+        println("  Premier: X=${initialX}")
+        println("================================")
     }
     
     // ==================== UTILITAIRES ====================
