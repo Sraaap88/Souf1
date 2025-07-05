@@ -144,15 +144,15 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 // POSITION avec inclinaison naturelle selon le côté
                 val baseX = plantStem.getStemBaseX() + branch.baseOffset
                 
-                // INCLINAISON progressive selon le côté de la branche
+                // INCLINAISON progressive selon le côté de la branche - AUGMENTÉE
                 val branchDirection = if (branch.angle < 0) -1f else 1f // Gauche ou droite
                 val heightRatio = currentBranchHeight / branch.maxHeight
                 
-                // Inclinaison qui s'accentue progressivement
-                val progressiveIncline = heightRatio * heightRatio * 15f * branchDirection // Inclinaison progressive
+                // Inclinaison qui s'accentue progressivement - PLUS FORTE
+                val progressiveIncline = heightRatio * heightRatio * 25f * branchDirection // Augmenté de 15f à 25f
                 
-                // COURBURE VERS LE BAS au sommet des tiges secondaires
-                val topCurveStart = 0.7f // Commence à 70% de hauteur
+                // COURBURE VERS LE BAS au sommet des tiges secondaires - COMMENCE PLUS TÔT
+                val topCurveStart = 0.5f // Commence à 50% de hauteur au lieu de 70%
                 val topCurve = if (heightRatio > topCurveStart) {
                     val curveRatio = (heightRatio - topCurveStart) / (1f - topCurveStart)
                     val curveStrength = curveRatio * curveRatio * 8f // Courbure vers le bas
@@ -167,9 +167,9 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 val currentX = baseX + progressiveIncline + topCurve + secondaryWeightBend
                 val currentY = plantStem.getStemBaseY() - currentBranchHeight
                 
-                // DEBUG: Position avec inclinaison
+                // DEBUG: Position avec inclinaison renforcée
                 if (branch.points.size <= 5) {
-                    println("Branche ${if (branch.angle < 0) "GAUCHE" else "DROITE"}: X=${currentX} (base=${baseX}, incline=${progressiveIncline.toInt()}px)")
+                    println("Branche ${if (branch.angle < 0) "GAUCHE" else "DROITE"}: X=${currentX} (base=${baseX}, incline=${progressiveIncline.toInt()}px, courbe=${topCurve.toInt()}px)")
                 }
                 
                 // Oscillation adaptée à chaque tige
