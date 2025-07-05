@@ -157,46 +157,41 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 // Position avec courbure adaptée à chaque tige
                 val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
                 
-                // POSITION ultra-réaliste comme vraies marguerites
-                val baseX = plantStem.getStemBaseX() + branch.baseOffset
+                // POSITION ultra-réaliste : même base mais divergence progressive
+                val baseX = plantStem.getStemBaseX() // MÊME BASE pour toutes
                 
-                // COURBURE ÉLÉGANTE ET FLUIDE selon le côté
+                // DIVERGENCE PROGRESSIVE selon le côté (comme votre dessin)
                 val branchDirection = if (branch.angle < 0) -1f else 1f
                 val heightRatio = currentBranchHeight / branch.maxHeight
                 
-                // PHASE 1: Départ légèrement incliné (0-30%)
-                val earlyIncline = if (heightRatio < 0.3f) {
-                    val earlyRatio = heightRatio / 0.3f
-                    earlyRatio * earlyRatio * 8f * branchDirection
-                } else 8f * branchDirection
+                // PHASE 1: Divergence immédiate et forte (0-20%)
+                val earlyDivergence = if (heightRatio < 0.2f) {
+                    val divergenceRatio = heightRatio / 0.2f
+                    divergenceRatio * 25f * branchDirection // Divergence forte dès le début
+                } else 25f * branchDirection
                 
-                // PHASE 2: Courbure gracieuse (30-70%)
-                val midCurve = if (heightRatio > 0.3f && heightRatio < 0.7f) {
-                    val midRatio = (heightRatio - 0.3f) / 0.4f
-                    val curveIntensity = sin(midRatio * PI.toFloat()) * 15f // Courbe en cloche
-                    curveIntensity * branchDirection
+                // PHASE 2: Courbure gracieuse (20-70%)
+                val midCurve = if (heightRatio > 0.2f && heightRatio < 0.7f) {
+                    val midRatio = (heightRatio - 0.2f) / 0.5f
+                    val additionalCurve = sin(midRatio * PI.toFloat()) * 15f
+                    additionalCurve * branchDirection
                 } else 0f
                 
                 // PHASE 3: Courbure finale élégante (70-100%) avec RÉDUCTION 20%
                 val finalCurve = if (heightRatio > 0.7f) {
                     val finalRatio = (heightRatio - 0.7f) / 0.3f
-                    val elegantCurve = finalRatio * finalRatio * finalRatio * 20f
-                    val downwardBend = finalRatio * finalRatio * 8f
+                    val elegantCurve = finalRatio * finalRatio * finalRatio * 15f // Réduit
+                    val downwardBend = finalRatio * finalRatio * 6f // Réduit
                     
-                    // RÉDUCTION de 20% dans le dernier 1/3 pour éviter angles nets
                     val curveReduction = if (heightRatio > 0.667f) 0.8f else 1f
-                    
                     (elegantCurve * branchDirection + downwardBend * abs(branchDirection) * 0.3f) * curveReduction
                 } else 0f
                 
-                // EFFET DE POIDS RÉALISTE progressif
-                val naturalWeight = heightRatio * heightRatio * heightRatio * 12f * abs(branchDirection)
-                val weightSway = sin(heightRatio * PI.toFloat() * 0.5f) * naturalWeight * 0.4f
+                // Effet de poids minimal pour garder l'écartement
+                val naturalWeight = heightRatio * heightRatio * 5f * abs(branchDirection)
                 
-                // LISSAGE FLUIDE pour transitions douces
-                val totalCurve = earlyIncline + midCurve + finalCurve + weightSway
-                
-                // Position finale ultra-fluide
+                // Position finale : base commune + divergence progressive
+                val totalCurve = earlyDivergence + midCurve + finalCurve + naturalWeight
                 val currentX = baseX + totalCurve
                 val currentY = plantStem.getStemBaseY() - currentBranchHeight
                 
