@@ -105,7 +105,6 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
                     flower.y = topPoint.y
                 }
             }
-            }
             
             val mainBranch = engine.getBranches().firstOrNull()
             mainBranch?.fleur?.let { engine.fleur = it }
