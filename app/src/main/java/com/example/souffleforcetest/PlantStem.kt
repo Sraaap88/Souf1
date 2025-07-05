@@ -179,32 +179,34 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // ALTERNANCE GARANTIE : première droite, deuxième gauche
-        val sideMultiplier = if (branchCount == 1) 1f else -1f // Première = droite, deuxième = gauche
+        // ALTERNANCE FORCÉE : première droite (+), deuxième gauche (-)
+        val isFirstBranch = (branchCount == 1)
+        val sideMultiplier = if (isFirstBranch) 1f else -1f // +1 = droite, -1 = gauche
         
         // Distance et hauteur différenciées pour chaque tige
-        val baseDistance = if (branchCount == 1) 18f else 15f // Première plus loin
+        val baseDistance = if (isFirstBranch) 18f else 20f // Deuxième un peu plus loin
         val cumulativeOffset = baseDistance * sideMultiplier
         
-        // ANGLES LÉGÈREMENT DIFFÉRENTS pour éviter la symétrie parfaite
-        val minAngle = if (branchCount == 1) 8f else 5f // Première plus inclinée
-        val maxAngle = if (branchCount == 1) 15f else 12f
+        // ANGLES DIFFÉRENTS selon le côté
+        val minAngle = if (isFirstBranch) 8f else 6f
+        val maxAngle = if (isFirstBranch) 15f else 13f
+        // IMPORTANT: angle toujours dans la direction du côté
         val branchAngle = (minAngle + Math.random() * (maxAngle - minAngle)).toFloat() * sideMultiplier
         
-        // HAUTEURS DIFFÉRENTES pour effet naturel
-        val baseHeightRatio = if (branchCount == 1) 0.80f else 0.75f // Première plus haute
-        val heightVariation = (Math.random() * 0.08f - 0.04f).toFloat() // ±4%
+        // HAUTEURS ET CARACTÉRISTIQUES selon le côté
+        val baseHeightRatio = if (isFirstBranch) 0.78f else 0.73f // Droite plus haute
+        val heightVariation = (Math.random() * 0.06f - 0.03f).toFloat() // ±3%
         val branchMaxHeight = maxPossibleHeight * (baseHeightRatio + heightVariation)
         
-        // PERSONNALITÉS DIFFÉRENTES pour chaque tige
-        val personalityFactor = if (branchCount == 1) 
-            (0.9f + Math.random() * 0.15f).toFloat() else // Première: 0.9-1.05
-            (1.0f + Math.random() * 0.2f).toFloat()       // Deuxième: 1.0-1.2
+        // PERSONNALITÉS DIFFÉRENTES pour chaque côté
+        val personalityFactor = if (isFirstBranch) 
+            (0.9f + Math.random() * 0.15f).toFloat() else // Droite: 0.9-1.05
+            (1.0f + Math.random() * 0.2f).toFloat()       // Gauche: 1.0-1.2
         val trembleFreq = (0.95f + Math.random() * 0.1f).toFloat()
-        val curvatureDir = if (branchCount == 1) 1f else -1f // Première droite, deuxième gauche
-        val thicknessVar = if (branchCount == 1) 
-            (0.90f + Math.random() * 0.1f).toFloat() else  // Première plus épaisse
-            (0.85f + Math.random() * 0.1f).toFloat()       // Deuxième plus fine
+        val curvatureDir = sideMultiplier // Courbe dans la direction du côté
+        val thicknessVar = if (isFirstBranch) 
+            (0.88f + Math.random() * 0.1f).toFloat() else  // Droite plus épaisse
+            (0.83f + Math.random() * 0.1f).toFloat()       // Gauche plus fine
         
         val newBranch = Branch(
             angle = branchAngle,
@@ -219,15 +221,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             thicknessVariation = thicknessVar
         )
         
-        // Point de départ avec position spécifique pour chaque tige
+        // Point de départ avec séparation claire
         val startX = stemBaseX + cumulativeOffset + (Math.random() * 1f - 0.5f).toFloat()
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // Premier segment avec caractéristiques uniques
-        val initialHeight = if (branchCount == 1) 14f else 12f // Première plus haute
-        val initialCurve = cos(Math.toRadians(branchAngle.toDouble())).toFloat() * initialHeight * 0.15f
-        val initialX = startX + initialCurve
+        // Premier segment avec direction claire selon le côté
+        val initialHeight = if (isFirstBranch) 14f else 12f
+        val initialCurve = cos(Math.toRadians(abs(branchAngle).toDouble())).toFloat() * initialHeight * 0.2f
+        val initialX = startX + initialCurve * sideMultiplier // Direction selon le côté
         val initialY = stemBaseY - initialHeight
         val initialThickness = startThickness * 0.95f
         
@@ -235,7 +237,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         newBranch.currentHeight = initialHeight
         
         branches.add(newBranch)
-        // Pas d'alternance automatique, contrôle manuel pour 2 tiges
+        
+        // Debug: afficher le côté créé
+        println("Branche ${branchCount} créée du côté ${if (sideMultiplier > 0) "DROIT" else "GAUCHE"} à ${cumulativeOffset}px")
     }
     
     private fun growAllBranches(force: Float) {
