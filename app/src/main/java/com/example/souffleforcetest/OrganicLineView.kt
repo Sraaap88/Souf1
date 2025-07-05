@@ -79,11 +79,11 @@ class OrganicLineView @JvmOverloads constructor(
     
     private val forceThreshold = 0.05f // Seuil anti-bruit
     private val maxStemHeight = 0.8f // 80% de la hauteur d'écran
-    private val baseThickness = 12f
-    private val tipThickness = 4f
+    private val baseThickness = 25f // Plus épaisse
+    private val tipThickness = 8f // Plus épaisse
     private val growthRate = 2400f // x20 plus rapide
-    private val oscillationDecay = 0.95f
-    private val branchThreshold = 0.3f // Différence de force pour ramification
+    private val oscillationDecay = 0.98f // Garde oscillation plus longtemps
+    private val branchThreshold = 0.15f // Plus sensible (0.3f → 0.15f)
     private val emergenceDuration = 1000L // 1 seconde
     
     enum class LightState {
@@ -197,8 +197,8 @@ class OrganicLineView @JvmOverloads constructor(
                 growStem(adjustedGrowth, force)
             }
             
-            // Détection ramification (souffle saccadé)
-            if (abs(force - lastForce) > branchThreshold && stemHeight > 50f) {
+            // Détection ramification (souffle saccadé) - PLUS SENSIBLE
+            if (abs(force - lastForce) > branchThreshold && stemHeight > 30f) { // Seuil réduit (50f → 30f)
                 createBranch()
             }
         }
@@ -244,9 +244,9 @@ class OrganicLineView @JvmOverloads constructor(
             val naturalSway = sin(currentHeight * 0.02f) * 3f
             val currentX = stemBaseX + naturalSway
             
-            // Oscillation temporaire selon fréquence du souffle
-            val forceVariation = abs(force - 0.5f) * 2f // 0 à 1
-            val oscillation = sin(System.currentTimeMillis() * 0.01f * forceVariation) * force * 15f
+            // Oscillation temporaire selon fréquence du souffle (PLUS SENSIBLE)
+            val forceVariation = abs(force - 0.5f) * 4f // Plus sensible (2f → 4f)
+            val oscillation = sin(System.currentTimeMillis() * 0.01f * forceVariation) * force * 35f // Plus forte (15f → 35f)
             
             val newY = stemBaseY - currentHeight
             val newPoint = StemPoint(currentX, newY, thickness, oscillation)
@@ -291,7 +291,11 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        if (lightState == LightState.GREEN_GROW) {
+        // CORRIGÉ : Dessiner la tige dans TOUTES les phases après croissance
+        if (lightState == LightState.GREEN_GROW || 
+            lightState == LightState.GREEN_LEAVES || 
+            lightState == LightState.GREEN_FLOWER || 
+            lightState == LightState.RED) {
             drawStem(canvas)
         }
         
