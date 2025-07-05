@@ -47,14 +47,14 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.05f
-    private val maxStemHeight = 0.8f
+    private val maxStemHeight = 0.64f // Réduit de 20% (0.8 → 0.64)
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
     private val branchThreshold = 0.05f
     private val emergenceDuration = 1000L
-    private val maxBranches = 4 // Max 5 tiges total (1 principale + 4 branches)
+    private val maxBranches = 1 // UNE SEULE tige secondaire
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
@@ -139,7 +139,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         // Croissance avec courbe réaliste
         val growthProgress = stemHeight / maxPossibleHeight
         val progressCurve = 1f - growthProgress * growthProgress
-        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.016f * 10f
+        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f * 10f // Divisé par 2 (0.016f → 0.008f)
         
         if (adjustedGrowth > 0 && stemHeight < maxPossibleHeight) {
             stemHeight += adjustedGrowth
@@ -179,9 +179,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // ALTERNANCE RÉELLE des côtés avec espacement progressif
+        // ALTERNANCE SIMPLE pour UNE seule tige secondaire
         val sideMultiplier = if (branchSide) 1f else -1f
-        val baseDistance = 12f + (branchCount * 3f) // Distance croissante: 15, 18, 21, 24px
+        val baseDistance = 15f // Distance fixe pour la seule tige secondaire
         val cumulativeOffset = baseDistance * sideMultiplier
         
         // ANGLES TRÈS LÉGERS de vraie marguerite (2°-12° max)
@@ -248,7 +248,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         val growthProgress = branch.currentHeight / branch.maxHeight
         val progressCurve = 1f - growthProgress * growthProgress
-        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.016f * 9f * branchGrowthMultiplier
+        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f * 9f * branchGrowthMultiplier // Divisé par 2
         
         if (adjustedGrowth > 0) {
             branch.currentHeight += adjustedGrowth
@@ -325,15 +325,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 smoothedOscillation *= (1f - transferRate)
             }
             
-            // Effet de poids QUASI-NUL
-            val accumulatedWeight = heightRatio * heightRatio * 0.5f // Ultra réduit
+            // Effet de poids PLUS PRONONCÉ pour courbure réaliste
+            val accumulatedWeight = heightRatio * heightRatio * 2f // Augmenté de 0.5f à 2f
             val weightDirection = if (point.x + newPermanentWave > stemBaseX) 1f else -1f
-            val weightInfluence = accumulatedWeight * weightDirection * 0.005f // Ultra réduit
+            val weightInfluence = accumulatedWeight * weightDirection * 0.015f // Augmenté de 0.005f à 0.015f
             newPermanentWave += weightInfluence
             
-            // Limites ULTRA STRICTES pour tige parfaitement droite
-            smoothedOscillation = smoothedOscillation.coerceIn(-3f, 3f) // Ultra strict
-            newPermanentWave = newPermanentWave.coerceIn(-6f, 6f) // Ultra strict
+            // Limites plus généreuses pour permettre courbure naturelle
+            smoothedOscillation = smoothedOscillation.coerceIn(-5f, 5f) // Augmenté de 3f à 5f
+            newPermanentWave = newPermanentWave.coerceIn(-15f, 15f) // Augmenté de 6f à 15f
             
             mainStem[i] = point.copy(
                 oscillation = smoothedOscillation,
