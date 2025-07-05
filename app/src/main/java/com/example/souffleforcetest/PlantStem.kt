@@ -157,9 +157,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // FORÇAGE ABSOLU : première branche = GAUCHE, deuxième = DROITE
+        // FORÇAGE ABSOLU : première branche = GAUCHE, deuxième = DROITE - PLUS ESPACÉES
         val forceLeft = (branchCount == 1)
-        val forcedOffset = if (forceLeft) -25f else +25f // Position FORCÉE
+        val forcedOffset = if (forceLeft) -35f else +35f // Augmenté de 25f à 35f
         val forcedAngle = if (forceLeft) -10f else +10f // Angle FORCÉ
         
         println("=== CRÉATION FORCÉE BRANCHE ${branchCount} ===")
