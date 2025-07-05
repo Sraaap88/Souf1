@@ -47,14 +47,14 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.05f
-    private val maxStemHeight = 0.64f // Réduit de 20% (0.8 → 0.64)
+    private val maxStemHeight = 0.8f // Remis à la hauteur originale
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
     private val branchThreshold = 0.05f
     private val emergenceDuration = 1000L
-    private val maxBranches = 1 // UNE SEULE tige secondaire
+    private val maxBranches = 2 // DEUX tiges secondaires (droite + gauche)
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
@@ -179,26 +179,32 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // ALTERNANCE SIMPLE pour UNE seule tige secondaire
-        val sideMultiplier = if (branchSide) 1f else -1f
-        val baseDistance = 15f // Distance fixe pour la seule tige secondaire
+        // ALTERNANCE GARANTIE : première droite, deuxième gauche
+        val sideMultiplier = if (branchCount == 1) 1f else -1f // Première = droite, deuxième = gauche
+        
+        // Distance et hauteur différenciées pour chaque tige
+        val baseDistance = if (branchCount == 1) 18f else 15f // Première plus loin
         val cumulativeOffset = baseDistance * sideMultiplier
         
-        // ANGLES TRÈS LÉGERS de vraie marguerite (2°-12° max)
-        val minAngle = 2f + (branchCount * 1.5f) // 2°, 3.5°, 5°, 6.5°
-        val maxAngle = 8f + (branchCount * 1f) // 8°, 9°, 10°, 11°
-        val branchAngle = (minAngle + Math.random() * (maxAngle - minAngle)).toFloat() * if (branchSide) 1f else -1f
+        // ANGLES LÉGÈREMENT DIFFÉRENTS pour éviter la symétrie parfaite
+        val minAngle = if (branchCount == 1) 8f else 5f // Première plus inclinée
+        val maxAngle = if (branchCount == 1) 15f else 12f
+        val branchAngle = (minAngle + Math.random() * (maxAngle - minAngle)).toFloat() * sideMultiplier
         
-        // HAUTEURS RÉALISTES - moins de variation qu'avant
-        val baseHeightRatio = 0.85f - (branchCount * 0.05f) // 85%, 80%, 75%, 70%
-        val heightVariation = (Math.random() * 0.1f - 0.05f).toFloat() // ±5% seulement
+        // HAUTEURS DIFFÉRENTES pour effet naturel
+        val baseHeightRatio = if (branchCount == 1) 0.80f else 0.75f // Première plus haute
+        val heightVariation = (Math.random() * 0.08f - 0.04f).toFloat() // ±4%
         val branchMaxHeight = maxPossibleHeight * (baseHeightRatio + heightVariation)
         
-        // PERSONNALITÉS plus subtiles pour vraie marguerite
-        val personalityFactor = (0.9f + Math.random() * 0.2f).toFloat() // 0.9-1.1 (moins extrême)
-        val trembleFreq = (0.95f + Math.random() * 0.1f).toFloat() // 0.95-1.05 (plus subtil)
-        val curvatureDir = if (Math.random() > 0.7) 1f else -1f // 70% chance d'être droit
-        val thicknessVar = (0.95f + Math.random() * 0.1f).toFloat() // 0.95-1.05 (moins de variation)
+        // PERSONNALITÉS DIFFÉRENTES pour chaque tige
+        val personalityFactor = if (branchCount == 1) 
+            (0.9f + Math.random() * 0.15f).toFloat() else // Première: 0.9-1.05
+            (1.0f + Math.random() * 0.2f).toFloat()       // Deuxième: 1.0-1.2
+        val trembleFreq = (0.95f + Math.random() * 0.1f).toFloat()
+        val curvatureDir = if (branchCount == 1) 1f else -1f // Première droite, deuxième gauche
+        val thicknessVar = if (branchCount == 1) 
+            (0.90f + Math.random() * 0.1f).toFloat() else  // Première plus épaisse
+            (0.85f + Math.random() * 0.1f).toFloat()       // Deuxième plus fine
         
         val newBranch = Branch(
             angle = branchAngle,
@@ -213,14 +219,14 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             thicknessVariation = thicknessVar
         )
         
-        // Point de départ avec alternance claire droite/gauche
+        // Point de départ avec position spécifique pour chaque tige
         val startX = stemBaseX + cumulativeOffset + (Math.random() * 1f - 0.5f).toFloat()
-        val startThickness = baseThickness * 0.85f * thicknessVar
+        val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // Premier segment TRÈS VERTICAL avec courbe très légère
-        val initialHeight = 12f + (Math.random() * 4f).toFloat() // 12-16px
-        val initialCurve = cos(Math.toRadians(branchAngle.toDouble())).toFloat() * initialHeight * 0.15f // Très peu de courbe
+        // Premier segment avec caractéristiques uniques
+        val initialHeight = if (branchCount == 1) 14f else 12f // Première plus haute
+        val initialCurve = cos(Math.toRadians(branchAngle.toDouble())).toFloat() * initialHeight * 0.15f
         val initialX = startX + initialCurve
         val initialY = stemBaseY - initialHeight
         val initialThickness = startThickness * 0.95f
@@ -229,7 +235,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         newBranch.currentHeight = initialHeight
         
         branches.add(newBranch)
-        branchSide = !branchSide
+        // Pas d'alternance automatique, contrôle manuel pour 2 tiges
     }
     
     private fun growAllBranches(force: Float) {
@@ -267,31 +273,37 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 val microVariation = (Math.random() * 0.03f - 0.015f).toFloat() // ±1.5% très subtil
                 val thickness = baseThicknessBranch * (1f - thicknessProgress + microVariation)
                 
-                // Position PRINCIPALEMENT VERTICALE avec très légère inclinaison
+                // Position avec courbure adaptée à chaque tige
                 val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
                 
-                // Courbe TRÈS LÉGÈRE de la branche (comme vraie marguerite)
-                val branchCurve = cos(Math.toRadians(branch.angle.toDouble())).toFloat() * currentBranchHeight * 0.25f // Réduit à 25%
+                // Courbe de base selon l'angle
+                val branchCurve = cos(Math.toRadians(branch.angle.toDouble())).toFloat() * currentBranchHeight * 0.3f
                 
-                // Courbure naturelle TRÈS SUBTILE
-                val naturalCurve = sin(currentBranchHeight * 0.01f * branch.personalityFactor) * 
+                // EFFET DE POIDS adapté à la personnalité
+                val branchHeightRatio = currentBranchHeight / branch.maxHeight
+                val branchWeightEffect = branchHeightRatio * branchHeightRatio * (1.5f + branch.personalityFactor * 0.5f)
+                val branchWeightDirection = if (branch.angle > 0) 1f else -1f
+                val branchWeightBend = branchWeightEffect * branchWeightDirection * 0.7f
+                
+                // Courbure naturelle selon la personnalité
+                val naturalCurve = sin(currentBranchHeight * 0.006f * branch.personalityFactor) * 
                                  branch.curvatureDirection * 
-                                 (0.5f + progressFromBase * 0.8f) // Très réduit
+                                 (0.2f + progressFromBase * 0.4f) * branch.personalityFactor
                 
-                // Tremblements TRÈS SUBTILS
-                val timeOffset = branch.angle * 5f
-                val tremble = sin((System.currentTimeMillis() + timeOffset) * 0.002f * branch.trembleFrequency) * 
-                             (0.2f + progressFromBase * 0.3f) // Très réduit
+                // Tremblements uniques par tige
+                val timeOffset = branch.angle * 8f + (if (branch.angle > 0) 0f else 1000f) // Déphasage
+                val tremble = sin((System.currentTimeMillis() + timeOffset) * 0.0015f * branch.trembleFrequency) * 
+                             (0.08f + progressFromBase * 0.15f) * branch.personalityFactor
                 
-                val currentX = (stemBaseX + branch.baseOffset) + branchCurve + naturalCurve + tremble
+                val currentX = (stemBaseX + branch.baseOffset) + branchCurve + branchWeightBend + naturalCurve + tremble
                 val currentY = stemBaseY - currentBranchHeight
                 
-                // Oscillation TRÈS RÉDUITE pour rester proche de la verticale
-                val forceVariation = abs(force - lastForce) * 3f * branch.personalityFactor // Très réduit
-                val heightMultiplier = 1f + progressFromBase * 0.5f
-                val phaseOffset = branch.angle * 0.05f
-                val oscillation = sin(System.currentTimeMillis() * 0.003f * branch.trembleFrequency + phaseOffset) * 
-                                forceVariation * 6f * heightMultiplier // Très réduit
+                // Oscillation adaptée à chaque tige
+                val forceVariation = abs(force - lastForce) * 2.5f * branch.personalityFactor
+                val heightMultiplier = 1f + progressFromBase * 0.4f
+                val phaseOffset = branch.angle * 0.08f + (if (branch.angle > 0) 0f else PI.toFloat())
+                val oscillation = sin(System.currentTimeMillis() * 0.0025f * branch.trembleFrequency + phaseOffset) * 
+                                forceVariation * 5f * heightMultiplier
                 
                 val newPoint = StemPoint(currentX, currentY, thickness, oscillation)
                 branch.points.add(newPoint)
