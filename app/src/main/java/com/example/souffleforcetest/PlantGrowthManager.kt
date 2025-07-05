@@ -141,25 +141,6 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 // Position avec courbure adaptée à chaque tige
                 val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
                 
-                // Courbe de base selon l'angle
-                val branchCurve = cos(Math.toRadians(branch.angle.toDouble())).toFloat() * currentBranchHeight * 0.3f
-                
-                // EFFET DE POIDS adapté à la personnalité
-                val branchHeightRatio = currentBranchHeight / branch.maxHeight
-                val branchWeightEffect = branchHeightRatio * branchHeightRatio * (1.5f + branch.personalityFactor * 0.5f)
-                val branchWeightDirection = if (branch.angle > 0) 1f else -1f
-                val branchWeightBend = branchWeightEffect * branchWeightDirection * 0.7f
-                
-                // Courbure naturelle selon la personnalité
-                val naturalCurve = sin(currentBranchHeight * 0.006f * branch.personalityFactor) * 
-                                 branch.curvatureDirection * 
-                                 (0.2f + progressFromBase * 0.4f) * branch.personalityFactor
-                
-                // Tremblements uniques par tige
-                val timeOffset = branch.angle * 8f + (if (branch.angle > 0) 0f else 1000f) // Déphasage
-                val tremble = sin((System.currentTimeMillis() + timeOffset) * 0.0015f * branch.trembleFrequency) * 
-                             (0.08f + progressFromBase * 0.15f) * branch.personalityFactor
-                
                 // POSITION avec inclinaison naturelle selon le côté
                 val baseX = plantStem.getStemBaseX() + branch.baseOffset
                 
@@ -179,11 +160,11 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 } else 0f
                 
                 // Effet de poids adapté à la tige secondaire
-                val branchWeightEffect = heightRatio * heightRatio * 1.2f
-                val branchWeightBend = branchWeightEffect * branchDirection * 0.4f
+                val secondaryWeightEffect = heightRatio * heightRatio * 1.2f
+                val secondaryWeightBend = secondaryWeightEffect * branchDirection * 0.4f
                 
                 // Position finale avec inclinaison et courbure
-                val currentX = baseX + progressiveIncline + topCurve + branchWeightBend
+                val currentX = baseX + progressiveIncline + topCurve + secondaryWeightBend
                 val currentY = plantStem.getStemBaseY() - currentBranchHeight
                 
                 // DEBUG: Position avec inclinaison
