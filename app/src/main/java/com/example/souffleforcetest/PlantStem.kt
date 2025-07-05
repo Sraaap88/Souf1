@@ -12,7 +12,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val thickness: Float,
         var oscillation: Float = 0f,
         var permanentWave: Float = 0f
-    )
+    ) 
     
     data class Branch(
         val points: MutableList<StemPoint> = mutableListOf(),
@@ -77,7 +77,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 }
             }
             return
-        }
+         }
         
         // Phase de croissance normale - SEULEMENT avec souffle actif
         if (force > forceThreshold && mainStem.isNotEmpty()) {
