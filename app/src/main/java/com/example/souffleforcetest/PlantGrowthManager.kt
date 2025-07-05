@@ -35,37 +35,38 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 // Position basée sur le DERNIER point (continuité)
                 val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
                 
-                // TIGE PRINCIPALE : courbure étalée sur plus grande distance
+                // TIGE PRINCIPALE : courbure réaliste comme vraie marguerite
                 val baseDeviation = lastPointX - plantStem.getStemBaseX()
                 val heightRatio = currentHeight / plantStem.getMaxPossibleHeight()
                 
-                // Force de rappel TRÈS DOUCE qui diminue vers le sommet
-                val centeringStrength = (1f - heightRatio * 0.9f) * 0.008f // Plus doux et étalé
+                // Force de rappel TRÈS DOUCE qui permet la courbure naturelle
+                val centeringStrength = (1f - heightRatio * 0.95f) * 0.005f // Ultra doux
                 val centeringForce = -baseDeviation * centeringStrength
                 
-                // Mouvement naturel avec lissage progressif
-                val naturalSway = sin(currentHeight * 0.003f) * 0.12f * (1f - heightRatio * 0.3f) // Plus étalé
-                val microTremble = sin(System.currentTimeMillis() * 0.002f) * 0.03f
+                // Mouvement naturel TRÈS fluide
+                val naturalSway = sin(currentHeight * 0.002f) * 0.08f * (1f - heightRatio * 0.2f)
+                val microTremble = sin(System.currentTimeMillis() * 0.001f) * 0.02f
                 
-                // EFFET DE POIDS PROGRESSIF et ÉTALÉ - commence plus tôt
-                val weightStart = 0.3f // Commence à 30% de hauteur
+                // EFFET DE POIDS RÉALISTE - commence dès 20% de hauteur
+                val weightStart = 0.2f
                 val weightStrength = if (heightRatio > weightStart) {
                     val adjustedRatio = (heightRatio - weightStart) / (1f - weightStart)
-                    adjustedRatio * adjustedRatio * (2.5f - adjustedRatio) // Courbure plus douce et étalée
+                    adjustedRatio * adjustedRatio * adjustedRatio * 3.5f // Courbure cubique très douce
                 } else 0f
                 
-                val weightDirection = if (baseDeviation > 0) 1f else if (baseDeviation < -2f) -1f else 0.2f
-                val weightBend = weightStrength * weightDirection * 0.6f
+                // Direction de poids : légère tendance vers la droite (naturel)
+                val weightDirection = if (baseDeviation > -1f) 0.6f else -0.3f
+                val weightBend = weightStrength * weightDirection
                 
-                // Lissage étendu avec plusieurs points précédents
-                val smoothingRange = 3 // Lissage sur 3 points
+                // Lissage ULTRA étendu sur 5 points pour fluidité maximale
+                val smoothingRange = 5
                 var smoothedMovement = 0f
                 var totalWeight = 0f
                 
                 for (j in 1..smoothingRange) {
                     val prevIndex = plantStem.mainStem.size - j
                     if (prevIndex >= 0) {
-                        val weight = 1f / j // Poids décroissant
+                        val weight = 1f / (j * j) // Poids décroissant quadratique
                         val prevPoint = plantStem.mainStem[prevIndex]
                         val prevMovement = prevPoint.x - plantStem.getStemBaseX()
                         smoothedMovement += prevMovement * weight
@@ -75,13 +76,13 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 
                 if (totalWeight > 0) smoothedMovement /= totalWeight
                 
-                // Mouvement total avec lissage étendu
+                // Mouvement total avec lissage ultra-fluide
                 val rawMovement = naturalSway + microTremble + centeringForce + weightBend
-                val smoothingFactor = 0.6f + heightRatio * 0.3f // Plus de lissage vers le sommet
-                val finalMovement = rawMovement * (1f - smoothingFactor) + smoothedMovement * smoothingFactor * 0.15f
+                val smoothingFactor = 0.8f + heightRatio * 0.15f // Lissage intense
+                val finalMovement = rawMovement * (1f - smoothingFactor) + smoothedMovement * smoothingFactor * 0.25f
                 
-                // Limitation progressive - plus permissive pour courbure étalée
-                val maxMove = 2f * (1f - heightRatio * 0.3f) // Plus permissif
+                // Limitation très permissive pour courbure naturelle
+                val maxMove = 3f * (1f - heightRatio * 0.2f)
                 val limitedMovement = finalMovement.coerceIn(-maxMove, maxMove)
                 
                 val currentX = lastPointX + limitedMovement
@@ -141,35 +142,53 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 // Position avec courbure adaptée à chaque tige
                 val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
                 
-                // POSITION avec inclinaison naturelle selon le côté
+                // POSITION ultra-réaliste comme vraies marguerites
                 val baseX = plantStem.getStemBaseX() + branch.baseOffset
                 
-                // INCLINAISON progressive selon le côté de la branche - AUGMENTÉE
-                val branchDirection = if (branch.angle < 0) -1f else 1f // Gauche ou droite
+                // COURBURE ÉLÉGANTE ET FLUIDE selon le côté
+                val branchDirection = if (branch.angle < 0) -1f else 1f
                 val heightRatio = currentBranchHeight / branch.maxHeight
                 
-                // Inclinaison qui s'accentue progressivement - PLUS FORTE
-                val progressiveIncline = heightRatio * heightRatio * 25f * branchDirection // Augmenté de 15f à 25f
+                // PHASE 1: Départ légèrement incliné (0-30%)
+                val earlyIncline = if (heightRatio < 0.3f) {
+                    val earlyRatio = heightRatio / 0.3f
+                    earlyRatio * earlyRatio * 8f * branchDirection
+                } else 8f * branchDirection
                 
-                // COURBURE VERS LE BAS au sommet des tiges secondaires - COMMENCE PLUS TÔT
-                val topCurveStart = 0.5f // Commence à 50% de hauteur au lieu de 70%
-                val topCurve = if (heightRatio > topCurveStart) {
-                    val curveRatio = (heightRatio - topCurveStart) / (1f - topCurveStart)
-                    val curveStrength = curveRatio * curveRatio * 8f // Courbure vers le bas
-                    curveStrength * abs(branchDirection) * 0.5f // Vers l'extérieur
+                // PHASE 2: Courbure gracieuse (30-70%)
+                val midCurve = if (heightRatio > 0.3f && heightRatio < 0.7f) {
+                    val midRatio = (heightRatio - 0.3f) / 0.4f
+                    val curveIntensity = sin(midRatio * PI.toFloat()) * 15f // Courbe en cloche
+                    curveIntensity * branchDirection
                 } else 0f
                 
-                // Effet de poids adapté à la tige secondaire
-                val secondaryWeightEffect = heightRatio * heightRatio * 1.2f
-                val secondaryWeightBend = secondaryWeightEffect * branchDirection * 0.4f
+                // PHASE 3: Courbure finale élégante (70-100%)
+                val finalCurve = if (heightRatio > 0.7f) {
+                    val finalRatio = (heightRatio - 0.7f) / 0.3f
+                    val elegantCurve = finalRatio * finalRatio * finalRatio * 20f // Courbure cubique
+                    val downwardBend = finalRatio * finalRatio * 8f // Vers le bas
+                    elegantCurve * branchDirection + downwardBend * abs(branchDirection) * 0.3f
+                } else 0f
                 
-                // Position finale avec inclinaison et courbure
-                val currentX = baseX + progressiveIncline + topCurve + secondaryWeightBend
+                // EFFET DE POIDS RÉALISTE progressif
+                val naturalWeight = heightRatio * heightRatio * heightRatio * 12f * abs(branchDirection)
+                val weightSway = sin(heightRatio * PI.toFloat() * 0.5f) * naturalWeight * 0.4f
+                
+                // LISSAGE FLUIDE pour transitions douces
+                val totalCurve = earlyIncline + midCurve + finalCurve + weightSway
+                
+                // Position finale ultra-fluide
+                val currentX = baseX + totalCurve
                 val currentY = plantStem.getStemBaseY() - currentBranchHeight
                 
-                // DEBUG: Position avec inclinaison renforcée
+                // DEBUG: Courbure réaliste par phases
                 if (branch.points.size <= 5) {
-                    println("Branche ${if (branch.angle < 0) "GAUCHE" else "DROITE"}: X=${currentX} (base=${baseX}, incline=${progressiveIncline.toInt()}px, courbe=${topCurve.toInt()}px)")
+                    val phase = when {
+                        heightRatio < 0.3f -> "DÉPART"
+                        heightRatio < 0.7f -> "MILIEU" 
+                        else -> "SOMMET"
+                    }
+                    println("Branche ${if (branch.angle < 0) "GAUCHE" else "DROITE"} - ${phase}: X=${currentX.toInt()} (courbe=${totalCurve.toInt()}px)")
                 }
                 
                 // Oscillation adaptée à chaque tige
