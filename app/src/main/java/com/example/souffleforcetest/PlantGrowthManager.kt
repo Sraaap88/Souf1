@@ -141,12 +141,14 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 val tremble = sin((System.currentTimeMillis() + timeOffset) * 0.0015f * branch.trembleFrequency) * 
                              (0.08f + progressFromBase * 0.15f) * branch.personalityFactor
                 
-                val currentX = (plantStem.getStemBaseX() + branch.baseOffset) + branchCurve + branchWeightBend + naturalCurve + tremble
+                // POSITION ABSOLUE - ignorer les calculs complexes
+                val baseX = plantStem.getStemBaseX() + branch.baseOffset
+                val currentX = baseX // Position SIMPLE et DIRECTE
                 val currentY = plantStem.getStemBaseY() - currentBranchHeight
                 
-                // DEBUG: Position finale
-                if (branch.points.size <= 5) { // Premiers segments seulement
-                    println("Position finale X: ${currentX} (base: ${plantStem.getStemBaseX()}, offset: ${branch.baseOffset})")
+                // DEBUG: Position absolue
+                if (branch.points.size <= 5) {
+                    println("Position ABSOLUE X: ${currentX} = ${plantStem.getStemBaseX()} + ${branch.baseOffset}")
                 }
                 
                 // Oscillation adaptée à chaque tige
