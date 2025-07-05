@@ -11,17 +11,14 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val y: Float,
         val thickness: Float,
         var oscillation: Float = 0f,
-        var permanentWave: Float = 0f,
-        val timestamp: Long = System.currentTimeMillis()
+        var permanentWave: Float = 0f
     )
     
     data class Branch(
         val points: MutableList<StemPoint> = mutableListOf(),
         val angle: Float,
         val startHeight: Float,
-        var isActive: Boolean = true,
-        var currentLength: Float = 0f,
-        val maxLength: Float = 100f + Math.random().toFloat() * 50f // Longueur variable
+        var isActive: Boolean = true
     )
     
     // ==================== VARIABLES PRINCIPALES ====================
@@ -45,9 +42,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
-    private val oscillationDecay = 0.97f // Plus lent pour courbes douces
-    private val permanentWaveDecay = 0.985f // Retour progressif vers 50%
-    private val branchGrowthRate = 800f // Vitesse de croissance des branches
+    private val oscillationDecay = 0.98f
+    private val branchThreshold = 0.05f
     private val emergenceDuration = 1000L
     
     init {
@@ -75,19 +71,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         // Phase de croissance normale
         if (force > forceThreshold && mainStem.isNotEmpty()) {
-            // Croissance tige principale
             growMainStem(force)
             
-            // Croissance des branches
-            growBranches(force)
-            
             // Détection ramification (souffle saccadé)
-            if (abs(force - lastForce) > 0.05f && stemHeight > 20f) {
+            if (abs(force - lastForce) > branchThreshold && stemHeight > 20f) {
                 createBranch()
             }
         }
         
-        // Mise à jour des oscillations (rendu plus fluide)
+        // Mise à jour des oscillations
         updateOscillations()
         lastForce = force
     }
@@ -148,13 +140,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 // Épaisseur qui diminue vers le haut
                 val thickness = lerp(baseThickness, tipThickness, progressFromBase)
                 
-                // Position X avec légère ondulation naturelle
-                val naturalSway = sin(currentHeight * 0.02f) * 3f
-                val currentX = stemBaseX + naturalSway
+                // Position basée sur le DERNIER point (continuité)
+                val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
+                val naturalSway = sin(currentHeight * 0.02f) * 2f
+                val currentX = lastPointX + naturalSway
                 
                 // Oscillation temporaire selon variation du souffle
-                val forceVariation = abs(force - lastForce) * 15f // Plus sensible
-                val oscillation = sin(System.currentTimeMillis() * 0.005f) * forceVariation * 25f
+                val forceVariation = abs(force - lastForce) * 10f
+                val heightMultiplier = 1f + progressFromBase * 1.5f
+                val oscillation = sin(System.currentTimeMillis() * 0.005f) * forceVariation * 25f * heightMultiplier
                 
                 val newY = stemBaseY - currentHeight
                 val newPoint = StemPoint(currentX, newY, thickness, oscillation)
@@ -163,54 +157,28 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         }
     }
     
-    private fun growBranches(force: Float) {
-        for (branch in branches.filter { it.isActive }) {
-            if (branch.currentLength < branch.maxLength) {
-                // Croissance de la branche
-                val branchGrowth = force * branchGrowthRate * 0.016f * 5f
-                branch.currentLength += branchGrowth
-                
-                // Ajouter des segments à la branche
-                if (branch.points.isNotEmpty()) {
-                    val lastBranchPoint = branch.points.last()
-                    val growthSteps = (branchGrowth / 5f).toInt().coerceAtLeast(1)
-                    
-                    for (step in 1..growthSteps) {
-                        val segmentLength = branchGrowth / growthSteps * step
-                        val totalLength = branch.currentLength - branchGrowth + segmentLength
-                        
-                        // Position selon l'angle de la branche
-                        val branchX = branch.points[0].x + cos(Math.toRadians(branch.angle.toDouble())).toFloat() * totalLength
-                        val branchY = branch.points[0].y - sin(Math.toRadians(abs(branch.angle).toDouble())).toFloat() * totalLength * 0.3f
-                        
-                        // Épaisseur qui diminue
-                        val branchProgress = totalLength / branch.maxLength
-                        val thickness = baseThickness * 0.6f * (1f - branchProgress * 0.5f)
-                        
-                        // Oscillation de la branche (moins que la tige principale)
-                        val branchOscillation = sin(System.currentTimeMillis() * 0.003f) * abs(force - lastForce) * 8f
-                        
-                        val newBranchPoint = StemPoint(branchX, branchY, thickness, branchOscillation)
-                        branch.points.add(newBranchPoint)
-                    }
-                }
-            }
-        }
-    }
-    
     private fun createBranch() {
         if (branches.size >= 3) return
         
         val branchStartHeight = stemHeight
-        val branchAngle = (25f + Math.random() * 35f).toFloat() * if (branchSide) 1f else -1f
+        val branchAngle = (30f + Math.random() * 30f).toFloat() * if (branchSide) 1f else -1f
         
-        // Créer la branche avec point de départ
         val newBranch = Branch(angle = branchAngle, startHeight = branchStartHeight)
         
         // Point de départ depuis la tige principale
         val mainPoint = mainStem.lastOrNull()
         if (mainPoint != null) {
             newBranch.points.add(StemPoint(mainPoint.x, mainPoint.y, mainPoint.thickness * 0.7f))
+            
+            // Ajouter quelques segments pour visibilité
+            for (i in 1..3) {
+                val branchLength = i * 15f
+                val branchX = mainPoint.x + cos(Math.toRadians(branchAngle.toDouble())).toFloat() * branchLength
+                val branchY = mainPoint.y - sin(Math.toRadians(branchAngle.toDouble())).toFloat() * branchLength * 0.5f
+                val thickness = mainPoint.thickness * 0.7f * (1f - i * 0.15f)
+                
+                newBranch.points.add(StemPoint(branchX, branchY, thickness))
+            }
         }
         
         branches.add(newBranch)
@@ -218,47 +186,47 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     private fun updateOscillations() {
-        val currentTime = System.currentTimeMillis()
-        
-        // Mise à jour tige principale avec courbes fluides
         for (i in mainStem.indices) {
             val point = mainStem[i]
             
-            // Décroissance progressive de l'oscillation
-            val timeDecay = min(1f, (currentTime - point.timestamp) / 2000f) // 2 secondes pour décroissance
-            val decayedOscillation = point.oscillation * oscillationDecay.pow(timeDecay)
+            // Calcul de la hauteur relative
+            val heightFromBase = stemBaseY - point.y
+            val heightRatio = heightFromBase / maxPossibleHeight
             
-            // Conversion progressive vers onde permanente (50% final)
-            val permanentContribution = point.oscillation * 0.005f // 0.5% par frame vers permanent
-            val newPermanentWave = (point.permanentWave + permanentContribution) * permanentWaveDecay
+            // Décroissance de l'oscillation temporaire avec lissage
+            var smoothedOscillation = point.oscillation * oscillationDecay
             
-            // Lissage pour éviter les zigzags
-            val smoothedOscillation = if (i > 0 && i < mainStem.size - 1) {
-                val prevOsc = mainStem[i - 1].oscillation * 0.3f
-                val nextOsc = if (i + 1 < mainStem.size) mainStem[i + 1].oscillation * 0.3f else 0f
-                decayedOscillation * 0.4f + prevOsc + nextOsc
-            } else {
-                decayedOscillation
+            // Lissage avec les points voisins
+            if (i > 0 && i < mainStem.size - 1) {
+                val prevOsc = mainStem[i - 1].oscillation
+                val nextOsc = mainStem[i + 1].oscillation
+                smoothedOscillation = (smoothedOscillation * 0.6f + prevOsc * 0.2f + nextOsc * 0.2f) * oscillationDecay
             }
+            
+            // GARDE LA POSITION ACQUISE : pas de retour au centre
+            var newPermanentWave = point.permanentWave
+            
+            // Transfert progressif de l'oscillation vers la forme permanente
+            if (abs(smoothedOscillation) > 1f) {
+                val transferRate = 0.02f
+                newPermanentWave += smoothedOscillation * transferRate
+                smoothedOscillation *= (1f - transferRate)
+            }
+            
+            // Effet de poids qui s'ajoute sans revenir au centre
+            val accumulatedWeight = heightRatio * heightRatio * 6f
+            val weightDirection = if (point.x + newPermanentWave > stemBaseX) 1f else -1f
+            val weightInfluence = accumulatedWeight * weightDirection * 0.05f
+            newPermanentWave += weightInfluence
+            
+            // Limites généreuses pour formes organiques
+            smoothedOscillation = smoothedOscillation.coerceIn(-30f, 30f)
+            newPermanentWave = newPermanentWave.coerceIn(-60f, 60f)
             
             mainStem[i] = point.copy(
                 oscillation = smoothedOscillation,
                 permanentWave = newPermanentWave
             )
-        }
-        
-        // Mise à jour des branches
-        for (branch in branches) {
-            for (i in branch.points.indices) {
-                val point = branch.points[i]
-                val decayedOscillation = point.oscillation * oscillationDecay
-                val newPermanentWave = point.permanentWave * permanentWaveDecay
-                
-                branch.points[i] = point.copy(
-                    oscillation = decayedOscillation,
-                    permanentWave = newPermanentWave
-                )
-            }
         }
     }
     
