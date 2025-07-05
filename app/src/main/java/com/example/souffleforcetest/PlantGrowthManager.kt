@@ -7,14 +7,18 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS DE CROISSANCE ====================
     
     fun growMainStem(force: Float) {
-        // Calcul de la qualité du souffle
+        // Calcul de la qualité du souffle avec RÉSISTANCE PROGRESSIVE
         val forceStability = 1f - abs(force - plantStem.getLastForce()).coerceAtMost(0.5f) * 2f
         val qualityMultiplier = 0.5f + forceStability * 0.5f
         
-        // Croissance avec courbe réaliste
+        // RÉSISTANCE PROGRESSIVE : 33% plus difficile après 2/3 de hauteur
+        val heightRatio = plantStem.getStemHeight() / plantStem.getMaxPossibleHeight()
+        val resistanceMultiplier = if (heightRatio > 0.667f) 0.67f else 1f // 33% plus difficile
+        
+        // Croissance avec courbe réaliste ET résistance
         val growthProgress = plantStem.getStemHeight() / plantStem.getMaxPossibleHeight()
         val progressCurve = 1f - growthProgress * growthProgress
-        val adjustedGrowth = force * qualityMultiplier * progressCurve * plantStem.getGrowthRate() * 0.008f * 10f // Divisé par 2 (0.016f → 0.008f)
+        val adjustedGrowth = force * qualityMultiplier * progressCurve * plantStem.getGrowthRate() * 0.008f * 10f * resistanceMultiplier
         
         if (adjustedGrowth > 0 && plantStem.getStemHeight() < plantStem.getMaxPossibleHeight()) {
             val newHeight = plantStem.getStemHeight() + adjustedGrowth
@@ -47,11 +51,18 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 val naturalSway = sin(currentHeight * 0.002f) * 0.08f * (1f - heightRatio * 0.2f)
                 val microTremble = sin(System.currentTimeMillis() * 0.001f) * 0.02f
                 
-                // EFFET DE POIDS RÉALISTE - commence dès 20% de hauteur
+                // EFFET DE POIDS RÉALISTE avec RÉDUCTION dans le dernier 1/3
                 val weightStart = 0.2f
                 val weightStrength = if (heightRatio > weightStart) {
                     val adjustedRatio = (heightRatio - weightStart) / (1f - weightStart)
-                    adjustedRatio * adjustedRatio * adjustedRatio * 3.5f // Courbure cubique très douce
+                    val baseStrength = adjustedRatio * adjustedRatio * adjustedRatio * 3.5f
+                    
+                    // RÉDUCTION de 20% dans le dernier 1/3 (après 67% de hauteur)
+                    if (heightRatio > 0.667f) {
+                        baseStrength * 0.8f // 20% plus léger
+                    } else {
+                        baseStrength
+                    }
                 } else 0f
                 
                 // Direction de poids : légère tendance vers la droite (naturel)
@@ -113,14 +124,18 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
             println("GROW BRANCH - baseOffset: ${branch.baseOffset}, angle: ${branch.angle}")
         }
         
-        // Vitesse de croissance TRÈS PROCHE de la principale
-        val branchGrowthMultiplier = 0.95f * branch.personalityFactor // 95% au lieu de 75%
+        // RÉSISTANCE PROGRESSIVE pour tiges secondaires aussi
+        val branchHeightRatio = branch.currentHeight / branch.maxHeight
+        val branchResistance = if (branchHeightRatio > 0.667f) 0.67f else 1f
+        
+        // Vitesse de croissance TRÈS PROCHE de la principale avec résistance
+        val branchGrowthMultiplier = 0.95f * branch.personalityFactor * branchResistance
         val forceStability = 1f - abs(force - plantStem.getLastForce()).coerceAtMost(0.5f) * 2f
         val qualityMultiplier = 0.5f + forceStability * 0.5f
         
         val growthProgress = branch.currentHeight / branch.maxHeight
         val progressCurve = 1f - growthProgress * growthProgress
-        val adjustedGrowth = force * qualityMultiplier * progressCurve * plantStem.getGrowthRate() * 0.008f * 9f * branchGrowthMultiplier // Divisé par 2
+        val adjustedGrowth = force * qualityMultiplier * progressCurve * plantStem.getGrowthRate() * 0.008f * 9f * branchGrowthMultiplier
         
         if (adjustedGrowth > 0) {
             branch.currentHeight += adjustedGrowth
@@ -162,12 +177,16 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                     curveIntensity * branchDirection
                 } else 0f
                 
-                // PHASE 3: Courbure finale élégante (70-100%)
+                // PHASE 3: Courbure finale élégante (70-100%) avec RÉDUCTION 20%
                 val finalCurve = if (heightRatio > 0.7f) {
                     val finalRatio = (heightRatio - 0.7f) / 0.3f
-                    val elegantCurve = finalRatio * finalRatio * finalRatio * 20f // Courbure cubique
-                    val downwardBend = finalRatio * finalRatio * 8f // Vers le bas
-                    elegantCurve * branchDirection + downwardBend * abs(branchDirection) * 0.3f
+                    val elegantCurve = finalRatio * finalRatio * finalRatio * 20f
+                    val downwardBend = finalRatio * finalRatio * 8f
+                    
+                    // RÉDUCTION de 20% dans le dernier 1/3 pour éviter angles nets
+                    val curveReduction = if (heightRatio > 0.667f) 0.8f else 1f
+                    
+                    (elegantCurve * branchDirection + downwardBend * abs(branchDirection) * 0.3f) * curveReduction
                 } else 0f
                 
                 // EFFET DE POIDS RÉALISTE progressif
