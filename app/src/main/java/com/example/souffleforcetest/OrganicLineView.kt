@@ -78,10 +78,10 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== PARAMÈTRES DE CROISSANCE ====================
     
     private val forceThreshold = 0.05f // Seuil anti-bruit
-    private val maxStemHeight = 0.6f // 60% de la hauteur d'écran
+    private val maxStemHeight = 0.8f // 80% de la hauteur d'écran
     private val baseThickness = 12f
     private val tipThickness = 4f
-    private val growthRate = 120f
+    private val growthRate = 2400f // x20 plus rapide
     private val oscillationDecay = 0.95f
     private val branchThreshold = 0.3f // Différence de force pour ramification
     private val emergenceDuration = 1000L // 1 seconde
@@ -191,7 +191,7 @@ class OrganicLineView @JvmOverloads constructor(
             // Croissance avec courbe réaliste
             val growthProgress = stemHeight / maxPossibleHeight
             val progressCurve = 1f - growthProgress * growthProgress // Ralentit vers la fin
-            val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.016f
+            val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.016f * 10f // x10 supplémentaire
             
             if (adjustedGrowth > 0 && stemHeight < maxPossibleHeight) {
                 growStem(adjustedGrowth, force)
