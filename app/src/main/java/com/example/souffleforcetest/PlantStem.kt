@@ -227,7 +227,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
         // Premier segment avec direction claire selon le côté
-        val initialHeight = if (isFirstBranch) 14f else 12f
+        val initialHeight = if (isRightSide) 14f else 12f
         val initialCurve = cos(Math.toRadians(abs(branchAngle).toDouble())).toFloat() * initialHeight * 0.2f
         val initialX = startX + initialCurve * sideMultiplier // Direction selon le côté
         val initialY = stemBaseY - initialHeight
