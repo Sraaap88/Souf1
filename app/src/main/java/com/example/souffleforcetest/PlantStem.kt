@@ -12,7 +12,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val thickness: Float,
         var oscillation: Float = 0f,
         var permanentWave: Float = 0f
-    ) 
+    )
     
     data class Branch(
         val points: MutableList<StemPoint> = mutableListOf(),
@@ -43,6 +43,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var emergenceStartTime = 0L
     private var branchSide = true
     private var branchCount = 0
+    
+    // Instance du gestionnaire de croissance
+    private val growthManager = PlantGrowthManager(this)
     
     // ==================== PARAMÈTRES ====================
     
@@ -77,23 +80,26 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 }
             }
             return
-         }
+        }
         
-        // Phase de croissance normale - SEULEMENT avec souffle actif
+        // Phase de croissance normale - STRICTEMENT avec souffle actif
         if (force > forceThreshold && mainStem.isNotEmpty()) {
-            growMainStem(force)
-            
-            // Faire pousser TOUTES les branches actives
-            growAllBranches(force)
-            
-            // Détection ramification (souffle saccadé) - max 4 branches
-            if (abs(force - lastForce) > branchThreshold && stemHeight > 20f && branchCount < maxBranches) {
-                createBranch()
+            // Vérification supplémentaire : force doit être stable et suffisante
+            if (force > forceThreshold * 1.2f) { // 20% au-dessus du seuil minimum
+                growthManager.growMainStem(force)
+                
+                // Faire pousser TOUTES les branches actives
+                growthManager.growAllBranches(force)
+                
+                // Détection ramification (souffle saccadé) - max 2 branches
+                if (abs(force - lastForce) > branchThreshold && stemHeight > 20f && branchCount < maxBranches) {
+                    createBranch()
+                }
             }
         }
         
         // Mise à jour des oscillations même sans souffle
-        updateOscillations()
+        growthManager.updateOscillations()
         lastForce = force
     }
     
@@ -109,6 +115,23 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     fun getStemHeight(): Float = stemHeight
     fun hasVisibleStem(): Boolean = mainStem.size > 1
+    
+    // ==================== GETTERS POUR GROWTHMANAGER ====================
+    
+    fun getMaxPossibleHeight(): Float = maxPossibleHeight
+    fun getStemBaseX(): Float = stemBaseX
+    fun getStemBaseY(): Float = stemBaseY
+    fun getLastForce(): Float = lastForce
+    fun getBaseThickness(): Float = baseThickness
+    fun getTipThickness(): Float = tipThickness
+    fun getGrowthRate(): Float = growthRate
+    fun getOscillationDecay(): Float = oscillationDecay
+    
+    // ==================== SETTERS POUR GROWTHMANAGER ====================
+    
+    fun setStemHeight(height: Float) {
+        stemHeight = height
+    }
     
     // ==================== FONCTIONS PRIVÉES ====================
     
@@ -128,51 +151,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         if (progress >= 1f) {
             stemHeight = emergenceHeight
-        }
-    }
-    
-    private fun growMainStem(force: Float) {
-        // Calcul de la qualité du souffle
-        val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
-        val qualityMultiplier = 0.5f + forceStability * 0.5f
-        
-        // Croissance avec courbe réaliste
-        val growthProgress = stemHeight / maxPossibleHeight
-        val progressCurve = 1f - growthProgress * growthProgress
-        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f * 10f // Divisé par 2 (0.016f → 0.008f)
-        
-        if (adjustedGrowth > 0 && stemHeight < maxPossibleHeight) {
-            stemHeight += adjustedGrowth
-            
-            val lastPoint = mainStem.lastOrNull() ?: return
-            val segmentHeight = 7f + (Math.random() * 3f).toFloat() // Segments variables 7-10px
-            val segments = (adjustedGrowth / segmentHeight).toInt().coerceAtLeast(1)
-            
-            for (i in 1..segments) {
-                val currentHeight = stemHeight - adjustedGrowth + (adjustedGrowth * i / segments)
-                val progressFromBase = currentHeight / maxPossibleHeight
-                
-                // Épaisseur avec micro-variations pour tige principale
-                val microVariation = (Math.random() * 0.08f - 0.04f).toFloat() // ±4%
-                val thickness = lerp(baseThickness, tipThickness, progressFromBase) * (1f + microVariation)
-                
-                // Position basée sur le DERNIER point (continuité)
-                val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
-                
-                // TIGE PRINCIPALE : oscillation naturelle très réduite + micro-tremblements
-                val naturalSway = sin(currentHeight * 0.018f) * 0.6f // Légère ondulation
-                val microTremble = sin(System.currentTimeMillis() * 0.008f) * 0.3f // Tremblement subtil
-                val currentX = lastPointX + naturalSway + microTremble
-                
-                // Oscillation temporaire réduite pour tige principale
-                val forceVariation = abs(force - lastForce) * 4f // Encore plus réduit
-                val heightMultiplier = 1f + progressFromBase * 0.6f
-                val oscillation = sin(System.currentTimeMillis() * 0.004f) * forceVariation * 8f * heightMultiplier
-                
-                val newY = stemBaseY - currentHeight
-                val newPoint = StemPoint(currentX, newY, thickness, oscillation)
-                mainStem.add(newPoint)
-            }
         }
     }
     
@@ -244,165 +222,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         println("Position X: ${cumulativeOffset} (${if (sideMultiplier < 0) "négatif = gauche" else "positif = droite"})")
         println("Angle: ${branchAngle}° (${if (branchAngle < 0) "négatif = gauche" else "positif = droite"})")
         println("========================")
-    }
-    
-    private fun growAllBranches(force: Float) {
-        for (branch in branches.filter { it.isActive }) {
-            growBranch(branch, force)
-        }
-    }
-    
-    private fun growBranch(branch: Branch, force: Float) {
-        if (branch.currentHeight >= branch.maxHeight) return
-        
-        // Vitesse de croissance TRÈS PROCHE de la principale
-        val branchGrowthMultiplier = 0.95f * branch.personalityFactor // 95% au lieu de 75%
-        val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
-        val qualityMultiplier = 0.5f + forceStability * 0.5f
-        
-        val growthProgress = branch.currentHeight / branch.maxHeight
-        val progressCurve = 1f - growthProgress * growthProgress
-        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f * 9f * branchGrowthMultiplier // Divisé par 2
-        
-        if (adjustedGrowth > 0) {
-            branch.currentHeight += adjustedGrowth
-            
-            val lastPoint = branch.points.lastOrNull() ?: return
-            val segmentHeight = 7f + (Math.random() * 2f).toFloat() // 7-9px (plus régulier)
-            val segments = (adjustedGrowth / segmentHeight).toInt().coerceAtLeast(1)
-            
-            for (i in 1..segments) {
-                val currentBranchHeight = branch.currentHeight - adjustedGrowth + (adjustedGrowth * i / segments)
-                val progressFromBase = currentBranchHeight / branch.maxHeight
-                
-                // Épaisseur TRÈS SIMILAIRE à la principale
-                val baseThicknessBranch = baseThickness * 0.9f * branch.thicknessVariation // 90% au lieu de 70%
-                val thicknessProgress = progressFromBase * 0.4f // Diminution PLUS graduelle
-                val microVariation = (Math.random() * 0.03f - 0.015f).toFloat() // ±1.5% très subtil
-                val thickness = baseThicknessBranch * (1f - thicknessProgress + microVariation)
-                
-                // Position avec courbure adaptée à chaque tige
-                val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
-                
-                // Courbe de base selon l'angle
-                val branchCurve = cos(Math.toRadians(branch.angle.toDouble())).toFloat() * currentBranchHeight * 0.3f
-                
-                // EFFET DE POIDS adapté à la personnalité
-                val branchHeightRatio = currentBranchHeight / branch.maxHeight
-                val branchWeightEffect = branchHeightRatio * branchHeightRatio * (1.5f + branch.personalityFactor * 0.5f)
-                val branchWeightDirection = if (branch.angle > 0) 1f else -1f
-                val branchWeightBend = branchWeightEffect * branchWeightDirection * 0.7f
-                
-                // Courbure naturelle selon la personnalité
-                val naturalCurve = sin(currentBranchHeight * 0.006f * branch.personalityFactor) * 
-                                 branch.curvatureDirection * 
-                                 (0.2f + progressFromBase * 0.4f) * branch.personalityFactor
-                
-                // Tremblements uniques par tige
-                val timeOffset = branch.angle * 8f + (if (branch.angle > 0) 0f else 1000f) // Déphasage
-                val tremble = sin((System.currentTimeMillis() + timeOffset) * 0.0015f * branch.trembleFrequency) * 
-                             (0.08f + progressFromBase * 0.15f) * branch.personalityFactor
-                
-                val currentX = (stemBaseX + branch.baseOffset) + branchCurve + branchWeightBend + naturalCurve + tremble
-                val currentY = stemBaseY - currentBranchHeight
-                
-                // Oscillation adaptée à chaque tige
-                val forceVariation = abs(force - lastForce) * 2.5f * branch.personalityFactor
-                val heightMultiplier = 1f + progressFromBase * 0.4f
-                val phaseOffset = branch.angle * 0.08f + (if (branch.angle > 0) 0f else PI.toFloat())
-                val oscillation = sin(System.currentTimeMillis() * 0.0025f * branch.trembleFrequency + phaseOffset) * 
-                                forceVariation * 5f * heightMultiplier
-                
-                val newPoint = StemPoint(currentX, currentY, thickness, oscillation)
-                branch.points.add(newPoint)
-            }
-        }
-    }
-    
-    private fun updateOscillations() {
-        // Tige principale : oscillations très réduites
-        for (i in mainStem.indices) {
-            val point = mainStem[i]
-            val heightFromBase = stemBaseY - point.y
-            val heightRatio = heightFromBase / maxPossibleHeight
-            
-            // Décroissance plus rapide pour tige principale
-            var smoothedOscillation = point.oscillation * 0.95f // Plus rapide que 0.98f
-            
-            // Lissage avec les points voisins
-            if (i > 0 && i < mainStem.size - 1) {
-                val prevOsc = mainStem[i - 1].oscillation
-                val nextOsc = mainStem[i + 1].oscillation
-                smoothedOscillation = (smoothedOscillation * 0.7f + prevOsc * 0.15f + nextOsc * 0.15f) * 0.95f
-            }
-            
-            var newPermanentWave = point.permanentWave
-            
-            // Transfert QUASI-NUL pour tige principale droite
-            if (abs(smoothedOscillation) > 0.3f) {
-                val transferRate = 0.005f // Ultra réduit
-                newPermanentWave += smoothedOscillation * transferRate
-                smoothedOscillation *= (1f - transferRate)
-            }
-            
-            // Effet de poids PLUS PRONONCÉ pour courbure réaliste
-            val accumulatedWeight = heightRatio * heightRatio * 2f // Augmenté de 0.5f à 2f
-            val weightDirection = if (point.x + newPermanentWave > stemBaseX) 1f else -1f
-            val weightInfluence = accumulatedWeight * weightDirection * 0.015f // Augmenté de 0.005f à 0.015f
-            newPermanentWave += weightInfluence
-            
-            // Limites plus généreuses pour permettre courbure naturelle
-            smoothedOscillation = smoothedOscillation.coerceIn(-5f, 5f) // Augmenté de 3f à 5f
-            newPermanentWave = newPermanentWave.coerceIn(-15f, 15f) // Augmenté de 6f à 15f
-            
-            mainStem[i] = point.copy(
-                oscillation = smoothedOscillation,
-                permanentWave = newPermanentWave
-            )
-        }
-        
-        // Branches : oscillations TRÈS RÉDUITES pour marguerite réaliste
-        for (branch in branches) {
-            for (i in branch.points.indices) {
-                val point = branch.points[i]
-                val heightFromBase = stemBaseY - point.y
-                val heightRatio = heightFromBase / maxPossibleHeight
-                
-                // Oscillations TRÈS SUBTILES
-                var smoothedOscillation = point.oscillation * (0.97f + branch.personalityFactor * 0.01f) // Plus stable
-                
-                var newPermanentWave = point.permanentWave
-                
-                if (abs(smoothedOscillation) > 0.5f) { // Seuil plus élevé
-                    val transferRate = 0.01f * branch.personalityFactor // Très réduit
-                    newPermanentWave += smoothedOscillation * transferRate
-                    smoothedOscillation *= (1f - transferRate)
-                }
-                
-                // Effet de poids TRÈS LÉGER pour rester vertical
-                val accumulatedWeight = heightRatio * heightRatio * (1f + branch.personalityFactor * 0.5f) // Très réduit
-                val weightDirection = if (branch.angle > 0) 1f else -1f
-                val weightInfluence = accumulatedWeight * weightDirection * (0.008f + branch.personalityFactor * 0.002f) // Très réduit
-                newPermanentWave += weightInfluence
-                
-                // Courbure QUASI-NULLE pour marguerite droite
-                val naturalBend = sin(heightFromBase * 0.008f) * branch.curvatureDirection * branch.personalityFactor * 0.2f // Très réduit
-                newPermanentWave += naturalBend * 0.005f // Très réduit
-                
-                // Limites TRÈS STRICTES pour rester proche de la verticale
-                val flexibilityFactor = branch.personalityFactor * 0.5f // Réduit la flexibilité
-                val oscLimit = 8f + (flexibilityFactor * 4f) // 8-10px max
-                val waveLimit = 15f + (flexibilityFactor * 5f) // 15-17.5px max
-                
-                smoothedOscillation = smoothedOscillation.coerceIn(-oscLimit, oscLimit)
-                newPermanentWave = newPermanentWave.coerceIn(-waveLimit, waveLimit)
-                
-                branch.points[i] = point.copy(
-                    oscillation = smoothedOscillation,
-                    permanentWave = newPermanentWave
-                )
-            }
-        }
     }
     
     // ==================== UTILITAIRES ====================
