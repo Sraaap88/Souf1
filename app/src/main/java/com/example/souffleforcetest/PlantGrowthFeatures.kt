@@ -4,7 +4,7 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.055f
+    private val forceThreshold = 0.01f // TRÈS bas pour micro faible
     private val growthRate = 174.6f
     private val maxLeafWidth = 75f
     private val maxLeafLength = 200f
@@ -12,12 +12,15 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
     // ==================== CROISSANCE DES FEUILLES ====================
     
     fun growLeaves(force: Float) {
-        if (force > forceThreshold) {
-            val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.08f
+        // FORCÉ : Feuilles poussent même avec peu de force
+        val forcedForce = kotlin.math.max(force * 10f, 0.1f) // Amplifier le signal
+        
+        if (forcedForce > forceThreshold) {
+            val adjustedForce = forcedForce - forceThreshold
+            val growthIncrement = adjustedForce * growthRate * 0.15f // Plus rapide
             
             for (bourgeon in engine.bourgeons) {
-                if (bourgeon.taille > 2f) {
+                if (bourgeon.taille > 1f) { // Seuil réduit
                     var feuille = engine.feuilles.find { it.bourgeon == bourgeon }
                     if (feuille == null) {
                         var closestBranchX = findClosestBranchX(bourgeon)
@@ -78,26 +81,30 @@ class PlantGrowthFeatures(private val engine: PlantGrowthEngine) {
     // ==================== CROISSANCE DES FLEURS ====================
     
     fun growFlowers(force: Float) {
-        if (force > forceThreshold) {
-            val adjustedForce = force - forceThreshold
-            val growthIncrement = adjustedForce * growthRate * 0.08f
+        // FORCÉ : Fleurs poussent même avec peu de force
+        val forcedForce = kotlin.math.max(force * 10f, 0.1f) // Amplifier le signal
+        
+        if (forcedForce > forceThreshold) {
+            val adjustedForce = forcedForce - forceThreshold
+            val growthIncrement = adjustedForce * growthRate * 0.15f // Plus rapide
             
             for (branch in engine.getBranches().filter { it.tracedPath.isNotEmpty() }) {
                 val topPoint = branch.tracedPath.last()
                 
                 if (branch.fleur == null) {
                     val sizeVariation = 0.7f + (0..6).random() * 0.1f
-                    branch.fleur = Fleur(topPoint.x, topPoint.y, 10f, 14, sizeVariation)
+                    branch.fleur = Fleur(topPoint.x, topPoint.y, 15f, 14, sizeVariation) // Plus grosse au départ
                 }
                 
                 branch.fleur?.let { flower ->
                     val branchGrowthIncrement = growthIncrement * branch.growthMultiplier
-                    flower.taille += branchGrowthIncrement * 0.15f + 1f
-                    flower.taille = kotlin.math.min(flower.taille, 175f * flower.sizeMultiplier)
+                    flower.taille += branchGrowthIncrement * 0.3f + 2f // Croissance forcée
+                    flower.taille = kotlin.math.min(flower.taille, 200f * flower.sizeMultiplier) // Plus grosse
                     flower.petalCount = 14
                     flower.x = topPoint.x
                     flower.y = topPoint.y
                 }
+            }
             }
             
             val mainBranch = engine.getBranches().firstOrNull()
