@@ -297,36 +297,38 @@ class OrganicLineView @JvmOverloads constructor(
             val heightFromBase = stemBaseY - point.y
             val heightRatio = heightFromBase / maxPossibleHeight
             
-            // Décroissance plus organique avec lissage des voisins
+            // Décroissance de l'oscillation temporaire SEULEMENT
             var smoothedOscillation = point.oscillation * oscillationDecay
             
             // Lissage avec les points voisins pour éviter les zigzags
             if (i > 0 && i < mainStem.size - 1) {
                 val prevOsc = mainStem[i - 1].oscillation
                 val nextOsc = mainStem[i + 1].oscillation
-                // Moyenne pondérée pour lisser
                 smoothedOscillation = (smoothedOscillation * 0.6f + prevOsc * 0.2f + nextOsc * 0.2f) * oscillationDecay
             }
             
-            // NOUVEAU : Effet de poids cumulatif - plus on monte, plus ça plie
-            val accumulatedWeight = heightRatio * heightRatio * 8f // Poids qui s'accumule
-            val weightDirection = if (point.x > stemBaseX) 1f else -1f // Direction de la courbure
-            val weightInfluence = accumulatedWeight * weightDirection
-            
-            // Conversion plus naturelle vers forme permanente avec poids
+            // CHANGEMENT MAJEUR : Au lieu de revenir au centre, on GARDE la position acquise
             var newPermanentWave = point.permanentWave
-            if (abs(smoothedOscillation) < 5f) { // Seulement quand oscillation faible
-                val waveContribution = smoothedOscillation * 0.02f // Plus lent
-                val weightContribution = weightInfluence * 0.1f // Contribution du poids
-                newPermanentWave = (point.permanentWave + waveContribution + weightContribution) * 0.995f
-            } else {
-                // Même pendant les oscillations, le poids continue d'agir
-                newPermanentWave = (point.permanentWave + weightInfluence * 0.05f) * 0.998f
+            
+            // Quand l'oscillation temporaire diminue, on l'absorbe dans la forme permanente
+            if (abs(smoothedOscillation) > 1f) {
+                // Transfert progressif de l'oscillation vers la forme permanente
+                val transferRate = 0.02f // Très graduel
+                newPermanentWave += smoothedOscillation * transferRate
+                smoothedOscillation *= (1f - transferRate) // Réduction correspondante
             }
             
-            // Limiter les oscillations mais permettre plus de courbure permanente
-            smoothedOscillation = smoothedOscillation.coerceIn(-40f, 40f) // Un peu plus de liberté
-            newPermanentWave = newPermanentWave.coerceIn(-35f, 35f) // Plus de courbure permanente
+            // Effet de poids qui s'ajoute SANS revenir au centre
+            val accumulatedWeight = heightRatio * heightRatio * 6f // Poids qui s'accumule
+            val weightDirection = if (point.x + newPermanentWave > stemBaseX) 1f else -1f
+            val weightInfluence = accumulatedWeight * weightDirection * 0.05f
+            
+            // Le poids s'ajoute à la forme permanente (pas de retour au centre)
+            newPermanentWave += weightInfluence
+            
+            // Limites plus généreuses pour permettre les formes organiques
+            smoothedOscillation = smoothedOscillation.coerceIn(-30f, 30f)
+            newPermanentWave = newPermanentWave.coerceIn(-60f, 60f) // Beaucoup plus de liberté
             
             mainStem[i] = point.copy(
                 oscillation = smoothedOscillation,
