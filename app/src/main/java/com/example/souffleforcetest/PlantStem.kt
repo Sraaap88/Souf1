@@ -46,13 +46,13 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.05f
+    private val forceThreshold = 0.15f // Augmenté de 0.05f à 0.15f (3x plus strict)
     private val maxStemHeight = 0.8f // Remis à la hauteur originale
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
-    private val branchThreshold = 0.05f
+    private val branchThreshold = 0.12f // Augmenté de 0.05f à 0.12f pour éviter branches accidentelles
     private val emergenceDuration = 1000L
     private val maxBranches = 2 // DEUX tiges secondaires (droite + gauche)
     
@@ -179,34 +179,34 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // ALTERNANCE FORCÉE : première droite (+), deuxième gauche (-)
-        val isFirstBranch = (branchCount == 1)
-        val sideMultiplier = if (isFirstBranch) 1f else -1f // +1 = droite, -1 = gauche
+        // ALTERNANCE ABSOLUE : branchCount impair = droite, pair = gauche
+        val isRightSide = (branchCount % 2 == 1) // 1=droite, 2=gauche
+        val sideMultiplier = if (isRightSide) 1f else -1f
         
-        // Distance et hauteur différenciées pour chaque tige
-        val baseDistance = if (isFirstBranch) 18f else 20f // Deuxième un peu plus loin
+        // Distance différenciée pour chaque côté
+        val baseDistance = if (isRightSide) 18f else 20f
         val cumulativeOffset = baseDistance * sideMultiplier
         
-        // ANGLES DIFFÉRENTS selon le côté
-        val minAngle = if (isFirstBranch) 8f else 6f
-        val maxAngle = if (isFirstBranch) 15f else 13f
-        // IMPORTANT: angle toujours dans la direction du côté
-        val branchAngle = (minAngle + Math.random() * (maxAngle - minAngle)).toFloat() * sideMultiplier
+        // ANGLES DIFFÉRENTS selon le côté avec direction cohérente
+        val minAngle = if (isRightSide) 8f else 6f
+        val maxAngle = if (isRightSide) 15f else 13f
+        val angleValue = minAngle + Math.random() * (maxAngle - minAngle)
+        val branchAngle = angleValue.toFloat() * sideMultiplier // CRUCIAL: angle dans la bonne direction
         
         // HAUTEURS ET CARACTÉRISTIQUES selon le côté
-        val baseHeightRatio = if (isFirstBranch) 0.78f else 0.73f // Droite plus haute
-        val heightVariation = (Math.random() * 0.06f - 0.03f).toFloat() // ±3%
+        val baseHeightRatio = if (isRightSide) 0.78f else 0.73f
+        val heightVariation = (Math.random() * 0.06f - 0.03f).toFloat()
         val branchMaxHeight = maxPossibleHeight * (baseHeightRatio + heightVariation)
         
         // PERSONNALITÉS DIFFÉRENTES pour chaque côté
-        val personalityFactor = if (isFirstBranch) 
-            (0.9f + Math.random() * 0.15f).toFloat() else // Droite: 0.9-1.05
-            (1.0f + Math.random() * 0.2f).toFloat()       // Gauche: 1.0-1.2
+        val personalityFactor = if (isRightSide) 
+            (0.9f + Math.random() * 0.15f).toFloat() else 
+            (1.0f + Math.random() * 0.2f).toFloat()
         val trembleFreq = (0.95f + Math.random() * 0.1f).toFloat()
         val curvatureDir = sideMultiplier // Courbe dans la direction du côté
-        val thicknessVar = if (isFirstBranch) 
-            (0.88f + Math.random() * 0.1f).toFloat() else  // Droite plus épaisse
-            (0.83f + Math.random() * 0.1f).toFloat()       // Gauche plus fine
+        val thicknessVar = if (isRightSide) 
+            (0.88f + Math.random() * 0.1f).toFloat() else  
+            (0.83f + Math.random() * 0.1f).toFloat()
         
         val newBranch = Branch(
             angle = branchAngle,
@@ -238,8 +238,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        // Debug: afficher le côté créé
-        println("Branche ${branchCount} créée du côté ${if (sideMultiplier > 0) "DROIT" else "GAUCHE"} à ${cumulativeOffset}px")
+        // Debug: afficher le côté créé avec plus de détails
+        println("Branche ${branchCount} créée du côté ${if (sideMultiplier > 0) "DROIT (+)" else "GAUCHE (-)"} à ${cumulativeOffset}px, angle: ${branchAngle}°")
     }
     
     private fun growAllBranches(force: Float) {
