@@ -1,4 +1,4 @@
-            //package com.example.souffleforcetest
+package com.example.souffleforcetest
 
 import kotlin.math.*
 
@@ -258,9 +258,12 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
             smoothedOscillation = smoothedOscillation.coerceIn(-flexLimit, flexLimit)
             newPermanentWave = newPermanentWave.coerceIn(-waveLimit, waveLimit)
             
-            plantStem.mainStem[i] = point.copy(
-                oscillation = smoothedOscillation,
-                permanentWave = newPermanentWave
+            plantStem.mainStem[i] = PlantStem.StemPoint(
+                point.x,
+                point.y,
+                point.thickness,
+                smoothedOscillation,
+                newPermanentWave
             )
         }
         
@@ -300,9 +303,12 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 smoothedOscillation = smoothedOscillation.coerceIn(-oscLimit, oscLimit)
                 newPermanentWave = newPermanentWave.coerceIn(-waveLimit, waveLimit)
                 
-                branch.points[i] = point.copy(
-                    oscillation = smoothedOscillation,
-                    permanentWave = newPermanentWave
+                branch.points[i] = PlantStem.StemPoint(
+                    point.x,
+                    point.y,
+                    point.thickness,
+                    smoothedOscillation,
+                    newPermanentWave
                 )
             }
         }
