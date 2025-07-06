@@ -143,7 +143,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val leafHeight = actualSize * 1.2f
         
         // Rotation selon l'angle
-        val angleRad = Math.toRadians(leaf.angle.toDouble()).toFloat()
+        val angleRad = leaf.angle * PI / 180f
         val cos = cos(angleRad)
         val sin = sin(angleRad)
         
