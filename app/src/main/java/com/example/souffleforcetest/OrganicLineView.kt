@@ -44,7 +44,7 @@ class OrganicLineView @JvmOverloads constructor(
         color = Color.rgb(40, 100, 40)
     }
     
-    // AJOUT MINIMAL POUR FEUILLES
+    // AJOUT LIGNE 1-2 : Paints pour feuilles
     private val leafPaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.FILL
@@ -71,8 +71,7 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== LOGIQUE DE PLANTE ====================
     
     private var plantStem: PlantStem? = null
-    // AJOUT MINIMAL POUR FEUILLES
-    private var leavesManager: PlantLeavesManager? = null
+    private var leavesManager: PlantLeavesManager? = null // AJOUT LIGNE 3 : Manager feuilles
     
     enum class LightState {
         YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
@@ -87,8 +86,7 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         plantStem = PlantStem(w, h)
-        // AJOUT MINIMAL POUR FEUILLES
-        leavesManager = PlantLeavesManager(plantStem!!)
+        leavesManager = PlantLeavesManager(plantStem!!) // AJOUT LIGNE 4 : Création manager
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -98,8 +96,7 @@ class OrganicLineView @JvmOverloads constructor(
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
         plantStem?.resetStem()
-        // AJOUT MINIMAL POUR FEUILLES
-        leavesManager?.resetLeaves()
+        leavesManager?.resetLeaves() // AJOUT LIGNE 5 : Reset feuilles
         invalidate()
     }
     
@@ -111,7 +108,7 @@ class OrganicLineView @JvmOverloads constructor(
             plantStem?.processStemGrowth(force, phaseTime)
         }
         
-        // AJOUT MINIMAL POUR FEUILLES
+        // AJOUT LIGNE 6 : Feuilles poussent UNIQUEMENT pendant GREEN_LEAVES
         if (lightState == LightState.GREEN_LEAVES) {
             leavesManager?.updateLeaves(force)
         }
@@ -169,7 +166,7 @@ class OrganicLineView @JvmOverloads constructor(
             drawPlantStem(canvas)
         }
         
-        // AJOUT MINIMAL POUR FEUILLES
+        // AJOUT : Dessiner feuilles à partir de GREEN_LEAVES
         if (lightState == LightState.GREEN_LEAVES || 
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
@@ -249,7 +246,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // AJOUT MINIMAL POUR FEUILLES
+    // NOUVELLE FONCTION : Dessiner les feuilles
     private fun drawLeaves(canvas: Canvas) {
         val manager = leavesManager ?: return
         
