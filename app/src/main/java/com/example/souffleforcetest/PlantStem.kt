@@ -44,8 +44,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var branchSide = true
     private var branchCount = 0
     
-    // Instance du gestionnaire de croissance
-    private val growthManager = PlantGrowthManager(this)
+    // Instance du gestionnaire de croissance - initialisation tardive
+    private lateinit var growthManager: PlantGrowthManager
     
     // ==================== PARAMÈTRES ====================
     
@@ -61,6 +61,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
+        growthManager = PlantGrowthManager(this) // Initialisation après la création de l'objet
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
