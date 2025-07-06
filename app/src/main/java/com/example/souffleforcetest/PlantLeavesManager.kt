@@ -2,7 +2,7 @@ package com.example.souffleforcetest
 
 import android.graphics.Path
 import kotlin.math.*
-
+  
 class PlantLeavesManager(private val plantStem: PlantStem) {
     
     // ==================== DATA CLASSES ====================
