@@ -29,28 +29,10 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val thicknessVariation: Float = 1f
     )
     
-    data class Leaf(
-        val x: Float,
-        val y: Float,
-        val width: Float,
-        val height: Float,
-        val angle: Float,
-        val stemIndex: Int, // -1 pour tige principale, 0-5 pour branches
-        val attachmentHeight: Float,
-        val leafType: LeafType,
-        var growthProgress: Float = 0f,
-        val side: LeafSide,
-        var oscillation: Float = 0f
-    )
-    
-    enum class LeafType { BASAL_LARGE, STEM_MEDIUM, STEM_SMALL }
-    enum class LeafSide { LEFT, RIGHT, CENTER }
-    
     // ==================== VARIABLES PRINCIPALES ====================
     
     val mainStem = mutableListOf<StemPoint>()
     val branches = mutableListOf<Branch>()
-    val leaves = mutableListOf<Leaf>()
     
     private var stemHeight = 0f
     private var maxPossibleHeight = 0f
@@ -61,10 +43,10 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var emergenceStartTime = 0L
     private var branchSide = true
     private var branchCount = 0
-    private var leavesCreated = false
     
-    // Instance du gestionnaire de croissance - initialisation tardive
+    // Gestionnaires des composants
     private lateinit var growthManager: PlantGrowthManager
+    private lateinit var leavesManager: PlantLeavesManager
     
     // ==================== PARAMÈTRES ====================
     
@@ -81,6 +63,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
         growthManager = PlantGrowthManager(this)
+        leavesManager = PlantLeavesManager(this)
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
@@ -126,29 +109,23 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     fun processLeafGrowth(force: Float) {
-        if (!leavesCreated && stemHeight > 50f) {
-            createAllLeaves()
-            leavesCreated = true
-        }
-        
-        growExistingLeaves(force)
-        updateLeafOscillations()
+        leavesManager.updateLeaves(force)
     }
     
     fun resetStem() {
         mainStem.clear()
         branches.clear()
-        leaves.clear()
         stemHeight = 0f
         lastForce = 0f
         isEmerging = false
         branchSide = true
         branchCount = 0
-        leavesCreated = false
+        leavesManager.resetLeaves()
     }
     
     fun getStemHeight(): Float = stemHeight
     fun hasVisibleStem(): Boolean = mainStem.size >= 1
+    fun getLeaves() = leavesManager.getLeaves()
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
     
@@ -165,7 +142,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         stemHeight = height
     }
     
-    // ==================== FONCTIONS PRIVÉES TIGES ====================
+    // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createEmergenceStem(progress: Float) {
         mainStem.clear()
@@ -276,166 +253,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         newBranch.currentHeight = initialHeight
         
         branches.add(newBranch)
-    }
-    
-    // ==================== FONCTIONS FEUILLES ====================
-    
-    private fun createAllLeaves() {
-        createBasalLeaves()
-        createMainStemLeaves()
-        createBranchLeaves()
-    }
-    
-    private fun createBasalLeaves() {
-        val baseX = stemBaseX
-        val baseY = stemBaseY
-        val basalCount = (4..6).random()
-        
-        for (i in 0 until basalCount) {
-            val angle = (i * 360f / basalCount) + (-15..15).random()
-            val distance = (35..55).random().toFloat()
-            
-            val radians = Math.toRadians(angle.toDouble())
-            val leafX = baseX + (cos(radians) * distance).toFloat()
-            val leafY = baseY - (5..15).random().toFloat()
-            
-            val leaf = Leaf(
-                x = leafX,
-                y = leafY,
-                width = (45..65).random().toFloat(),
-                height = (25..35).random().toFloat(),
-                angle = angle + (-10..10).random(),
-                stemIndex = -1,
-                attachmentHeight = 0f,
-                leafType = LeafType.BASAL_LARGE,
-                side = when {
-                    leafX < baseX - 10 -> LeafSide.LEFT
-                    leafX > baseX + 10 -> LeafSide.RIGHT
-                    else -> LeafSide.CENTER
-                }
-            )
-            
-            leaves.add(leaf)
-        }
-    }
-    
-    private fun createMainStemLeaves() {
-        if (mainStem.size < 10) return
-        
-        val leafCount = (2..3).random()
-        
-        for (i in 0 until leafCount) {
-            val heightRatio = (0.2f + i * 0.3f)
-            val targetHeight = stemHeight * heightRatio
-            
-            val stemPoint = findStemPointAtHeight(mainStem, targetHeight) ?: continue
-            
-            val side = if (i % 2 == 0) LeafSide.LEFT else LeafSide.RIGHT
-            val sideMultiplier = if (side == LeafSide.LEFT) -1f else 1f
-            
-            val leafX = stemPoint.x + (sideMultiplier * (15..25).random())
-            val leafY = stemPoint.y - (2..8).random()
-            
-            val leaf = Leaf(
-                x = leafX,
-                y = leafY,
-                width = (25..35).random().toFloat(),
-                height = (15..22).random().toFloat(),
-                angle = (sideMultiplier * (20..40).random()).toFloat(),
-                stemIndex = -1,
-                attachmentHeight = targetHeight,
-                leafType = LeafType.STEM_MEDIUM,
-                side = side
-            )
-            
-            leaves.add(leaf)
-        }
-    }
-    
-    private fun createBranchLeaves() {
-        for ((branchIndex, branch) in branches.withIndex()) {
-            if (branch.points.size < 5) continue
-            
-            val leafCount = (1..2).random()
-            val branchHeight = branch.currentHeight
-            
-            for (i in 0 until leafCount) {
-                val heightRatio = (0.3f + i * 0.4f)
-                val targetHeight = branchHeight * heightRatio
-                
-                val branchPoint = findStemPointAtHeight(branch.points, targetHeight) ?: continue
-                
-                val side = if (i % 2 == 0) LeafSide.LEFT else LeafSide.RIGHT
-                val sideMultiplier = if (side == LeafSide.LEFT) -1f else 1f
-                
-                val branchDirection = if (branch.angle < 0) -1f else 1f
-                val adjustedMultiplier = sideMultiplier * branchDirection * 0.7f
-                
-                val leafX = branchPoint.x + (adjustedMultiplier * (10..18).random())
-                val leafY = branchPoint.y - (1..5).random()
-                
-                val leaf = Leaf(
-                    x = leafX,
-                    y = leafY,
-                    width = (18..28).random().toFloat(),
-                    height = (10..16).random().toFloat(),
-                    angle = (adjustedMultiplier * (15..30).random()).toFloat(),
-                    stemIndex = branchIndex,
-                    attachmentHeight = targetHeight,
-                    leafType = LeafType.STEM_SMALL,
-                    side = side
-                )
-                
-                leaves.add(leaf)
-            }
-        }
-    }
-    
-    private fun growExistingLeaves(force: Float) {
-        for (i in leaves.indices) {
-            val leaf = leaves[i]
-            
-            if (leaf.growthProgress < 1f) {
-                val growthSpeed = when (leaf.leafType) {
-                    LeafType.BASAL_LARGE -> 0.015f
-                    LeafType.STEM_MEDIUM -> 0.022f
-                    LeafType.STEM_SMALL -> 0.030f
-                }
-                
-                val forceMultiplier = 0.5f + (force * 0.5f)
-                val growth = growthSpeed * forceMultiplier
-                
-                leaves[i] = leaf.copy(growthProgress = (leaf.growthProgress + growth).coerceAtMost(1f))
-            }
-        }
-    }
-    
-    private fun updateLeafOscillations() {
-        for (i in leaves.indices) {
-            val leaf = leaves[i]
-            
-            val windStrength = 0.3f
-            val timeOffset = i * 0.5f
-            val sizeMultiplier = when (leaf.leafType) {
-                LeafType.BASAL_LARGE -> 0.5f
-                LeafType.STEM_MEDIUM -> 0.8f
-                LeafType.STEM_SMALL -> 1.2f
-            }
-            
-            val oscillation = sin((System.currentTimeMillis() * 0.001f) + timeOffset) * 
-                             windStrength * sizeMultiplier * leaf.growthProgress
-            
-            leaves[i] = leaf.copy(oscillation = oscillation)
-        }
-    }
-    
-    private fun findStemPointAtHeight(points: List<StemPoint>, targetHeight: Float): StemPoint? {
-        if (points.isEmpty()) return null
-        
-        val baseY = stemBaseY
-        val targetY = baseY - targetHeight
-        
-        return points.minByOrNull { abs(it.y - targetY) }
     }
     
     // ==================== UTILITAIRES ====================
