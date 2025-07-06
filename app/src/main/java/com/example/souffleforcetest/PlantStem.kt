@@ -98,7 +98,13 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             if (force > forceThreshold * 1.5f) { // Augmenté de 1.2f à 1.5f - encore plus strict
                 growthManager.growMainStem(force)
                 
-                // Faire pousser TOUTES les branches actives
+                // Faire pousser TOUTES les branches actives avec debug
+                if (branches.isNotEmpty()) {
+                    println("=== CROISSANCE ${branches.size} BRANCHES ===")
+                    for (i in branches.indices) {
+                        println("Branche ${i+1}: H=${branches[i].currentHeight.toInt()}/${branches[i].maxHeight.toInt()}, Points=${branches[i].points.size}")
+                    }
+                }
                 growthManager.growAllBranches(force)
                 
                 // Détection ramification (souffle saccadé) - max 6 branches
