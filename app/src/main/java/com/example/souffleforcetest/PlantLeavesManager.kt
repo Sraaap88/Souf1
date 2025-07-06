@@ -36,9 +36,9 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     
     // ==================== PARAMÈTRES ====================
     
-    private val leafSpacing = 15f // Distance entre feuilles sur une tige
-    private val leafBaseSize = 8f // Taille de base des feuilles
-    private val leafGrowthRate = 0.02f // Vitesse de croissance des feuilles
+    private val leafSpacing = 12f // Distance entre feuilles sur une tige
+    private val leafBaseSize = 25f // Taille de base des feuilles (augmentée)
+    private val leafGrowthRate = 0.015f // Vitesse de croissance des feuilles
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -75,12 +75,12 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                     val leaf = Leaf(
                         x = stemPoint.x,
                         y = stemPoint.y,
-                        size = leafBaseSize * (0.8f + Math.random().toFloat() * 0.4f),
-                        angle = side * (45f + Math.random().toFloat() * 30f),
+                        size = leafBaseSize * (1.2f + Math.random().toFloat() * 0.6f),
+                        angle = side * (25f + Math.random().toFloat() * 20f),
                         stemIndex = i,
                         isOnMainStem = true,
                         growth = 0f,
-                        maxGrowth = 0.7f + Math.random().toFloat() * 0.3f,
+                        maxGrowth = 0.8f + Math.random().toFloat() * 0.4f,
                         side = side
                     )
                     leaves.add(leaf)
@@ -105,13 +105,13 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                         val leaf = Leaf(
                             x = branchPoint.x,
                             y = branchPoint.y,
-                            size = leafBaseSize * (0.6f + Math.random().toFloat() * 0.3f),
-                            angle = side * (30f + Math.random().toFloat() * 40f),
+                            size = leafBaseSize * (0.9f + Math.random().toFloat() * 0.4f),
+                            angle = side * (20f + Math.random().toFloat() * 25f),
                             stemIndex = i,
                             isOnMainStem = false,
                             branchIndex = branchIndex,
                             growth = 0f,
-                            maxGrowth = 0.6f + Math.random().toFloat() * 0.2f,
+                            maxGrowth = 0.7f + Math.random().toFloat() * 0.3f,
                             side = side
                         )
                         leaves.add(leaf)
