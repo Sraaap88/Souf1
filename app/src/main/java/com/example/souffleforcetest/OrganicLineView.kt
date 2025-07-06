@@ -53,8 +53,8 @@ class OrganicLineView @JvmOverloads constructor(
     private val leafStrokePaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.STROKE
-        strokeWidth = 2f
-        color = Color.rgb(25, 100, 25)
+        strokeWidth = 1.5f
+        color = Color.rgb(20, 80, 20)
     }
     
     // ==================== ÉTATS DU SYSTÈME ====================
@@ -70,6 +70,7 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== LOGIQUE DE PLANTE ====================
     
     private var plantStem: PlantStem? = null
+    private var leavesManager: PlantLeavesManager? = null
     
     enum class LightState {
         YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
@@ -84,6 +85,7 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         plantStem = PlantStem(w, h)
+        leavesManager = PlantLeavesManager(plantStem!!)
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -93,6 +95,7 @@ class OrganicLineView @JvmOverloads constructor(
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
         plantStem?.resetStem()
+        leavesManager?.resetLeaves()
         invalidate()
     }
     
@@ -105,7 +108,7 @@ class OrganicLineView @JvmOverloads constructor(
                 plantStem?.processStemGrowth(force, phaseTime)
             }
             LightState.GREEN_LEAVES -> {
-                plantStem?.processLeafGrowth(force)
+                leavesManager?.updateLeaves(force)
             }
             else -> {}
         }
@@ -233,9 +236,9 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun drawLeaves(canvas: Canvas) {
-        val stem = plantStem ?: return
+        val manager = leavesManager ?: return
         
-        for (leaf in stem.getLeaves()) {
+        for (leaf in manager.getLeaves()) {
             if (leaf.growthProgress > 0.1f) {
                 drawSingleLeaf(canvas, leaf)
             }
@@ -248,7 +251,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         if (currentWidth < 3f || currentHeight < 3f) return
         
-        val path = createLeafPath(leaf, currentWidth, currentHeight)
+        val path = createRealisticLeafPath(leaf, currentWidth, currentHeight)
         
         val leafColor = when (leaf.leafType) {
             PlantLeavesManager.LeafType.BASAL_LARGE -> Color.rgb(34, 139, 34)
@@ -261,42 +264,25 @@ class OrganicLineView @JvmOverloads constructor(
         canvas.drawPath(path, leafStrokePaint)
     }
     
-    private fun createLeafPath(leaf: PlantLeavesManager.Leaf, width: Float, height: Float): Path {
+    private fun createRealisticLeafPath(leaf: PlantLeavesManager.Leaf, width: Float, height: Float): Path {
         val path = Path()
-        
-        val segments = when (leaf.leafType) {
-            PlantLeavesManager.LeafType.BASAL_LARGE -> 12
-            PlantLeavesManager.LeafType.STEM_MEDIUM -> 8
-            PlantLeavesManager.LeafType.STEM_SMALL -> 6
-        }
         
         val centerX = leaf.x + leaf.oscillation
         val centerY = leaf.y
         
-        val startAngle = 0f
-        val startRadius = width * 0.5f
-        val startX = centerX + cos(startAngle) * startRadius
-        val startY = centerY + sin(startAngle) * height * 0.5f
-        path.moveTo(startX, startY)
+        // Utiliser la fonction réaliste du PlantLeavesManager
+        val manager = leavesManager ?: return path
+        val points = manager.getRealisticLeafPath(leaf)
         
-        for (i in 1..segments) {
-            val progress = i.toFloat() / segments
-            val angle = progress * PI.toFloat() * 2f
-            
-            val baseRadius = width * 0.5f
-            val baseX = cos(angle) * baseRadius
-            val baseY = sin(angle) * height * 0.5f
-            
-            val lobeFactor = when (leaf.leafType) {
-                PlantLeavesManager.LeafType.BASAL_LARGE -> 1f + sin(angle * 3f) * 0.25f
-                PlantLeavesManager.LeafType.STEM_MEDIUM -> 1f + sin(angle * 2f) * 0.15f
-                PlantLeavesManager.LeafType.STEM_SMALL -> 1f + sin(angle * 1.5f) * 0.1f
-            }
-            
-            val finalX = centerX + (baseX * lobeFactor)
-            val finalY = centerY + (baseY * lobeFactor)
-            
-            path.lineTo(finalX, finalY)
+        if (points.isEmpty()) return path
+        
+        // Créer le path à partir des points réalistes
+        val firstPoint = points[0]
+        path.moveTo(firstPoint.first, firstPoint.second)
+        
+        for (i in 1 until points.size) {
+            val point = points[i]
+            path.lineTo(point.first, point.second)
         }
         
         path.close()
