@@ -111,25 +111,23 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
     }
     
     fun growAllBranches(force: Float) {
-        for (branch in plantStem.branches.filter { it.isActive }) {
-            growBranch(branch, force)
+        // S'assurer que TOUTES les branches poussent
+        for ((index, branch) in plantStem.branches.withIndex()) {
+            if (branch.isActive) {
+                growBranch(branch, force)
+            }
         }
     }
     
     private fun growBranch(branch: PlantStem.Branch, force: Float) {
         if (branch.currentHeight >= branch.maxHeight) return
         
-        // DEBUG: Vérification de croissance pour toutes les branches
-        if (branch.points.size <= 3) {
-            println("BRANCH DEBUG - Num: ${plantStem.branches.indexOf(branch) + 1}, Height: ${branch.currentHeight.toInt()}, MaxHeight: ${branch.maxHeight.toInt()}, Growth: ${adjustedGrowth}")
-        }
-        
-        // RÉSISTANCE PROGRESSIVE pour tiges secondaires aussi
+        // RÉSISTANCE PROGRESSIVE pour tiges secondaires aussi - RÉDUITE
         val branchHeightRatio = branch.currentHeight / branch.maxHeight
-        val branchResistance = if (branchHeightRatio > 0.667f) 0.67f else 1f
+        val branchResistance = if (branchHeightRatio > 0.667f) 0.8f else 1f // Moins de résistance
         
-        // Vitesse de croissance TRÈS PROCHE de la principale avec résistance
-        val branchGrowthMultiplier = 0.95f * branch.personalityFactor * branchResistance
+        // Vitesse de croissance IDENTIQUE à la principale
+        val branchGrowthMultiplier = 1.0f * branch.personalityFactor * branchResistance // 100% au lieu de 95%
         val forceStability = 1f - abs(force - plantStem.getLastForce()).coerceAtMost(0.5f) * 2f
         val qualityMultiplier = 0.5f + forceStability * 0.5f
         
