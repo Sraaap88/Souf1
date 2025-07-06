@@ -47,14 +47,14 @@ class OrganicLineView @JvmOverloads constructor(
     private val leafPaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.FILL
-        color = Color.rgb(34, 139, 34) // Vert forêt
+        color = Color.rgb(34, 139, 34)
     }
     
     private val leafStrokePaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.STROKE
         strokeWidth = 2f
-        color = Color.rgb(25, 100, 25) // Vert plus foncé pour contour
+        color = Color.rgb(25, 100, 25)
     }
     
     // ==================== ÉTATS DU SYSTÈME ====================
@@ -105,7 +105,6 @@ class OrganicLineView @JvmOverloads constructor(
                 plantStem?.processStemGrowth(force, phaseTime)
             }
             LightState.GREEN_LEAVES -> {
-                // Phase feuilles : faire pousser les feuilles sur les tiges existantes
                 plantStem?.processLeafGrowth(force)
             }
             else -> {}
@@ -177,10 +176,7 @@ class OrganicLineView @JvmOverloads constructor(
     private fun drawPlantStem(canvas: Canvas) {
         val stem = plantStem ?: return
         
-        // Dessiner la tige principale
         drawMainStem(canvas, stem.mainStem)
-        
-        // Dessiner les branches
         drawBranches(canvas, stem.branches)
     }
     
@@ -195,23 +191,17 @@ class OrganicLineView @JvmOverloads constructor(
             
             stemPaint.strokeWidth = point.thickness
             
-            // Position avec oscillation + onde permanente
             val adjustedX = point.x + point.oscillation + point.permanentWave
             val prevAdjustedX = prevPoint.x + prevPoint.oscillation + prevPoint.permanentWave
             
             if (i == 1) {
-                // Premier segment : ligne simple
                 canvas.drawLine(prevAdjustedX, prevPoint.y, adjustedX, point.y, stemPaint)
             } else {
-                // Segments suivants : courbes fluides
                 val controlX = (prevAdjustedX + adjustedX) / 2f
                 val controlY = (prevPoint.y + point.y) / 2f
-                
-                // Point de contrôle ajusté pour fluidité
                 val curvatureOffset = (adjustedX - prevAdjustedX) * 0.3f
                 val finalControlX = controlX + curvatureOffset
                 
-                // Courbe quadratique simulée avec 2 lignes
                 canvas.drawLine(prevAdjustedX, prevPoint.y, finalControlX, controlY, stemPaint)
                 canvas.drawLine(finalControlX, controlY, adjustedX, point.y, stemPaint)
             }
@@ -230,10 +220,8 @@ class OrganicLineView @JvmOverloads constructor(
                     branchPaint.strokeWidth = point.thickness
                     
                     if (i == 1 || branch.points.size <= 2) {
-                        // Premier segment ou branche courte : ligne simple
                         canvas.drawLine(prevPoint.x, prevPoint.y, point.x, point.y, branchPaint)
                     } else {
-                        // Courbe fluide pour les branches
                         val controlX = (prevPoint.x + point.x) / 2f
                         val controlY = (prevPoint.y + point.y) / 2f
                         canvas.drawLine(prevPoint.x, prevPoint.y, controlX, controlY, branchPaint)
@@ -247,71 +235,62 @@ class OrganicLineView @JvmOverloads constructor(
     private fun drawLeaves(canvas: Canvas) {
         val stem = plantStem ?: return
         
-        for (leaf in stem.leaves) {
-            if (leaf.growthProgress > 0.1f) { // Afficher quand assez développée
+        for (leaf in stem.getLeaves()) {
+            if (leaf.growthProgress > 0.1f) {
                 drawSingleLeaf(canvas, leaf)
             }
         }
     }
     
-    private fun drawSingleLeaf(canvas: Canvas, leaf: PlantStem.Leaf) {
+    private fun drawSingleLeaf(canvas: Canvas, leaf: PlantLeavesManager.Leaf) {
         val currentWidth = leaf.width * leaf.growthProgress
         val currentHeight = leaf.height * leaf.growthProgress
         
         if (currentWidth < 3f || currentHeight < 3f) return
         
-        // Créer la forme de feuille découpée
         val path = createLeafPath(leaf, currentWidth, currentHeight)
         
-        // Couleur selon le type de feuille
         val leafColor = when (leaf.leafType) {
-            PlantStem.LeafType.BASAL_LARGE -> Color.rgb(34, 139, 34) // Vert forêt
-            PlantStem.LeafType.STEM_MEDIUM -> Color.rgb(50, 150, 50) // Vert moyen
-            PlantStem.LeafType.STEM_SMALL -> Color.rgb(60, 180, 60)  // Vert clair
+            PlantLeavesManager.LeafType.BASAL_LARGE -> Color.rgb(34, 139, 34)
+            PlantLeavesManager.LeafType.STEM_MEDIUM -> Color.rgb(50, 150, 50)
+            PlantLeavesManager.LeafType.STEM_SMALL -> Color.rgb(60, 180, 60)
         }
         
         leafPaint.color = leafColor
-        
-        // Dessiner la feuille
         canvas.drawPath(path, leafPaint)
-        canvas.drawPath(path, leafStrokePaint) // Contour
+        canvas.drawPath(path, leafStrokePaint)
     }
     
-    private fun createLeafPath(leaf: PlantStem.Leaf, width: Float, height: Float): Path {
+    private fun createLeafPath(leaf: PlantLeavesManager.Leaf, width: Float, height: Float): Path {
         val path = Path()
         
-        // Nombre de segments selon le type de feuille
         val segments = when (leaf.leafType) {
-            PlantStem.LeafType.BASAL_LARGE -> 12 // Très découpée
-            PlantStem.LeafType.STEM_MEDIUM -> 8  // Moyennement découpée
-            PlantStem.LeafType.STEM_SMALL -> 6   // Peu découpée
+            PlantLeavesManager.LeafType.BASAL_LARGE -> 12
+            PlantLeavesManager.LeafType.STEM_MEDIUM -> 8
+            PlantLeavesManager.LeafType.STEM_SMALL -> 6
         }
         
         val centerX = leaf.x + leaf.oscillation
         val centerY = leaf.y
         
-        // Premier point
         val startAngle = 0f
         val startRadius = width * 0.5f
         val startX = centerX + cos(startAngle) * startRadius
         val startY = centerY + sin(startAngle) * height * 0.5f
         path.moveTo(startX, startY)
         
-        // Créer la forme lobée caractéristique des marguerites
         for (i in 1..segments) {
             val progress = i.toFloat() / segments
             val angle = progress * PI.toFloat() * 2f
             
-            // Forme ovale de base
             val baseRadius = width * 0.5f
             val baseX = cos(angle) * baseRadius
             val baseY = sin(angle) * height * 0.5f
             
-            // Ajout des lobes/dents caractéristiques
             val lobeFactor = when (leaf.leafType) {
-                PlantStem.LeafType.BASAL_LARGE -> 1f + sin(angle * 3f) * 0.25f // Très lobée
-                PlantStem.LeafType.STEM_MEDIUM -> 1f + sin(angle * 2f) * 0.15f // Moyennement lobée
-                PlantStem.LeafType.STEM_SMALL -> 1f + sin(angle * 1.5f) * 0.1f // Peu lobée
+                PlantLeavesManager.LeafType.BASAL_LARGE -> 1f + sin(angle * 3f) * 0.25f
+                PlantLeavesManager.LeafType.STEM_MEDIUM -> 1f + sin(angle * 2f) * 0.15f
+                PlantLeavesManager.LeafType.STEM_SMALL -> 1f + sin(angle * 1.5f) * 0.1f
             }
             
             val finalX = centerX + (baseX * lobeFactor)
@@ -378,7 +357,6 @@ class OrganicLineView @JvmOverloads constructor(
             resetTextPaint.color = 0xFF000000.toInt()
             canvas.drawText("↻", lightX, lightY, resetTextPaint)
         } else {
-            // Texte pour les phases vertes
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 60f
             resetTextPaint.color = 0xFF000000.toInt()
