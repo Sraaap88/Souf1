@@ -147,11 +147,11 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 x = leafX,
                 y = leafY,
                 size = size,
-                angle = angle + 90f, // Orientées vers l'extérieur
+                angle = (Math.random() * 360f).toFloat(), // CORRIGÉ : Angles aléatoires dans toutes les directions
                 stemIndex = -2, // Code pour feuilles basales
                 pointIndex = -1,
                 maxSize = size,
-                side = angle > 0,
+                side = angle > 180f, // Basé sur l'angle réel
                 leafType = LeafType.BASAL,
                 personality = personality
             )
@@ -207,15 +207,11 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val pointIndex = availablePoints.random()
             val point = mainStem[pointIndex]
             
-            // Alternance naturelle avec variation
+            // Alternance naturelle avec variation 360°
             val existingLeaves = leaves.filter { it.stemIndex == -1 }
-            val lastSide = existingLeaves.lastOrNull()?.side
-            val naturalSide = if (lastSide == null) {
-                Math.random() > 0.5
-            } else {
-                // 70% de chance d'alterner, 30% de garder le même côté (naturel)
-                if (Math.random() < 0.7) !lastSide else lastSide
-            }
+            val baseAngle = (existingLeaves.size * 137.5f) % 360f // Angle d'or pour répartition naturelle
+            val naturalAngle = baseAngle + (Math.random() * 60f - 30f).toFloat() // ±30° de variation
+            val naturalSide = naturalAngle > 180f
             
             // Taille selon la hauteur : feuilles basses plus grandes
             val heightRatio = (plantStem.getStemBaseY() - point.y) / plantStem.getMaxPossibleHeight()
@@ -228,7 +224,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 x = point.x,
                 y = point.y,
                 size = size,
-                angle = 0f, // Sera calculé dynamiquement
+                angle = naturalAngle, // Angle calculé pour répartition 360°
                 stemIndex = -1,
                 pointIndex = pointIndex,
                 maxSize = size,
@@ -276,14 +272,11 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val pointIndex = availablePoints.random()
             val point = branch.points[pointIndex]
             
-            // Alternance naturelle sur la branche
+            // Alternance naturelle sur la branche avec répartition 360°
             val existingBranchLeaves = leaves.filter { it.stemIndex == branchIndex }
-            val lastSide = existingBranchLeaves.lastOrNull()?.side
-            val naturalSide = if (lastSide == null) {
-                Math.random() > 0.5
-            } else {
-                if (Math.random() < 0.6) !lastSide else lastSide // 60% alternance
-            }
+            val baseAngle = (existingBranchLeaves.size * 137.5f) % 360f // Angle d'or
+            val branchAngle = baseAngle + (Math.random() * 90f - 45f).toFloat() // Plus de variation sur branches
+            val naturalSide = branchAngle > 180f
             
             // Taille selon la hauteur sur la branche
             val heightRatio = (plantStem.getStemBaseY() - point.y) / plantStem.getMaxPossibleHeight()
@@ -296,7 +289,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 x = point.x,
                 y = point.y,
                 size = size,
-                angle = 0f, // Sera calculé dynamiquement
+                angle = branchAngle, // Angle calculé pour répartition
                 stemIndex = branchIndex,
                 pointIndex = pointIndex,
                 maxSize = size,
