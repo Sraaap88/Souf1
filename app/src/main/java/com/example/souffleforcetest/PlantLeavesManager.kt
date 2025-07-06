@@ -151,8 +151,8 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val points = FloatArray(16) // 8 points pour faire une ellipse
         for (i in 0 until 8) {
             val angle = i * PI.toFloat() / 4f
-            val localX = cos(angle) * leafWidth
-            val localY = sin(angle) * leafHeight
+            val localX = cos(angle).toFloat() * leafWidth
+            val localY = sin(angle).toFloat() * leafHeight
             
             // Rotation et position
             points[i * 2] = baseX + (localX * cosVal - localY * sinVal).toFloat()
