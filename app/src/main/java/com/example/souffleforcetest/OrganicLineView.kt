@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
+import android.graphics.Path
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -41,6 +42,19 @@ class OrganicLineView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         color = Color.rgb(40, 100, 40)
+    }
+    
+    private val leafPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+        color = Color.rgb(34, 139, 34) // Vert forêt
+    }
+    
+    private val leafStrokePaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+        color = Color.rgb(25, 100, 25) // Vert plus foncé pour contour
     }
     
     // ==================== ÉTATS DU SYSTÈME ====================
@@ -85,9 +99,16 @@ class OrganicLineView @JvmOverloads constructor(
     fun updateForce(force: Float) {
         updateLightState()
         
-        if (lightState == LightState.GREEN_GROW) {
-            val phaseTime = System.currentTimeMillis() - stateStartTime
-            plantStem?.processStemGrowth(force, phaseTime)
+        when (lightState) {
+            LightState.GREEN_GROW -> {
+                val phaseTime = System.currentTimeMillis() - stateStartTime
+                plantStem?.processStemGrowth(force, phaseTime)
+            }
+            LightState.GREEN_LEAVES -> {
+                // Phase feuilles : faire pousser les feuilles sur les tiges existantes
+                plantStem?.processLeafGrowth(force)
+            }
+            else -> {}
         }
         
         if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
@@ -109,7 +130,7 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.GREEN_GROW -> {
-                if (elapsedTime >= 5000) {  // CORRIGÉ: 5 secondes au lieu de 4000
+                if (elapsedTime >= 5000) {
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                 }
@@ -135,12 +156,19 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        // Dessiner la tige dans toutes les phases après croissance
+        // Dessiner la plante dans toutes les phases après croissance
         if (lightState == LightState.GREEN_GROW || 
             lightState == LightState.GREEN_LEAVES || 
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
             drawPlantStem(canvas)
+        }
+        
+        // Dessiner les feuilles à partir de la phase GREEN_LEAVES
+        if (lightState == LightState.GREEN_LEAVES || 
+            lightState == LightState.GREEN_FLOWER || 
+            lightState == LightState.RED) {
+            drawLeaves(canvas)
         }
         
         drawTrafficLight(canvas)
@@ -216,6 +244,86 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
+    private fun drawLeaves(canvas: Canvas) {
+        val stem = plantStem ?: return
+        
+        for (leaf in stem.leaves) {
+            if (leaf.growthProgress > 0.1f) { // Afficher quand assez développée
+                drawSingleLeaf(canvas, leaf)
+            }
+        }
+    }
+    
+    private fun drawSingleLeaf(canvas: Canvas, leaf: PlantStem.Leaf) {
+        val currentWidth = leaf.width * leaf.growthProgress
+        val currentHeight = leaf.height * leaf.growthProgress
+        
+        if (currentWidth < 3f || currentHeight < 3f) return
+        
+        // Créer la forme de feuille découpée
+        val path = createLeafPath(leaf, currentWidth, currentHeight)
+        
+        // Couleur selon le type de feuille
+        val leafColor = when (leaf.leafType) {
+            PlantStem.LeafType.BASAL_LARGE -> Color.rgb(34, 139, 34) // Vert forêt
+            PlantStem.LeafType.STEM_MEDIUM -> Color.rgb(50, 150, 50) // Vert moyen
+            PlantStem.LeafType.STEM_SMALL -> Color.rgb(60, 180, 60)  // Vert clair
+        }
+        
+        leafPaint.color = leafColor
+        
+        // Dessiner la feuille
+        canvas.drawPath(path, leafPaint)
+        canvas.drawPath(path, leafStrokePaint) // Contour
+    }
+    
+    private fun createLeafPath(leaf: PlantStem.Leaf, width: Float, height: Float): Path {
+        val path = Path()
+        
+        // Nombre de segments selon le type de feuille
+        val segments = when (leaf.leafType) {
+            PlantStem.LeafType.BASAL_LARGE -> 12 // Très découpée
+            PlantStem.LeafType.STEM_MEDIUM -> 8  // Moyennement découpée
+            PlantStem.LeafType.STEM_SMALL -> 6   // Peu découpée
+        }
+        
+        val centerX = leaf.x + leaf.oscillation
+        val centerY = leaf.y
+        
+        // Premier point
+        val startAngle = 0f
+        val startRadius = width * 0.5f
+        val startX = centerX + cos(startAngle) * startRadius
+        val startY = centerY + sin(startAngle) * height * 0.5f
+        path.moveTo(startX, startY)
+        
+        // Créer la forme lobée caractéristique des marguerites
+        for (i in 1..segments) {
+            val progress = i.toFloat() / segments
+            val angle = progress * PI.toFloat() * 2f
+            
+            // Forme ovale de base
+            val baseRadius = width * 0.5f
+            val baseX = cos(angle) * baseRadius
+            val baseY = sin(angle) * height * 0.5f
+            
+            // Ajout des lobes/dents caractéristiques
+            val lobeFactor = when (leaf.leafType) {
+                PlantStem.LeafType.BASAL_LARGE -> 1f + sin(angle * 3f) * 0.25f // Très lobée
+                PlantStem.LeafType.STEM_MEDIUM -> 1f + sin(angle * 2f) * 0.15f // Moyennement lobée
+                PlantStem.LeafType.STEM_SMALL -> 1f + sin(angle * 1.5f) * 0.1f // Peu lobée
+            }
+            
+            val finalX = centerX + (baseX * lobeFactor)
+            val finalY = centerY + (baseY * lobeFactor)
+            
+            path.lineTo(finalX, finalY)
+        }
+        
+        path.close()
+        return path
+    }
+    
     private fun drawTrafficLight(canvas: Canvas) {
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
@@ -248,7 +356,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Texte et timer
         val timeRemaining = when (lightState) {
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))  // CORRIGÉ: 5 secondes au lieu de 4
+            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))
             LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000))
             LightState.GREEN_FLOWER -> max(0, 3 - (elapsedTime / 1000))
             LightState.RED -> 0
