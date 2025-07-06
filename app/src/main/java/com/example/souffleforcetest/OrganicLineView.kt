@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
-import android.graphics.Path
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -44,20 +43,6 @@ class OrganicLineView @JvmOverloads constructor(
         color = Color.rgb(40, 100, 40)
     }
     
-    // AJOUT LIGNE 1-2 : Paints pour feuilles
-    private val leafPaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.FILL
-        color = Color.rgb(34, 139, 34)
-    }
-    
-    private val leafStrokePaint = Paint().apply {
-        isAntiAlias = true
-        style = Paint.Style.STROKE
-        strokeWidth = 1.5f
-        color = Color.rgb(20, 80, 20)
-    }
-    
     // ==================== ÉTATS DU SYSTÈME ====================
     
     private var showResetButton = false
@@ -71,7 +56,7 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== LOGIQUE DE PLANTE ====================
     
     private var plantStem: PlantStem? = null
-    private var leavesManager: PlantLeavesManager? = null // AJOUT LIGNE 3 : Manager feuilles
+    private var leavesManager: PlantLeavesManager? = null
     
     enum class LightState {
         YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
@@ -86,7 +71,7 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         plantStem = PlantStem(w, h)
-        leavesManager = PlantLeavesManager(plantStem!!) // AJOUT LIGNE 4 : Création manager
+        leavesManager = PlantLeavesManager(plantStem!!)
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -96,7 +81,7 @@ class OrganicLineView @JvmOverloads constructor(
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
         plantStem?.resetStem()
-        leavesManager?.resetLeaves() // AJOUT LIGNE 5 : Reset feuilles
+        leavesManager?.resetLeaves()
         invalidate()
     }
     
@@ -108,9 +93,10 @@ class OrganicLineView @JvmOverloads constructor(
             plantStem?.processStemGrowth(force, phaseTime)
         }
         
-        // AJOUT LIGNE 6 : Feuilles poussent UNIQUEMENT pendant GREEN_LEAVES
+        // Initialiser les feuilles au début de la phase LEAVES
         if (lightState == LightState.GREEN_LEAVES) {
-            leavesManager?.updateLeaves(force)
+            leavesManager?.initializeLeaves()
+            leavesManager?.updateLeafGrowth()
         }
         
         if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
@@ -166,11 +152,11 @@ class OrganicLineView @JvmOverloads constructor(
             drawPlantStem(canvas)
         }
         
-        // AJOUT : Dessiner feuilles à partir de GREEN_LEAVES
+        // Dessiner les feuilles pendant les phases appropriées
         if (lightState == LightState.GREEN_LEAVES || 
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
-            drawLeaves(canvas)
+            leavesManager?.drawLeaves(canvas)
         }
         
         drawTrafficLight(canvas)
@@ -244,39 +230,6 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
         }
-    }
-    
-    // NOUVELLE FONCTION : Dessiner les feuilles
-    private fun drawLeaves(canvas: Canvas) {
-        val manager = leavesManager ?: return
-        
-        for (leaf in manager.getLeaves()) {
-            if (leaf.growthProgress > 0.1f) {
-                drawSingleLeaf(canvas, leaf)
-            }
-        }
-    }
-    
-    private fun drawSingleLeaf(canvas: Canvas, leaf: PlantLeavesManager.Leaf) {
-        val points = leavesManager?.getRealisticLeafPath(leaf) ?: return
-        if (points.isEmpty()) return
-        
-        val path = Path()
-        val firstPoint = points[0]
-        path.moveTo(firstPoint.first, firstPoint.second)
-        
-        for (i in 1 until points.size) {
-            val point = points[i]
-            path.lineTo(point.first, point.second)
-        }
-        path.close()
-        
-        // Couleur selon type et âge
-        val colorTriple = leavesManager?.getLeafColor(leaf) ?: Triple(34, 139, 34)
-        leafPaint.color = Color.rgb(colorTriple.first, colorTriple.second, colorTriple.third)
-        
-        canvas.drawPath(path, leafPaint)
-        canvas.drawPath(path, leafStrokePaint)
     }
     
     private fun drawTrafficLight(canvas: Canvas) {
