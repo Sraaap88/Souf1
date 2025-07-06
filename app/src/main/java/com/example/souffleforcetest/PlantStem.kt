@@ -50,6 +50,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     // Instance du gestionnaire de feuilles - AJOUT
     private lateinit var leavesManager: PlantLeavesManager
     
+    // Instance du gestionnaire de fleurs - AJOUT
+    private lateinit var flowerManager: FlowerManager
+    
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f // Augmenté de 0.15f à 0.25f (moins sensible)
@@ -66,6 +69,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         maxPossibleHeight = screenHeight * maxStemHeight
         growthManager = PlantGrowthManager(this) // Initialisation après la création de l'objet
         leavesManager = PlantLeavesManager(this) // AJOUT
+        flowerManager = FlowerManager(this) // AJOUT
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
@@ -121,6 +125,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         leavesManager.processLeavesGrowth(force)
     }
     
+    // AJOUT - Fonction pour la croissance des fleurs
+    fun processFlowerGrowth(force: Float) {
+        flowerManager.processFlowerGrowth(force)
+    }
+    
     fun resetStem() {
         mainStem.clear()
         branches.clear()
@@ -130,6 +139,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         branchSide = true
         branchCount = 0
         leavesManager.resetLeaves() // AJOUT
+        flowerManager.resetFlowers() // AJOUT
     }
     
     fun getStemHeight(): Float = stemHeight
@@ -140,6 +150,12 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     // AJOUT - Getter pour le manager de feuilles
     fun getLeavesManager(): PlantLeavesManager = leavesManager
+    
+    // AJOUT - Getter pour les fleurs
+    fun getFlowers(): List<FlowerManager.Flower> = flowerManager.flowers
+    
+    // AJOUT - Getter pour le manager de fleurs
+    fun getFlowerManager(): FlowerManager = flowerManager
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
     
