@@ -138,6 +138,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     // AJOUT - Getter pour les feuilles
     fun getLeaves(): List<PlantLeavesManager.Leaf> = leavesManager.leaves
     
+    // AJOUT - Getter pour le manager de feuilles
+    fun getLeavesManager(): PlantLeavesManager = leavesManager
+    
     // ==================== GETTERS POUR GROWTHMANAGER ====================
     
     fun getMaxPossibleHeight(): Float = maxPossibleHeight
