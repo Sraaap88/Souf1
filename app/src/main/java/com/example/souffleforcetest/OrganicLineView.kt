@@ -71,9 +71,7 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         plantStem = PlantStem(w, h)
-        plantStem?.let { stem ->
-            leavesManager = PlantLeavesManager(stem)
-        }
+        leavesManager = PlantLeavesManager(plantStem!!)
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -95,10 +93,8 @@ class OrganicLineView @JvmOverloads constructor(
             plantStem?.processStemGrowth(force, phaseTime)
         }
         
-        // Initialiser les feuilles au début de la phase LEAVES
         if (lightState == LightState.GREEN_LEAVES) {
-            leavesManager?.initializeLeaves()
-            leavesManager?.updateLeafGrowth()
+            leavesManager?.updateLeaves()
         }
         
         if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
@@ -120,7 +116,7 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.GREEN_GROW -> {
-                if (elapsedTime >= 5000) {  // CORRIGÉ: 5 secondes au lieu de 4000
+                if (elapsedTime >= 5000) {
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                 }
@@ -154,7 +150,7 @@ class OrganicLineView @JvmOverloads constructor(
             drawPlantStem(canvas)
         }
         
-        // Dessiner les feuilles pendant les phases appropriées
+        // Dessiner les feuilles dans les phases appropriées
         if (lightState == LightState.GREEN_LEAVES || 
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
@@ -266,7 +262,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Texte et timer
         val timeRemaining = when (lightState) {
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))  // CORRIGÉ: 5 secondes au lieu de 4
+            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))
             LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000))
             LightState.GREEN_FLOWER -> max(0, 3 - (elapsedTime / 1000))
             LightState.RED -> 0
