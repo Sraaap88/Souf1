@@ -12,16 +12,32 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val width: Float,
         val height: Float,
         val angle: Float,
-        val stemIndex: Int, // -1 pour tige principale, 0-5 pour branches
+        val stemIndex: Int,
         val attachmentHeight: Float,
         val leafType: LeafType,
         var growthProgress: Float = 0f,
         val side: LeafSide,
         var oscillation: Float = 0f,
-        val lobeDensity: Int, // Nombre de lobes pour réalisme
-        val serrationDepth: Float, // Profondeur des dentelures
-        val leafShape: LeafShape, // Forme spécifique de la feuille
-        val veinPattern: List<Pair<Float, Float>> = listOf() // Nervures
+        val lobeDensity: Int,
+        val serrationDepth: Float,
+        val leafShape: LeafShape,
+        val veinPattern: List<Pair<Float, Float>> = listOf(),
+        // NOUVEAUX ATTRIBUTS POUR RÉALISME
+        val asymmetryFactor: Float, // Asymétrie naturelle
+        val ageStage: Float, // 0.0 = jeune, 1.0 = mature
+        val petioleLength: Float, // Longueur du pétiole
+        val individualLobes: List<LobeData>, // Chaque lobe unique
+        val colorVariation: Float, // Variation de couleur
+        val textureNoise: Float, // Bruit pour texture
+        var twistAngle: Float = 0f, // Torsion de la feuille
+        var individualOscillations: MutableList<Float> = mutableListOf() // Oscillation par lobe
+    )
+    
+    data class LobeData(
+        val depth: Float, // Profondeur du lobe (0.1 à 1.0)
+        val width: Float, // Largeur du lobe (0.5 à 1.5)
+        val roundness: Float, // Arrondi vs pointu (0.0 à 1.0)
+        val asymmetry: Float // Asymétrie individuelle (-0.3 à 0.3)
     )
     
     enum class LeafType { BASAL_LARGE, STEM_MEDIUM, STEM_SMALL }
@@ -41,8 +57,8 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             leavesCreated = true
         }
         
-        growExistingLeaves(force) // Croissance basée sur le souffle
-        updateLeafOscillations()
+        growExistingLeaves(force)
+        updateAdvancedOscillations() // Oscillations plus complexes
     }
     
     fun getLeaves(): List<Leaf> = leaves
@@ -52,7 +68,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         leavesCreated = false
     }
     
-    // ==================== CRÉATION DES FEUILLES RÉALISTES ====================
+    // ==================== CRÉATION ULTRA-RÉALISTE ====================
     
     private fun createAllLeaves() {
         createBasalLeaves()
@@ -63,35 +79,42 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     private fun createBasalLeaves() {
         val baseX = plantStem.getStemBaseX()
         val baseY = plantStem.getStemBaseY()
-        val basalCount = (5..7).random() // Plus de feuilles basales
+        val basalCount = (5..8).random() // Plus de variété
         
         for (i in 0 until basalCount) {
-            val angle = (i * 360f / basalCount) + (-20..20).random()
-            val distance = (40..70).random().toFloat() // Plus étalées
+            val angle = (i * 360f / basalCount) + (-25..25).random() // Plus de variation
+            val distance = (45..80).random().toFloat()
             
             val radians = Math.toRadians(angle.toDouble())
             val leafX = baseX + (cos(radians) * distance).toFloat()
-            val leafY = baseY - (8..20).random().toFloat() // Partiellement enterrées
+            val leafY = baseY - (10..25).random().toFloat()
             
-            // FEUILLES BASALES : Très découpées comme vraies marguerites
+            // GÉNÉRATION DES LOBES INDIVIDUELS
+            val lobeCount = (8..14).random()
+            val individualLobes = generateIndividualLobes(lobeCount)
+            
             val leaf = Leaf(
                 x = leafX,
                 y = leafY,
-                width = (55..85).random().toFloat(), // Plus grandes
-                height = (30..45).random().toFloat(),
-                angle = angle + (-15..15).random(),
+                width = (60..95).random().toFloat(),
+                height = (35..50).random().toFloat(),
+                angle = angle + (-20..20).random(),
                 stemIndex = -1,
                 attachmentHeight = 0f,
                 leafType = LeafType.BASAL_LARGE,
-                side = when {
-                    leafX < baseX - 15 -> LeafSide.LEFT
-                    leafX > baseX + 15 -> LeafSide.RIGHT
-                    else -> LeafSide.CENTER
-                },
-                lobeDensity = (8..12).random(), // Très lobées
-                serrationDepth = (0.3f..0.5f).random(), // Dentelures profondes
+                side = determineSide(leafX, baseX),
+                lobeDensity = lobeCount,
+                serrationDepth = (0.4f..0.7f).random(),
                 leafShape = LeafShape.DEEPLY_LOBED,
-                veinPattern = generateVeinPattern(55f, 30f)
+                veinPattern = generateAdvancedVeinPattern(60f, 35f),
+                // NOUVEAUX ATTRIBUTS RÉALISTES
+                asymmetryFactor = (0.1f..0.4f).random(),
+                ageStage = (0.3f..0.9f).random(), // Variété d'âges
+                petioleLength = (8f..18f).random(),
+                individualLobes = individualLobes,
+                colorVariation = (0.0f..0.3f).random(),
+                textureNoise = (0.1f..0.3f).random(),
+                individualOscillations = MutableList(lobeCount) { 0f }
             )
             
             leaves.add(leaf)
@@ -101,10 +124,11 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     private fun createMainStemLeaves() {
         if (plantStem.mainStem.size < 10) return
         
-        val leafCount = (3..4).random() // Plus de feuilles sur tige
+        val leafCount = (3..5).random()
         
         for (i in 0 until leafCount) {
-            val heightRatio = (0.15f + i * 0.25f) // Mieux réparties
+            // POSITIONNEMENT PLUS NATUREL - AUX NŒUDS
+            val heightRatio = (0.2f + i * 0.2f) + (-0.05f..0.05f).random()
             val targetHeight = plantStem.getStemHeight() * heightRatio
             
             val stemPoint = findStemPointAtHeight(plantStem.mainStem, targetHeight) ?: continue
@@ -112,24 +136,35 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val side = if (i % 2 == 0) LeafSide.LEFT else LeafSide.RIGHT
             val sideMultiplier = if (side == LeafSide.LEFT) -1f else 1f
             
-            val leafX = stemPoint.x + (sideMultiplier * (20..35).random())
-            val leafY = stemPoint.y - (3..12).random()
+            // PÉTIOLE RÉALISTE - feuille connectée à la tige
+            val petioleLength = (12f..25f).random()
+            val leafX = stemPoint.x + (sideMultiplier * petioleLength)
+            val leafY = stemPoint.y - (2..8).random()
             
-            // FEUILLES DE TIGE : Moyennement découpées
+            val lobeCount = (6..10).random()
+            val individualLobes = generateIndividualLobes(lobeCount)
+            
             val leaf = Leaf(
                 x = leafX,
                 y = leafY,
-                width = (35..50).random().toFloat(),
-                height = (20..30).random().toFloat(),
-                angle = (sideMultiplier * (25..50).random()).toFloat(),
+                width = (40..60).random().toFloat(),
+                height = (22..35).random().toFloat(),
+                angle = (sideMultiplier * (30..60).random()).toFloat(),
                 stemIndex = -1,
                 attachmentHeight = targetHeight,
                 leafType = LeafType.STEM_MEDIUM,
                 side = side,
-                lobeDensity = (5..8).random(), // Moyennement lobées
-                serrationDepth = (0.2f..0.4f).random(),
+                lobeDensity = lobeCount,
+                serrationDepth = (0.25f..0.45f).random(),
                 leafShape = LeafShape.MODERATELY_LOBED,
-                veinPattern = generateVeinPattern(35f, 20f)
+                veinPattern = generateAdvancedVeinPattern(40f, 22f),
+                asymmetryFactor = (0.15f..0.35f).random(),
+                ageStage = (0.4f..0.8f).random(),
+                petioleLength = petioleLength,
+                individualLobes = individualLobes,
+                colorVariation = (0.0f..0.25f).random(),
+                textureNoise = (0.1f..0.25f).random(),
+                individualOscillations = MutableList(lobeCount) { 0f }
             )
             
             leaves.add(leaf)
@@ -140,39 +175,46 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         for ((branchIndex, branch) in plantStem.branches.withIndex()) {
             if (branch.points.size < 5) continue
             
-            val leafCount = (2..3).random() // Plus de feuilles par branche
-            val branchHeight = branch.currentHeight
+            val leafCount = (2..4).random()
             
             for (i in 0 until leafCount) {
-                val heightRatio = (0.2f + i * 0.35f)
-                val targetHeight = branchHeight * heightRatio
+                val heightRatio = (0.25f + i * 0.3f) + (-0.1f..0.1f).random()
+                val targetHeight = branch.currentHeight * heightRatio
                 
                 val branchPoint = findStemPointAtHeight(branch.points, targetHeight) ?: continue
                 
                 val side = if (i % 2 == 0) LeafSide.LEFT else LeafSide.RIGHT
                 val sideMultiplier = if (side == LeafSide.LEFT) -1f else 1f
-                
                 val branchDirection = if (branch.angle < 0) -1f else 1f
-                val adjustedMultiplier = sideMultiplier * branchDirection * 0.8f
                 
-                val leafX = branchPoint.x + (adjustedMultiplier * (12..25).random())
-                val leafY = branchPoint.y - (2..8).random()
+                val petioleLength = (8f..15f).random()
+                val leafX = branchPoint.x + (sideMultiplier * branchDirection * petioleLength)
+                val leafY = branchPoint.y - (1..6).random()
                 
-                // FEUILLES DE BRANCHE : Légèrement dentelées
+                val lobeCount = (4..8).random()
+                val individualLobes = generateIndividualLobes(lobeCount)
+                
                 val leaf = Leaf(
                     x = leafX,
                     y = leafY,
-                    width = (22..35).random().toFloat(),
-                    height = (12..20).random().toFloat(),
-                    angle = (adjustedMultiplier * (18..35).random()).toFloat(),
+                    width = (25..40).random().toFloat(),
+                    height = (15..25).random().toFloat(),
+                    angle = (sideMultiplier * branchDirection * (20..40).random()).toFloat(),
                     stemIndex = branchIndex,
                     attachmentHeight = targetHeight,
                     leafType = LeafType.STEM_SMALL,
                     side = side,
-                    lobeDensity = (3..6).random(), // Peu lobées
-                    serrationDepth = (0.1f..0.25f).random(),
+                    lobeDensity = lobeCount,
+                    serrationDepth = (0.15f..0.3f).random(),
                     leafShape = LeafShape.SLIGHTLY_TOOTHED,
-                    veinPattern = generateVeinPattern(22f, 12f)
+                    veinPattern = generateAdvancedVeinPattern(25f, 15f),
+                    asymmetryFactor = (0.1f..0.3f).random(),
+                    ageStage = (0.5f..1.0f).random(), // Plus jeunes
+                    petioleLength = petioleLength,
+                    individualLobes = individualLobes,
+                    colorVariation = (0.0f..0.2f).random(),
+                    textureNoise = (0.05f..0.2f).random(),
+                    individualOscillations = MutableList(lobeCount) { 0f }
                 )
                 
                 leaves.add(leaf)
@@ -180,93 +222,97 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         }
     }
     
-    // ==================== CROISSANCE AVEC SOUFFLE ====================
+    // ==================== GÉNÉRATION DE LOBES INDIVIDUELS ====================
+    
+    private fun generateIndividualLobes(count: Int): List<LobeData> {
+        return (0 until count).map {
+            LobeData(
+                depth = (0.3f..1.0f).random(), // Profondeurs variées
+                width = (0.6f..1.4f).random(), // Largeurs variées
+                roundness = (0.2f..0.8f).random(), // Forme variée
+                asymmetry = (-0.2f..0.2f).random() // Asymétrie individuelle
+            )
+        }
+    }
+    
+    // ==================== CROISSANCE AVEC SOUFFLE AMÉLIORÉE ====================
     
     private fun growExistingLeaves(force: Float) {
         for (i in leaves.indices) {
             val leaf = leaves[i]
             
             if (leaf.growthProgress < 1f) {
-                // Vitesse de base selon le type
-                val baseGrowthSpeed = when (leaf.leafType) {
-                    LeafType.BASAL_LARGE -> 0.012f // Plus lentes (plus grandes)
-                    LeafType.STEM_MEDIUM -> 0.018f // Moyennes
-                    LeafType.STEM_SMALL -> 0.025f  // Plus rapides (plus petites)
+                // Vitesse selon l'âge et le type
+                val baseSpeed = when (leaf.leafType) {
+                    LeafType.BASAL_LARGE -> 0.010f
+                    LeafType.STEM_MEDIUM -> 0.015f
+                    LeafType.STEM_SMALL -> 0.022f
                 }
                 
-                // CROISSANCE BASÉE SUR LE SOUFFLE - Plus sensible
+                // MODIFICATION : Vitesse selon l'âge
+                val ageMultiplier = 1.2f - (leaf.ageStage * 0.4f) // Jeunes poussent plus vite
+                
                 val forceQuality = force.coerceIn(0f, 1f)
-                val breathMultiplier = 0.3f + (forceQuality * 1.2f) // 0.3x à 1.5x selon souffle
+                val breathMultiplier = 0.4f + (forceQuality * 1.1f)
                 
-                // Courbe de croissance réaliste (plus rapide au début)
-                val progressCurve = 1f - (leaf.growthProgress * leaf.growthProgress * 0.5f)
+                // Courbe de croissance non-linéaire plus réaliste
+                val progressCurve = sqrt(1f - leaf.growthProgress)
                 
-                val finalGrowthSpeed = baseGrowthSpeed * breathMultiplier * progressCurve
+                val finalSpeed = baseSpeed * ageMultiplier * breathMultiplier * progressCurve
                 
                 leaves[i] = leaf.copy(
-                    growthProgress = (leaf.growthProgress + finalGrowthSpeed).coerceAtMost(1f)
+                    growthProgress = (leaf.growthProgress + finalSpeed).coerceAtMost(1f)
                 )
             }
         }
     }
     
-    private fun updateLeafOscillations() {
+    // ==================== OSCILLATIONS AVANCÉES ====================
+    
+    private fun updateAdvancedOscillations() {
         for (i in leaves.indices) {
             val leaf = leaves[i]
+            val time = System.currentTimeMillis()
             
-            // Oscillation basée sur la taille et le type
-            val windStrength = 0.4f
-            val timeOffset = i * 0.7f // Plus de variation
+            // OSCILLATION PRINCIPALE
+            val windStrength = 0.5f
+            val timeOffset = i * 0.8f
             val sizeMultiplier = when (leaf.leafType) {
-                LeafType.BASAL_LARGE -> 0.3f // Moins de mouvement (plus lourdes)
-                LeafType.STEM_MEDIUM -> 0.6f
-                LeafType.STEM_SMALL -> 1.0f // Plus de mouvement (plus légères)
+                LeafType.BASAL_LARGE -> 0.4f
+                LeafType.STEM_MEDIUM -> 0.7f
+                LeafType.STEM_SMALL -> 1.1f
             }
             
-            // Oscillation plus complexe et naturelle
-            val primaryWave = sin((System.currentTimeMillis() * 0.0008f) + timeOffset)
-            val secondaryWave = sin((System.currentTimeMillis() * 0.0015f) + timeOffset * 1.3f) * 0.3f
+            // Oscillations complexes et naturelles
+            val primaryWave = sin((time * 0.0006f) + timeOffset)
+            val secondaryWave = sin((time * 0.0012f) + timeOffset * 1.7f) * 0.4f
+            val microTremor = sin((time * 0.003f) + timeOffset * 2.3f) * 0.15f
             
-            val oscillation = (primaryWave + secondaryWave) * windStrength * sizeMultiplier * leaf.growthProgress
+            val mainOscillation = (primaryWave + secondaryWave + microTremor) * 
+                                windStrength * sizeMultiplier * leaf.growthProgress
             
-            leaves[i] = leaf.copy(oscillation = oscillation)
+            // OSCILLATIONS INDIVIDUELLES PAR LOBE
+            for (j in leaf.individualOscillations.indices) {
+                val lobeOffset = j * 0.3f + leaf.asymmetryFactor
+                val lobeFreq = 1f + (j * 0.1f) // Chaque lobe à sa fréquence
+                val lobeWave = sin((time * 0.0008f * lobeFreq) + timeOffset + lobeOffset)
+                val lobeIntensity = 0.3f * sizeMultiplier * leaf.growthProgress
+                
+                leaf.individualOscillations[j] = lobeWave * lobeIntensity
+            }
+            
+            // TORSION NATURELLE
+            val twistFreq = 0.0004f * (1f + leaf.asymmetryFactor)
+            val newTwist = sin(time * twistFreq + timeOffset) * 15f * leaf.growthProgress
+            
+            leaves[i] = leaf.copy(
+                oscillation = mainOscillation,
+                twistAngle = newTwist
+            )
         }
     }
     
-    // ==================== GÉNÉRATION DE NERVURES ====================
-    
-    private fun generateVeinPattern(width: Float, height: Float): List<Pair<Float, Float>> {
-        val veins = mutableListOf<Pair<Float, Float>>()
-        
-        // Nervure centrale
-        val centralSteps = 8
-        for (i in 0..centralSteps) {
-            val progress = i.toFloat() / centralSteps
-            val x = 0f
-            val y = (progress - 0.5f) * height * 0.8f
-            veins.add(Pair(x, y))
-        }
-        
-        // Nervures secondaires (3-5 de chaque côté)
-        val secondaryVeins = (3..5).random()
-        for (side in listOf(-1f, 1f)) {
-            for (i in 1..secondaryVeins) {
-                val startProgress = i.toFloat() / (secondaryVeins + 1)
-                val startX = 0f
-                val startY = (startProgress - 0.5f) * height * 0.6f
-                
-                val endX = side * width * 0.3f * startProgress
-                val endY = startY + side * height * 0.1f
-                
-                veins.add(Pair(startX, startY))
-                veins.add(Pair(endX, endY))
-            }
-        }
-        
-        return veins
-    }
-    
-    // ==================== GÉNÉRATION DE FORME RÉALISTE ====================
+    // ==================== GÉNÉRATION DE FORME ULTRA-RÉALISTE ====================
     
     fun getRealisticLeafPath(leaf: Leaf): List<Pair<Float, Float>> {
         val points = mutableListOf<Pair<Float, Float>>()
@@ -278,45 +324,98 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val centerX = leaf.x + leaf.oscillation
         val centerY = leaf.y
         
-        // Nombre de points selon la complexité de la feuille
-        val totalPoints = when (leaf.leafShape) {
-            LeafShape.DEEPLY_LOBED -> leaf.lobeDensity * 3 // Très détaillée
-            LeafShape.MODERATELY_LOBED -> leaf.lobeDensity * 2 // Moyennement détaillée
-            LeafShape.SLIGHTLY_TOOTHED -> leaf.lobeDensity // Simple
+        // PÉTIOLE RÉALISTE
+        val petiolePoints = generatePetiole(leaf, centerX, centerY)
+        points.addAll(petiolePoints)
+        
+        // FORME DE FEUILLE AVEC LOBES INDIVIDUELS
+        val leafBodyPoints = generateAsymmetricLeafBody(leaf, centerX, centerY, currentWidth, currentHeight)
+        points.addAll(leafBodyPoints)
+        
+        return points
+    }
+    
+    private fun generatePetiole(leaf: Leaf, centerX: Float, centerY: Float): List<Pair<Float, Float>> {
+        val points = mutableListOf<Pair<Float, Float>>()
+        
+        if (leaf.leafType != LeafType.BASAL_LARGE) {
+            // Générer un pétiole visible pour feuilles de tige
+            val petioleLength = leaf.petioleLength * leaf.growthProgress
+            val petioleSteps = 4
+            
+            for (i in 0..petioleSteps) {
+                val progress = i.toFloat() / petioleSteps
+                val petioleX = centerX - (progress * petioleLength * cos(Math.toRadians(leaf.angle.toDouble()))).toFloat()
+                val petioleY = centerY + (progress * petioleLength * sin(Math.toRadians(leaf.angle.toDouble()))).toFloat()
+                points.add(Pair(petioleX, petioleY))
+            }
         }
+        
+        return points
+    }
+    
+    private fun generateAsymmetricLeafBody(
+        leaf: Leaf, 
+        centerX: Float, 
+        centerY: Float, 
+        width: Float, 
+        height: Float
+    ): List<Pair<Float, Float>> {
+        val points = mutableListOf<Pair<Float, Float>>()
+        
+        val totalPoints = leaf.lobeDensity * 4 // Plus de détails
         
         for (i in 0..totalPoints) {
             val progress = i.toFloat() / totalPoints
             val angle = progress * PI.toFloat() * 2f
             
-            // Forme de base elliptique
-            val baseRadius = currentWidth * 0.5f * (0.7f + 0.3f * cos(angle * 2f))
-            val baseX = cos(angle) * baseRadius
-            val baseY = sin(angle) * currentHeight * 0.5f
+            // Base asymétrique
+            val asymmetryX = 1f + sin(angle * 2f) * leaf.asymmetryFactor * 0.3f
+            val asymmetryY = 1f + cos(angle * 3f) * leaf.asymmetryFactor * 0.2f
             
-            // Ajout des lobes et dentelures selon le type
-            val detailFactor = when (leaf.leafShape) {
+            val baseRadius = width * 0.5f * asymmetryX
+            val baseX = cos(angle) * baseRadius
+            val baseY = sin(angle) * height * 0.5f * asymmetryY
+            
+            // LOBES INDIVIDUELS avec leurs propres caractéristiques
+            val lobeIndex = (progress * leaf.individualLobes.size).toInt().coerceAtMost(leaf.individualLobes.size - 1)
+            val lobe = leaf.individualLobes[lobeIndex]
+            
+            // Oscillation individuelle du lobe
+            val lobeOscillation = if (lobeIndex < leaf.individualOscillations.size) {
+                leaf.individualOscillations[lobeIndex]
+            } else 0f
+            
+            // Facteur de détail avec caractéristiques individuelles
+            val lobeFactor = when (leaf.leafShape) {
                 LeafShape.DEEPLY_LOBED -> {
-                    // Lobes profonds + dentelures fines
-                    val majorLobes = 1f + sin(angle * leaf.lobeDensity * 0.5f) * leaf.serrationDepth
-                    val fineSerrations = 1f + sin(angle * leaf.lobeDensity * 2f) * (leaf.serrationDepth * 0.3f)
-                    majorLobes * fineSerrations
+                    val majorLobe = 1f + sin(angle * leaf.lobeDensity * 0.5f) * lobe.depth * leaf.serrationDepth
+                    val fineDetail = 1f + sin(angle * leaf.lobeDensity * 2.5f) * lobe.width * 0.1f
+                    val roundness = 1f + cos(angle * leaf.lobeDensity * 1.2f) * lobe.roundness * 0.05f
+                    majorLobe * fineDetail * roundness
                 }
                 LeafShape.MODERATELY_LOBED -> {
-                    // Lobes moyens
-                    1f + sin(angle * leaf.lobeDensity * 0.7f) * leaf.serrationDepth
+                    1f + sin(angle * leaf.lobeDensity * 0.8f) * lobe.depth * leaf.serrationDepth * 0.8f
                 }
                 LeafShape.SLIGHTLY_TOOTHED -> {
-                    // Dentelures légères
-                    1f + sin(angle * leaf.lobeDensity * 1.2f) * leaf.serrationDepth
+                    1f + sin(angle * leaf.lobeDensity * 1.5f) * lobe.depth * leaf.serrationDepth * 0.5f
                 }
             }
             
-            // Variation naturelle pour éviter la régularité
-            val naturalVariation = 1f + sin(angle * 7.3f + leaf.x * 0.1f) * 0.05f
+            // Bruit de texture pour surface naturelle
+            val textureNoise = sin(angle * 23.7f + centerX * 0.1f) * leaf.textureNoise * 0.02f
             
-            val finalX = centerX + (baseX * detailFactor * naturalVariation)
-            val finalY = centerY + (baseY * detailFactor * naturalVariation)
+            // Asymétrie individuelle du lobe
+            val lobeAsymmetry = 1f + lobe.asymmetry
+            
+            // Position finale avec torsion
+            val twistRadians = Math.toRadians(leaf.twistAngle.toDouble())
+            val rawX = baseX * lobeFactor * lobeAsymmetry * (1f + textureNoise) + lobeOscillation
+            val rawY = baseY * lobeFactor * (1f + textureNoise)
+            
+            // Application de la torsion
+            val finalX = centerX + (rawX * cos(twistRadians) - rawY * sin(twistRadians)).toFloat()
+            val finalY = centerY + (rawX * sin(twistRadians) + rawY * cos(twistRadians)).toFloat()
             
             points.add(Pair(finalX, finalY))
         }
@@ -324,7 +423,87 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         return points
     }
     
+    // ==================== NERVURES AVANCÉES ====================
+    
+    private fun generateAdvancedVeinPattern(width: Float, height: Float): List<Pair<Float, Float>> {
+        val veins = mutableListOf<Pair<Float, Float>>()
+        
+        // Nervure centrale avec courbure naturelle
+        val centralSteps = 12
+        for (i in 0..centralSteps) {
+            val progress = i.toFloat() / centralSteps
+            val curvature = sin(progress * PI.toFloat()) * 0.1f // Courbure légère
+            val x = curvature * width * 0.1f
+            val y = (progress - 0.5f) * height * 0.9f
+            veins.add(Pair(x, y))
+        }
+        
+        // Nervures secondaires asymétriques
+        val leftVeins = (3..6).random()
+        val rightVeins = (3..6).random() // Nombre différent de chaque côté
+        
+        // Côté gauche
+        for (i in 1..leftVeins) {
+            val startProgress = (i.toFloat() / (leftVeins + 1)) * 0.8f + 0.1f
+            val branchLength = (0.2f..0.4f).random()
+            val angle = (-30f..-60f).random()
+            
+            val startX = 0f
+            val startY = (startProgress - 0.5f) * height * 0.8f
+            val endX = -width * branchLength * cos(Math.toRadians(angle.toDouble())).toFloat()
+            val endY = startY + width * branchLength * sin(Math.toRadians(angle.toDouble())).toFloat()
+            
+            veins.add(Pair(startX, startY))
+            veins.add(Pair(endX, endY))
+        }
+        
+        
+        // Côté droit
+        for (i in 1..rightVeins) {
+            val startProgress = (i.toFloat() / (rightVeins + 1)) * 0.8f + 0.1f
+            val branchLength = (0.2f..0.4f).random()
+            val angle = (30f..60f).random()
+            
+            val startX = 0f
+            val startY = (startProgress - 0.5f) * height * 0.8f
+            val endX = width * branchLength * cos(Math.toRadians(angle.toDouble())).toFloat()
+            val endY = startY + width * branchLength * sin(Math.toRadians(angle.toDouble())).toFloat()
+            
+            veins.add(Pair(startX, startY))
+            veins.add(Pair(endX, endY))
+        }
+        
+        return veins
+    }
+    
+    // ==================== COULEURS RÉALISTES ====================
+    
+    fun getLeafColor(leaf: Leaf): Triple<Int, Int, Int> {
+        // Couleur de base selon l'âge
+        val baseColor = when (leaf.ageStage) {
+            in 0.0f..0.3f -> Triple(60, 180, 60)   // Jeune : vert clair
+            in 0.3f..0.7f -> Triple(50, 150, 50)   // Moyen : vert moyen
+            else -> Triple(34, 139, 34)            // Mature : vert foncé
+        }
+        
+        // Variation individuelle
+        val variation = (leaf.colorVariation * 30).toInt()
+        val r = (baseColor.first + (-variation..variation).random()).coerceIn(0, 255)
+        val g = (baseColor.second + (-variation..variation).random()).coerceIn(0, 255)
+        val b = (baseColor.third + (-variation..variation).random()).coerceIn(0, 255)
+        
+        return Triple(r, g, b)
+    }
+    
     // ==================== UTILITAIRES ====================
+    
+    private fun determineSide(leafX: Float, baseX: Float): LeafSide {
+        return when {
+            leafX < baseX - 20 -> LeafSide.LEFT
+            leafX > baseX + 20 -> LeafSide.RIGHT
+            else -> LeafSide.CENTER
+        }
+    }
     
     private fun findStemPointAtHeight(points: List<PlantStem.StemPoint>, targetHeight: Float): PlantStem.StemPoint? {
         if (points.isEmpty()) return null
