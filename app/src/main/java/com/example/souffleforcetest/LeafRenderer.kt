@@ -22,7 +22,7 @@ class LeafRenderer(private val plantStem: PlantStem) {
         val lobeCount = 6 + (personality.teethCount % 4)
         
         // Calculer la courbure gravitationnelle (plus la feuille est grande, plus elle se plie)
-        val gravityEffect = (size / 100f).coerceAtMost(1.2f) // Effet proportionnel à la taille
+        val gravityEffect = (size / 80f).coerceAtMost(1.8f) // Effet plus prononcé (80f au lieu de 100f)
         
         // Créer la forme spatulée réaliste avec extrémité arrondie ET arc gravitationnel
         for (i in 0..lobeCount) {
@@ -45,9 +45,9 @@ class LeafRenderer(private val plantStem: PlantStem) {
             // Base (t=0) : pas de courbure
             // Milieu (t=0.5) : courbure modérée
             // Extrémité (t=1) : courbure maximale
-            if (t > 0.1f) { // Garder la base droite
-                val curveFactor = (t - 0.1f) / 0.9f // 0 à 1 pour la partie qui se courbe
-                val gravityCurve = curveFactor * curveFactor * gravityEffect * 15f // Arc progressif
+            if (t > 0.05f) { // Garder seulement 5% de la base droite
+                val curveFactor = (t - 0.05f) / 0.95f // 0 à 1 pour la partie qui se courbe
+                val gravityCurve = curveFactor * curveFactor * curveFactor * gravityEffect * 25f // Arc plus prononcé (25f au lieu de 15f)
                 yPos += gravityCurve // Décalage vers le bas (courbure)
             }
             
@@ -81,9 +81,9 @@ class LeafRenderer(private val plantStem: PlantStem) {
             
             // Position Y avec même courbure gravitationnelle
             var yPos = -length * t
-            if (t > 0.1f) {
-                val curveFactor = (t - 0.1f) / 0.9f
-                val gravityCurve = curveFactor * curveFactor * gravityEffect * 15f
+            if (t > 0.05f) {
+                val curveFactor = (t - 0.05f) / 0.95f
+                val gravityCurve = curveFactor * curveFactor * curveFactor * gravityEffect * 25f
                 yPos += gravityCurve
             }
             
