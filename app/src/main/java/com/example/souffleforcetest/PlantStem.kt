@@ -29,10 +29,28 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val thicknessVariation: Float = 1f
     )
     
+    data class Leaf(
+        val x: Float,
+        val y: Float,
+        val width: Float,
+        val height: Float,
+        val angle: Float,
+        val stemIndex: Int, // -1 pour tige principale, 0-5 pour branches
+        val attachmentHeight: Float,
+        val leafType: LeafType,
+        var growthProgress: Float = 0f,
+        val side: LeafSide,
+        var oscillation: Float = 0f
+    )
+    
+    enum class LeafType { BASAL_LARGE, STEM_MEDIUM, STEM_SMALL }
+    enum class LeafSide { LEFT, RIGHT, CENTER }
+    
     // ==================== VARIABLES PRINCIPALES ====================
     
     val mainStem = mutableListOf<StemPoint>()
     val branches = mutableListOf<Branch>()
+    val leaves = mutableListOf<Leaf>()
     
     private var stemHeight = 0f
     private var maxPossibleHeight = 0f
@@ -43,25 +61,26 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var emergenceStartTime = 0L
     private var branchSide = true
     private var branchCount = 0
+    private var leavesCreated = false
     
     // Instance du gestionnaire de croissance - initialisation tardive
     private lateinit var growthManager: PlantGrowthManager
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.25f // Augmenté de 0.15f à 0.25f (moins sensible)
-    private val maxStemHeight = 0.8f // Remis à la hauteur originale
+    private val forceThreshold = 0.25f
+    private val maxStemHeight = 0.8f
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
-    private val branchThreshold = 0.18f // Augmenté de 0.12f à 0.18f pour éviter branches accidentelles
+    private val branchThreshold = 0.18f
     private val emergenceDuration = 1000L
-    private val maxBranches = 6 // 6 tiges secondaires + 1 principale = 7 total
+    private val maxBranches = 6
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
-        growthManager = PlantGrowthManager(this) // Initialisation après la création de l'objet
+        growthManager = PlantGrowthManager(this)
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
@@ -71,7 +90,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         if (mainStem.isEmpty() && !isEmerging) {
             isEmerging = true
             emergenceStartTime = System.currentTimeMillis()
-            // Créer immédiatement un point de base visible
             mainStem.add(StemPoint(stemBaseX, stemBaseY, baseThickness))
         }
         
@@ -93,37 +111,44 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         // Phase de croissance normale - STRICTEMENT avec souffle actif
         if (force > forceThreshold && mainStem.isNotEmpty()) {
-            // Vérification RENFORCÉE : force doit être stable et forte
             if (force > forceThreshold * 1.5f) {
                 growthManager.growMainStem(force)
-                
-                // Faire pousser TOUTES les branches actives - SIMPLE
                 growthManager.growAllBranches(force)
                 
-                // Détection ramification (souffle saccadé) - SEUIL RÉDUIT pour créer plus facilement
                 if (abs(force - lastForce) > 0.12f && stemHeight > 20f && branchCount < maxBranches) {
                     createBranch()
                 }
             }
         }
         
-        // Mise à jour des oscillations même sans souffle
         growthManager.updateOscillations()
         lastForce = force
+    }
+    
+    fun processLeafGrowth(force: Float) {
+        if (!leavesCreated && stemHeight > 50f) {
+            createAllLeaves()
+            leavesCreated = true
+        }
+        
+        growExistingLeaves(force)
+        updateLeafOscillations()
     }
     
     fun resetStem() {
         mainStem.clear()
         branches.clear()
+        leaves.clear()
         stemHeight = 0f
         lastForce = 0f
         isEmerging = false
         branchSide = true
         branchCount = 0
+        leavesCreated = false
     }
     
     fun getStemHeight(): Float = stemHeight
-    fun hasVisibleStem(): Boolean = mainStem.size >= 1 // Au moins 1 point pour être visible
+    fun hasVisibleStem(): Boolean = mainStem.size >= 1
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
     
@@ -136,13 +161,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     fun getGrowthRate(): Float = growthRate
     fun getOscillationDecay(): Float = oscillationDecay
     
-    // ==================== SETTERS POUR GROWTHMANAGER ====================
-    
     fun setStemHeight(height: Float) {
         stemHeight = height
     }
     
-    // ==================== FONCTIONS PRIVÉES ====================
+    // ==================== FONCTIONS PRIVÉES TIGES ====================
     
     private fun createEmergenceStem(progress: Float) {
         mainStem.clear()
@@ -152,7 +175,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             val segmentProgress = i / 5f
             val y = stemBaseY - emergenceHeight * segmentProgress
             val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
-            // Tige principale PRESQUE DROITE - oscillation très réduite
             val wiggle = sin(progress * PI * 3 + i * 0.5) * 0.5f * progress
             
             mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
@@ -165,8 +187,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     private fun createBranch() {
         branchCount++
-        
-        // ESPACEMENT PROGRESSIF : Distance cumulative par rapport aux tiges précédentes du même côté
         val baseSpacing = 50f
         
         val isLeft: Boolean
@@ -177,41 +197,37 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         when (branchCount) {
             1 -> {
                 isLeft = false
-                position = baseSpacing                    // +50px (droite)
+                position = baseSpacing
                 heightRange = Pair(0.75f, 0.85f)
                 thickness = 0.90f
             }
             2 -> {
                 isLeft = true  
-                position = -baseSpacing                   // -50px (gauche)
+                position = -baseSpacing
                 heightRange = Pair(0.70f, 0.80f)
                 thickness = 0.85f
             }
             3 -> {
                 isLeft = false
-                // Tige 3 = tige 1 + baseSpacing = 50 + 50 = 100px (droite)
-                position = baseSpacing * 2                
+                position = baseSpacing * 2
                 heightRange = Pair(0.70f, 0.80f)
                 thickness = 0.80f
             }
             4 -> {
                 isLeft = true
-                // Tige 4 = tige 2 + baseSpacing = -50 + (-50) = -100px (gauche)
-                position = -baseSpacing * 2               
+                position = -baseSpacing * 2
                 heightRange = Pair(0.70f, 0.80f)
                 thickness = 0.80f
             }
             5 -> {
                 isLeft = false
-                // Tige 5 = tige 3 + baseSpacing = 100 + 50 = 150px (droite)
-                position = baseSpacing * 3                
+                position = baseSpacing * 3
                 heightRange = Pair(0.65f, 0.75f)
                 thickness = 0.75f
             }
             6 -> {
                 isLeft = true
-                // Tige 6 = tige 4 + baseSpacing = -100 + (-50) = -150px (gauche)
-                position = -baseSpacing * 3               
+                position = -baseSpacing * 3
                 heightRange = Pair(0.65f, 0.75f)
                 thickness = 0.75f
             }
@@ -223,13 +239,12 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             }
         }
         
-        val forcedOffset = position + (Math.random().toFloat() * 10f - 5f) // ±5px de variation
+        val forcedOffset = position + (Math.random().toFloat() * 10f - 5f)
         val forcedAngle = if (isLeft) -12f else +12f
         val baseHeightRatio = (heightRange.first + Math.random().toFloat() * (heightRange.second - heightRange.first))
         val branchMaxHeight = maxPossibleHeight * baseHeightRatio
         val thicknessVar = thickness
         
-        // PERSONNALITÉ : Identique pour tiges 4-5 comme tiges 2-3
         val personalityFactor = 0.95f
         val trembleFreq = 1.0f
         val curvatureDir = if (isLeft) -1f else 1f
@@ -247,14 +262,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             thicknessVariation = thicknessVar
         )
         
-        // Point de départ IDENTIQUE pour toutes les tiges (même base)
-        val startX = stemBaseX // MÊME POINT pour toutes
+        val startX = stemBaseX
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // DIVERGENCES : Positionnement par rapport à la tige précédente du même côté
-        val divergenceForce = position + (Math.random().toFloat() * 20f - 10f) // ±10px de variation
-        
+        val divergenceForce = position + (Math.random().toFloat() * 20f - 10f)
         val initialHeight = 12f
         val initialX = startX + divergenceForce
         val initialY = stemBaseY - initialHeight
@@ -264,8 +276,166 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         newBranch.currentHeight = initialHeight
         
         branches.add(newBranch)
+    }
+    
+    // ==================== FONCTIONS FEUILLES ====================
+    
+    private fun createAllLeaves() {
+        createBasalLeaves()
+        createMainStemLeaves()
+        createBranchLeaves()
+    }
+    
+    private fun createBasalLeaves() {
+        val baseX = stemBaseX
+        val baseY = stemBaseY
+        val basalCount = (4..6).random()
         
-        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} créée à position ${position.toInt()}px")
+        for (i in 0 until basalCount) {
+            val angle = (i * 360f / basalCount) + (-15..15).random()
+            val distance = (35..55).random().toFloat()
+            
+            val radians = Math.toRadians(angle.toDouble())
+            val leafX = baseX + (cos(radians) * distance).toFloat()
+            val leafY = baseY - (5..15).random().toFloat()
+            
+            val leaf = Leaf(
+                x = leafX,
+                y = leafY,
+                width = (45..65).random().toFloat(),
+                height = (25..35).random().toFloat(),
+                angle = angle + (-10..10).random(),
+                stemIndex = -1,
+                attachmentHeight = 0f,
+                leafType = LeafType.BASAL_LARGE,
+                side = when {
+                    leafX < baseX - 10 -> LeafSide.LEFT
+                    leafX > baseX + 10 -> LeafSide.RIGHT
+                    else -> LeafSide.CENTER
+                }
+            )
+            
+            leaves.add(leaf)
+        }
+    }
+    
+    private fun createMainStemLeaves() {
+        if (mainStem.size < 10) return
+        
+        val leafCount = (2..3).random()
+        
+        for (i in 0 until leafCount) {
+            val heightRatio = (0.2f + i * 0.3f)
+            val targetHeight = stemHeight * heightRatio
+            
+            val stemPoint = findStemPointAtHeight(mainStem, targetHeight) ?: continue
+            
+            val side = if (i % 2 == 0) LeafSide.LEFT else LeafSide.RIGHT
+            val sideMultiplier = if (side == LeafSide.LEFT) -1f else 1f
+            
+            val leafX = stemPoint.x + (sideMultiplier * (15..25).random())
+            val leafY = stemPoint.y - (2..8).random()
+            
+            val leaf = Leaf(
+                x = leafX,
+                y = leafY,
+                width = (25..35).random().toFloat(),
+                height = (15..22).random().toFloat(),
+                angle = (sideMultiplier * (20..40).random()).toFloat(),
+                stemIndex = -1,
+                attachmentHeight = targetHeight,
+                leafType = LeafType.STEM_MEDIUM,
+                side = side
+            )
+            
+            leaves.add(leaf)
+        }
+    }
+    
+    private fun createBranchLeaves() {
+        for ((branchIndex, branch) in branches.withIndex()) {
+            if (branch.points.size < 5) continue
+            
+            val leafCount = (1..2).random()
+            val branchHeight = branch.currentHeight
+            
+            for (i in 0 until leafCount) {
+                val heightRatio = (0.3f + i * 0.4f)
+                val targetHeight = branchHeight * heightRatio
+                
+                val branchPoint = findStemPointAtHeight(branch.points, targetHeight) ?: continue
+                
+                val side = if (i % 2 == 0) LeafSide.LEFT else LeafSide.RIGHT
+                val sideMultiplier = if (side == LeafSide.LEFT) -1f else 1f
+                
+                val branchDirection = if (branch.angle < 0) -1f else 1f
+                val adjustedMultiplier = sideMultiplier * branchDirection * 0.7f
+                
+                val leafX = branchPoint.x + (adjustedMultiplier * (10..18).random())
+                val leafY = branchPoint.y - (1..5).random()
+                
+                val leaf = Leaf(
+                    x = leafX,
+                    y = leafY,
+                    width = (18..28).random().toFloat(),
+                    height = (10..16).random().toFloat(),
+                    angle = (adjustedMultiplier * (15..30).random()).toFloat(),
+                    stemIndex = branchIndex,
+                    attachmentHeight = targetHeight,
+                    leafType = LeafType.STEM_SMALL,
+                    side = side
+                )
+                
+                leaves.add(leaf)
+            }
+        }
+    }
+    
+    private fun growExistingLeaves(force: Float) {
+        for (i in leaves.indices) {
+            val leaf = leaves[i]
+            
+            if (leaf.growthProgress < 1f) {
+                val growthSpeed = when (leaf.leafType) {
+                    LeafType.BASAL_LARGE -> 0.015f
+                    LeafType.STEM_MEDIUM -> 0.022f
+                    LeafType.STEM_SMALL -> 0.030f
+                }
+                
+                val forceMultiplier = 0.5f + (force * 0.5f)
+                val growth = growthSpeed * forceMultiplier
+                
+                leaves[i] = leaf.copy(growthProgress = (leaf.growthProgress + growth).coerceAtMost(1f))
+            }
+        }
+    }
+    
+    private fun updateLeafOscillations() {
+        for (i in leaves.indices) {
+            val leaf = leaves[i]
+            
+            val windStrength = 0.3f
+            val timeOffset = i * 0.5f
+            val sizeMultiplier = when (leaf.leafType) {
+                LeafType.BASAL_LARGE -> 0.5f
+                LeafType.STEM_MEDIUM -> 0.8f
+                LeafType.STEM_SMALL -> 1.2f
+            }
+            
+            val oscillation = sin((System.currentTimeMillis() * 0.001f) + timeOffset) * 
+                             windStrength * sizeMultiplier * leaf.growthProgress
+            
+            leaves[i] = leaf.copy(oscillation = oscillation)
+        }
+    }
+    
+    private fun findStemPointAtHeight(points: List<StemPoint>, targetHeight: Float): StemPoint? {
+        if (points.isEmpty()) return null
+        
+        val baseY = stemBaseY
+        val targetY = baseY - targetHeight
+        
+        return points.minByOrNull { abs(it.y - targetY) }
     }
     
     // ==================== UTILITAIRES ====================
