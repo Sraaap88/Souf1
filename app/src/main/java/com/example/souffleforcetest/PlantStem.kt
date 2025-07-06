@@ -1,6 +1,7 @@
 package com.example.souffleforcetest
 
 import kotlin.math.*
+import kotlin.random.Random
 
 class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
@@ -51,7 +52,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var breathQuality = 0f
     private var breathStyle = BreathStyle.UNKNOWN
     private var maxBranchesAllowed = 6
-    private var plantPersonality = PlantPersonality.BALANCED
+    private var plantPersonality = PlantPersonality.TALL_STRAIGHT
     private val maxHistorySize = 50
     
     enum class BreathStyle {
@@ -155,7 +156,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         forceTimestamps.clear()
         breathQuality = 0f
         breathStyle = BreathStyle.UNKNOWN
-        plantPersonality = PlantPersonality.BALANCED
+        plantPersonality = PlantPersonality.TALL_STRAIGHT
         resetDynamicParameters()
     }
     
@@ -220,7 +221,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             BreathStyle.STABLE_LONG -> PlantPersonality.TALL_STRAIGHT
             BreathStyle.SHORT_STRONG -> PlantPersonality.COMPACT_WIDE
             BreathStyle.IRREGULAR -> PlantPersonality.CURVED_WILD
-            else -> PlantPersonality.BALANCED
+            else -> PlantPersonality.TALL_STRAIGHT
         }
         
         // Ajuster les paramètres dynamiques
@@ -232,22 +233,19 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun updateDynamicParameters() {
         when (plantPersonality) {
             PlantPersonality.TALL_STRAIGHT -> {
-                dynamicMaxBranches = (2..4).random() // Peu de branches
+                dynamicMaxBranches = Random.nextInt(2, 5) // Peu de branches
                 dynamicBranchThreshold = 0.25f // Plus difficile de créer des branches
                 dynamicGrowthStyle = 1.2f // Croissance plus verticale
             }
             PlantPersonality.COMPACT_WIDE -> {
-                dynamicMaxBranches = (4..6).random() // Plus de branches
+                dynamicMaxBranches = Random.nextInt(4, 7) // Plus de branches
                 dynamicBranchThreshold = 0.15f // Plus facile de créer des branches
                 dynamicGrowthStyle = 0.8f // Croissance plus compacte
             }
             PlantPersonality.CURVED_WILD -> {
-                dynamicMaxBranches = (1..5).random() // Variable
+                dynamicMaxBranches = Random.nextInt(1, 6) // Variable
                 dynamicBranchThreshold = 0.12f // Très sensible aux variations
                 dynamicGrowthStyle = 0.9f // Croissance irrégulière
-            }
-            else -> {
-                resetDynamicParameters()
             }
         }
     }
@@ -297,7 +295,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 PlantPersonality.TALL_STRAIGHT -> 0.2f
                 PlantPersonality.COMPACT_WIDE -> 0.8f
                 PlantPersonality.CURVED_WILD -> 1.5f
-                else -> 0.5f
             }
             
             val wiggle = sin(progress * PI * 3 + i * 0.5) * personalityWiggle * progress
@@ -317,8 +314,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val baseSpacing = when (plantPersonality) {
             PlantPersonality.TALL_STRAIGHT -> 60f // Plus écartées
             PlantPersonality.COMPACT_WIDE -> 35f  // Plus serrées
-            PlantPersonality.CURVED_WILD -> (30f..70f).random() // Aléatoire
-            else -> 50f
+            PlantPersonality.CURVED_WILD -> Random.nextFloat() * 40f + 30f // Aléatoire 30-70f
         }
         
         val isLeft: Boolean
@@ -390,34 +386,30 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             PlantPersonality.TALL_STRAIGHT -> 5f
             PlantPersonality.COMPACT_WIDE -> 15f
             PlantPersonality.CURVED_WILD -> 25f
-            else -> 10f
         }
         
-        val forcedOffset = position + (Math.random().toFloat() * personalityVariation - personalityVariation/2)
+        val forcedOffset = position + (Random.nextFloat() * personalityVariation - personalityVariation/2)
         
         val forcedAngle = when (plantPersonality) {
             PlantPersonality.TALL_STRAIGHT -> if (isLeft) -8f else +8f
             PlantPersonality.COMPACT_WIDE -> if (isLeft) -20f else +20f
-            PlantPersonality.CURVED_WILD -> if (isLeft) (-25f..-5f).random() else (5f..25f).random()
-            else -> if (isLeft) -12f else +12f
+            PlantPersonality.CURVED_WILD -> if (isLeft) Random.nextFloat() * 20f - 25f else Random.nextFloat() * 20f + 5f
         }
         
-        val baseHeightRatio = (heightRange.first + Math.random().toFloat() * (heightRange.second - heightRange.first))
+        val baseHeightRatio = (heightRange.first + Random.nextFloat() * (heightRange.second - heightRange.first))
         val branchMaxHeight = maxPossibleHeight * baseHeightRatio * dynamicGrowthStyle
         val thicknessVar = thickness
         
         val personalityFactor = when (plantPersonality) {
             PlantPersonality.TALL_STRAIGHT -> 0.98f
             PlantPersonality.COMPACT_WIDE -> 0.90f  
-            PlantPersonality.CURVED_WILD -> (0.85f..1.05f).random()
-            else -> 0.95f
+            PlantPersonality.CURVED_WILD -> Random.nextFloat() * 0.2f + 0.85f
         }
         
         val trembleFreq = when (plantPersonality) {
             PlantPersonality.TALL_STRAIGHT -> 0.8f
             PlantPersonality.COMPACT_WIDE -> 1.2f
-            PlantPersonality.CURVED_WILD -> (0.6f..1.5f).random()
-            else -> 1.0f
+            PlantPersonality.CURVED_WILD -> Random.nextFloat() * 0.9f + 0.6f
         }
         
         val curvatureDir = if (isLeft) -1f else 1f
@@ -439,7 +431,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        val divergenceForce = position + (Math.random().toFloat() * 20f - 10f)
+        val divergenceForce = position + (Random.nextFloat() * 20f - 10f)
         val initialHeight = 12f
         val initialX = startX + divergenceForce
         val initialY = stemBaseY - initialHeight
