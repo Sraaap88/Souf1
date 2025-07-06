@@ -69,7 +69,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     fun processStemGrowth(force: Float, phaseTime: Long) {
         // INITIALISATION FORCÉE : créer le point de base dès le premier appel
         if (mainStem.isEmpty() && !isEmerging) {
-            println("INITIALISATION FORCÉE - Création point de base")
             isEmerging = true
             emergenceStartTime = System.currentTimeMillis()
             // Créer immédiatement un point de base visible
@@ -95,16 +94,10 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         // Phase de croissance normale - STRICTEMENT avec souffle actif
         if (force > forceThreshold && mainStem.isNotEmpty()) {
             // Vérification RENFORCÉE : force doit être stable et forte
-            if (force > forceThreshold * 1.5f) { // Augmenté de 1.2f à 1.5f - encore plus strict
+            if (force > forceThreshold * 1.5f) {
                 growthManager.growMainStem(force)
                 
-                // Faire pousser TOUTES les branches actives avec debug
-                if (branches.isNotEmpty()) {
-                    println("=== CROISSANCE ${branches.size} BRANCHES ===")
-                    for (i in branches.indices) {
-                        println("Branche ${i+1}: H=${branches[i].currentHeight.toInt()}/${branches[i].maxHeight.toInt()}, Points=${branches[i].points.size}")
-                    }
-                }
+                // Faire pousser TOUTES les branches actives - SIMPLE
                 growthManager.growAllBranches(force)
                 
                 // Détection ramification (souffle saccadé) - max 6 branches
@@ -173,46 +166,42 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        println("=== CRÉATION BRANCHE ${branchCount} PAR SACCADÉ ===")
-        
-        // PROGRESSION LOGIQUE : proche droite, proche gauche, loin droite, loin gauche, très loin droite, très loin gauche
+        // UTILISER LA LOGIQUE "PROCHE" QUI FONCTIONNE pour toutes les tiges
         val (isLeft, distance) = when (branchCount) {
-            1 -> Pair(false, "proche")     // Tige 1: droite proche
-            2 -> Pair(true, "proche")      // Tige 2: gauche proche  
-            3 -> Pair(false, "loin")       // Tige 3: droite loin
-            4 -> Pair(true, "loin")        // Tige 4: gauche loin
-            5 -> Pair(false, "tres_loin")  // Tige 5: droite très loin
-            6 -> Pair(true, "tres_loin")   // Tige 6: gauche très loin
+            1 -> Pair(false, "proche")     // Tige 1: droite proche ✅
+            2 -> Pair(true, "proche")      // Tige 2: gauche proche ✅  
+            3 -> Pair(false, "proche")     // Tige 3: droite proche (comme tige 1)
+            4 -> Pair(true, "proche")      // Tige 4: gauche proche (comme tige 2)
+            5 -> Pair(false, "proche")     // Tige 5: droite proche (comme tige 1)
+            6 -> Pair(true, "proche")      // Tige 6: gauche proche (comme tige 2)
             else -> Pair(false, "proche")  // Fallback
         }
         
-        // POSITIONS ALÉATOIRES avec espacement variable
-        val basePosition = when (distance) {
-            "proche" -> if (isLeft) (-40f to -60f) else (40f to 60f)           // Gauche: -40 à -60, Droite: +40 à +60
-            "loin" -> if (isLeft) (-70f to -90f) else (70f to 90f)             // Gauche: -70 à -90, Droite: +70 à +90
-            "tres_loin" -> if (isLeft) (-100f to -120f) else (100f to 120f)    // Gauche: -100 à -120, Droite: +100 à +120
-            else -> Pair(0f, 0f)
+        // POSITIONS avec la logique "proche" qui marche, mais espacées différemment
+        val basePosition = when (branchCount) {
+            1 -> (40f to 60f)     // Droite proche
+            2 -> (-60f to -40f)   // Gauche proche  
+            3 -> (70f to 90f)     // Droite plus loin
+            4 -> (-90f to -70f)   // Gauche plus loin
+            5 -> (100f to 120f)   // Droite encore plus loin
+            6 -> (-120f to -100f) // Gauche encore plus loin
+            else -> (40f to 60f)
         }
         
         val forcedOffset = (basePosition.first + Math.random() * (basePosition.second - basePosition.first)).toFloat()
         
-        // ANGLES PROGRESSIVEMENT PLUS PRONONCÉS
-        val forcedAngle = when (distance) {
-            "proche" -> if (isLeft) -12f else +12f     // Augmenté de ±10f à ±12f
-            "loin" -> if (isLeft) -17f else +17f       // Augmenté de ±15f à ±17f
-            "tres_loin" -> if (isLeft) -22f else +22f  // Nouveau: ±22f
-            else -> if (isLeft) -10f else +10f
-        }
+        // ANGLES simples comme tiges 1-2
+        val forcedAngle = if (isLeft) -12f else +12f // Même angle pour toutes
         
-        // HAUTEURS ALÉATOIRES selon l'ordre avec variation
+        // HAUTEURS ALÉATOIRES avec plages PLUS HAUTES pour toutes
         val baseHeightRange = when (branchCount) {
             1 -> (0.75f to 0.85f)  // Tige 1: 75-85%
             2 -> (0.70f to 0.80f)  // Tige 2: 70-80%
-            3 -> (0.65f to 0.75f)  // Tige 3: 65-75%
-            4 -> (0.60f to 0.70f)  // Tige 4: 60-70%
-            5 -> (0.55f to 0.65f)  // Tige 5: 55-65%
-            6 -> (0.50f to 0.60f)  // Tige 6: 50-60%
-            else -> (0.60f to 0.70f)
+            3 -> (0.70f to 0.80f)  // Tige 3: 70-80% (augmenté)
+            4 -> (0.65f to 0.75f)  // Tige 4: 65-75% (augmenté) 
+            5 -> (0.65f to 0.75f)  // Tige 5: 65-75% (augmenté de 55-65%)
+            6 -> (0.60f to 0.70f)  // Tige 6: 60-70% (augmenté de 50-60%)
+            else -> (0.65f to 0.75f)
         }
         
         val baseHeightRatio = (baseHeightRange.first + Math.random() * (baseHeightRange.second - baseHeightRange.first)).toFloat()
@@ -229,13 +218,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             else -> 0.70f
         }
         
-        // PERSONNALITÉS selon la position
-        val personalityFactor = when (distance) {
-            "proche" -> 0.95f      // Proches plus stables
-            "loin" -> 1.05f        // Loin plus dynamiques
-            "tres_loin" -> 1.15f   // Très loin très dynamiques
-            else -> 1.0f
-        }
+        // PERSONNALITÉS comme tiges 1-2
+        val personalityFactor = 0.95f // Même personnalité stable pour toutes
         val trembleFreq = 1.0f
         val curvatureDir = if (isLeft) -1f else 1f
         
@@ -257,14 +241,18 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // Premier segment : DIVERGENCE ALÉATOIRE selon distance
-        val initialHeight = 12f
-        val divergenceRange = when (distance) {
-            "proche" -> if (isLeft) (-50f to -70f) else (50f to 70f)           // ±50 à ±70
-            "loin" -> if (isLeft) (-80f to -100f) else (80f to 100f)           // ±80 à ±100
-            "tres_loin" -> if (isLeft) (-110f to -130f) else (110f to 130f)    // ±110 à ±130
-            else -> if (isLeft) (-40f to -60f) else (40f to 60f)
+        // DIVERGENCES comme tiges 1-2 mais plus espacées
+        val divergenceRange = when (branchCount) {
+            1 -> (50f to 70f)      // Droite proche
+            2 -> (-70f to -50f)    // Gauche proche
+            3 -> (80f to 100f)     // Droite plus loin
+            4 -> (-100f to -80f)   // Gauche plus loin  
+            5 -> (110f to 130f)    // Droite encore plus loin
+            6 -> (-130f to -110f)  // Gauche encore plus loin
+            else -> (50f to 70f)
         }
+        
+        val initialHeight = 12f
         
         val divergenceForce = (divergenceRange.first + Math.random() * (divergenceRange.second - divergenceRange.first)).toFloat()
         
@@ -277,10 +265,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} ${distance.uppercase()}")
-        println("Position: ${forcedOffset.toInt()}px, Divergence: ${divergenceForce.toInt()}px")
-        println("Hauteur: ${(baseHeightRatio*100).toInt()}%, Épaisseur: ${(thicknessVar*100).toInt()}%, Angle: ${forcedAngle}°")
-        println("================================")
+        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} - Position: ${forcedOffset.toInt()}px, Hauteur: ${(baseHeightRatio*100).toInt()}%")
     }
     
     // ==================== UTILITAIRES ====================
