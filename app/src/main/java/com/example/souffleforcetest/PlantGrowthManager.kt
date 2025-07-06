@@ -158,35 +158,39 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 // POSITION ultra-réaliste : même base mais divergence progressive
                 val baseX = plantStem.getStemBaseX() // MÊME BASE pour toutes
                 
-                // DIVERGENCE PROGRESSIVE selon le côté (comme votre dessin)
+                // DIVERGENCE PROGRESSIVE selon le côté ET la distance de base
                 val branchDirection = if (branch.angle < 0) -1f else 1f
                 val heightRatio = currentBranchHeight / branch.maxHeight
+                
+                // Calculer la distance de base de cette tige par rapport au centre
+                val baseDistance = abs(branch.baseOffset)
+                val divergenceMultiplier = baseDistance / 50f // Facteur basé sur la distance de base
                 
                 // PHASE 1: Divergence TRÈS forte et immédiate (0-15%)
                 val earlyDivergence = if (heightRatio < 0.15f) {
                     val divergenceRatio = heightRatio / 0.15f
-                    divergenceRatio * 60f * branchDirection // Augmenté de 50f à 60f
-                } else 60f * branchDirection
+                    divergenceRatio * 60f * branchDirection * divergenceMultiplier // Multiplié par la distance
+                } else 60f * branchDirection * divergenceMultiplier
                 
                 // PHASE 2: Courbure gracieuse continue (15-70%)
                 val midCurve = if (heightRatio > 0.15f && heightRatio < 0.7f) {
                     val midRatio = (heightRatio - 0.15f) / 0.55f
-                    val additionalCurve = sin(midRatio * PI.toFloat()) * 20f // Augmenté de 15f à 20f
+                    val additionalCurve = sin(midRatio * PI.toFloat()) * 20f * divergenceMultiplier // Multiplié par la distance
                     additionalCurve * branchDirection
                 } else 0f
                 
                 // PHASE 3: Courbure finale élégante (70-100%) avec RÉDUCTION 20%
                 val finalCurve = if (heightRatio > 0.7f) {
                     val finalRatio = (heightRatio - 0.7f) / 0.3f
-                    val elegantCurve = finalRatio * finalRatio * finalRatio * 15f // Réduit
-                    val downwardBend = finalRatio * finalRatio * 6f // Réduit
+                    val elegantCurve = finalRatio * finalRatio * finalRatio * 15f * divergenceMultiplier // Multiplié par la distance
+                    val downwardBend = finalRatio * finalRatio * 6f * divergenceMultiplier // Multiplié par la distance
                     
                     val curveReduction = if (heightRatio > 0.667f) 0.8f else 1f
                     (elegantCurve * branchDirection + downwardBend * abs(branchDirection) * 0.3f) * curveReduction
                 } else 0f
                 
                 // Effet de poids minimal pour garder l'écartement
-                val naturalWeight = heightRatio * heightRatio * 5f * abs(branchDirection)
+                val naturalWeight = heightRatio * heightRatio * 5f * abs(branchDirection) * divergenceMultiplier
                 
                 // Position finale : base commune + divergence progressive
                 val totalCurve = earlyDivergence + midCurve + finalCurve + naturalWeight
