@@ -71,7 +71,9 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         plantStem = PlantStem(w, h)
-        leavesManager = PlantLeavesManager(plantStem!!)
+        plantStem?.let { stem ->
+            leavesManager = PlantLeavesManager(stem)
+        }
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
