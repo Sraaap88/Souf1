@@ -1,5 +1,9 @@
 package com.example.souffleforcetest
 
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Color
 import kotlin.math.*
 
 class PlantLeavesManager(private val plantStem: PlantStem) {
@@ -9,316 +13,325 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     data class Leaf(
         val x: Float,
         val y: Float,
-        val width: Float,
-        val height: Float,
+        val size: Float,
         val angle: Float,
-        val stemIndex: Int, // -1 pour tige principale, 0-5 pour branches
-        val attachmentHeight: Float,
-        val leafType: LeafType,
+        val isLeft: Boolean,
+        val stemIndex: Int,
+        val branchIndex: Int = -1, // -1 pour tige principale
         var growthProgress: Float = 0f,
-        val side: LeafSide,
-        var oscillation: Float = 0f,
-        val lobeDensity: Int, // Nombre de lobes
-        val serrationDepth: Float, // Profondeur des dentelures
-        val leafShape: LeafShape, // Forme spécifique
-        val asymmetryFactor: Float, // Asymétrie naturelle
-        val ageStage: Float, // 0.0 = jeune, 1.0 = mature
-        val petioleLength: Float // Longueur du pétiole
+        val targetProgress: Float = 1f,
+        val leafType: LeafType = LeafType.NORMAL
     )
     
-    enum class LeafType { BASAL_LARGE, STEM_MEDIUM, STEM_SMALL }
-    enum class LeafSide { LEFT, RIGHT, CENTER }
-    enum class LeafShape { DEEPLY_LOBED, MODERATELY_LOBED, SLIGHTLY_TOOTHED }
+    enum class LeafType {
+        NORMAL,     // Feuille standard
+        SMALL,      // Petite feuille vers le sommet
+        BASE        // Feuille de base plus large
+    }
     
     // ==================== VARIABLES ====================
     
     private val leaves = mutableListOf<Leaf>()
-    private var leavesCreated = false
+    private var leavesInitialized = false
+    private var leafGrowthStartTime = 0L
+    
+    // ==================== PARAMÈTRES ====================
+    
+    private val leafGrowthDuration = 3000L // 3 secondes pour faire pousser toutes les feuilles
+    private val baseLeafSize = 45f
+    private val minLeafSize = 18f
+    private val leafSpacing = 35f // Distance entre les feuilles sur une tige
+    private val leafAngleVariation = 25f // Variation d'angle naturelle
+    
+    // ==================== PEINTURE ====================
+    
+    private val leafPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+        color = Color.rgb(60, 140, 60)
+    }
+    
+    private val leafOutlinePaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.STROKE
+        strokeWidth = 1.5f
+        color = Color.rgb(40, 100, 40)
+    }
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
-    fun updateLeaves(force: Float) {
-        if (!leavesCreated && plantStem.getStemHeight() > 50f) {
-            createAllLeaves()
-            leavesCreated = true
-        }
+    fun initializeLeaves() {
+        if (leavesInitialized) return
         
-        growExistingLeaves(force)
-        updateLeafOscillations()
+        leaves.clear()
+        leafGrowthStartTime = System.currentTimeMillis()
+        
+        // Créer les feuilles sur la tige principale
+        createLeavesOnMainStem()
+        
+        // Créer les feuilles sur les branches
+        createLeavesOnBranches()
+        
+        leavesInitialized = true
     }
     
-    fun getLeaves(): List<Leaf> = leaves
+    fun updateLeafGrowth() {
+        if (!leavesInitialized) return
+        
+        val currentTime = System.currentTimeMillis()
+        val elapsedTime = currentTime - leafGrowthStartTime
+        val globalProgress = (elapsedTime / leafGrowthDuration.toFloat()).coerceAtMost(1f)
+        
+        // Mise à jour progressive des feuilles (de bas en haut)
+        for (leaf in leaves) {
+            val leafStartDelay = (leaves.indexOf(leaf) * 100f) // 100ms entre chaque feuille
+            val leafProgress = ((elapsedTime - leafStartDelay) / (leafGrowthDuration * 0.7f)).coerceIn(0f, 1f)
+            
+            // Courbe de croissance smooth
+            leaf.growthProgress = if (leafProgress > 0f) {
+                val smoothProgress = 1f - (1f - leafProgress) * (1f - leafProgress)
+                smoothProgress * leaf.targetProgress
+            } else 0f
+        }
+    }
+    
+    fun drawLeaves(canvas: Canvas) {
+        if (!leavesInitialized) return
+        
+        for (leaf in leaves) {
+            if (leaf.growthProgress > 0.05f) {
+                drawSingleLeaf(canvas, leaf)
+            }
+        }
+    }
     
     fun resetLeaves() {
         leaves.clear()
-        leavesCreated = false
+        leavesInitialized = false
+        leafGrowthStartTime = 0L
     }
     
-    // ==================== CRÉATION DES FEUILLES ====================
-    
-    private fun createAllLeaves() {
-        createBasalLeaves()
-        createMainStemLeaves()
-        createBranchLeaves()
+    fun hasVisibleLeaves(): Boolean {
+        return leaves.any { it.growthProgress > 0.05f }
     }
     
-    private fun createBasalLeaves() {
-        val baseX = plantStem.getStemBaseX()
-        val baseY = plantStem.getStemBaseY()
-        val basalCount = (5..7).random()
+    // ==================== FONCTIONS PRIVÉES ====================
+    
+    private fun createLeavesOnMainStem() {
+        val mainStem = plantStem.mainStem
+        if (mainStem.size < 3) return
         
-        for (i in 0 until basalCount) {
-            val angle = (i * 360f / basalCount) + (-20..20).random()
-            val distance = (40..70).random().toFloat()
-            
-            val radians = Math.toRadians(angle.toDouble())
-            val leafX = baseX + (cos(radians) * distance).toFloat()
-            val leafY = baseY - (8..20).random().toFloat()
-            
-            val leaf = Leaf(
-                x = leafX,
-                y = leafY,
-                width = (55..85).random().toFloat(),
-                height = (30..45).random().toFloat(),
-                angle = angle + (-15..15).random(),
-                stemIndex = -1,
-                attachmentHeight = 0f,
-                leafType = LeafType.BASAL_LARGE,
-                side = determineSide(leafX, baseX),
-                lobeDensity = (8..12).random(),
-                serrationDepth = (0.3f..0.5f).random(),
-                leafShape = LeafShape.DEEPLY_LOBED,
-                asymmetryFactor = (0.1f..0.4f).random(),
-                ageStage = (0.3f..0.9f).random(),
-                petioleLength = (8f..18f).random()
-            )
-            
-            leaves.add(leaf)
-        }
-    }
-    
-    private fun createMainStemLeaves() {
-        if (plantStem.mainStem.size < 10) return
+        val stemHeight = plantStem.getStemHeight()
+        var currentHeight = 15f // Commencer un peu au-dessus de la base
+        var leafIndex = 0
+        var isLeft = true
         
-        val leafCount = (3..4).random()
-        
-        for (i in 0 until leafCount) {
-            val heightRatio = (0.15f + i * 0.25f)
-            val targetHeight = plantStem.getStemHeight() * heightRatio
+        while (currentHeight < stemHeight - 30f) { // S'arrêter avant le sommet
+            // Trouver le point de tige le plus proche
+            val targetY = plantStem.getStemBaseY() - currentHeight
+            val stemPoint = findClosestStemPoint(mainStem, targetY)
             
-            val stemPoint = findStemPointAtHeight(plantStem.mainStem, targetHeight) ?: continue
-            
-            val side = if (i % 2 == 0) LeafSide.LEFT else LeafSide.RIGHT
-            val sideMultiplier = if (side == LeafSide.LEFT) -1f else 1f
-            
-            val petioleLength = (12f..25f).random()
-            val leafX = stemPoint.x + (sideMultiplier * petioleLength)
-            val leafY = stemPoint.y - (2..8).random()
-            
-            val leaf = Leaf(
-                x = leafX,
-                y = leafY,
-                width = (40..60).random().toFloat(),
-                height = (22..35).random().toFloat(),
-                angle = (sideMultiplier * (30..60).random()).toFloat(),
-                stemIndex = -1,
-                attachmentHeight = targetHeight,
-                leafType = LeafType.STEM_MEDIUM,
-                side = side,
-                lobeDensity = (5..8).random(),
-                serrationDepth = (0.25f..0.45f).random(),
-                leafShape = LeafShape.MODERATELY_LOBED,
-                asymmetryFactor = (0.15f..0.35f).random(),
-                ageStage = (0.4f..0.8f).random(),
-                petioleLength = petioleLength
-            )
-            
-            leaves.add(leaf)
-        }
-    }
-    
-    private fun createBranchLeaves() {
-        for ((branchIndex, branch) in plantStem.branches.withIndex()) {
-            if (branch.points.size < 5) continue
-            
-            val leafCount = (2..3).random()
-            
-            for (i in 0 until leafCount) {
-                val heightRatio = (0.25f + i * 0.3f)
-                val targetHeight = branch.currentHeight * heightRatio
+            if (stemPoint != null) {
+                val leafSize = calculateLeafSize(currentHeight, stemHeight)
+                val leafType = determineLeafType(currentHeight, stemHeight)
+                val baseAngle = if (isLeft) -45f else 45f
+                val angleVariation = (Math.random() * leafAngleVariation - leafAngleVariation/2).toFloat()
+                val finalAngle = baseAngle + angleVariation
                 
-                val branchPoint = findStemPointAtHeight(branch.points, targetHeight) ?: continue
-                
-                val side = if (i % 2 == 0) LeafSide.LEFT else LeafSide.RIGHT
-                val sideMultiplier = if (side == LeafSide.LEFT) -1f else 1f
-                val branchDirection = if (branch.angle < 0) -1f else 1f
-                
-                val petioleLength = (8f..15f).random()
-                val leafX = branchPoint.x + (sideMultiplier * branchDirection * petioleLength)
-                val leafY = branchPoint.y - (1..6).random()
+                // Offset horizontal pour éviter que les feuilles se chevauchent avec la tige
+                val horizontalOffset = if (isLeft) -leafSize * 0.3f else leafSize * 0.3f
+                val leafX = stemPoint.x + horizontalOffset
                 
                 val leaf = Leaf(
                     x = leafX,
-                    y = leafY,
-                    width = (25..40).random().toFloat(),
-                    height = (15..25).random().toFloat(),
-                    angle = (sideMultiplier * branchDirection * (20..40).random()).toFloat(),
-                    stemIndex = branchIndex,
-                    attachmentHeight = targetHeight,
-                    leafType = LeafType.STEM_SMALL,
-                    side = side,
-                    lobeDensity = (3..6).random(),
-                    serrationDepth = (0.15f..0.3f).random(),
-                    leafShape = LeafShape.SLIGHTLY_TOOTHED,
-                    asymmetryFactor = (0.1f..0.3f).random(),
-                    ageStage = (0.5f..1.0f).random(),
-                    petioleLength = petioleLength
+                    y = targetY,
+                    size = leafSize,
+                    angle = finalAngle,
+                    isLeft = isLeft,
+                    stemIndex = mainStem.indexOf(stemPoint),
+                    leafType = leafType
                 )
                 
                 leaves.add(leaf)
+                leafIndex++
+                isLeft = !isLeft // Alterner les côtés
+            }
+            
+            currentHeight += leafSpacing + (Math.random() * 10f - 5f).toFloat() // Variation naturelle
+        }
+    }
+    
+    private fun createLeavesOnBranches() {
+        for ((branchIndex, branch) in plantStem.branches.withIndex()) {
+            if (!branch.isActive || branch.points.size < 3) continue
+            
+            val branchHeight = branch.currentHeight
+            var currentHeight = 10f // Commencer proche de la base de la branche
+            var isLeft = branchIndex % 2 == 0 // Alterner selon l'index de la branche
+            
+            while (currentHeight < branchHeight - 20f) {
+                val targetY = plantStem.getStemBaseY() - currentHeight
+                val branchPoint = findClosestStemPoint(branch.points, targetY)
+                
+                if (branchPoint != null) {
+                    val leafSize = calculateLeafSize(currentHeight, branchHeight) * 0.8f // Feuilles plus petites sur les branches
+                    val leafType = determineLeafType(currentHeight, branchHeight)
+                    val baseAngle = if (isLeft) -35f else 35f
+                    val angleVariation = (Math.random() * 15f - 7.5f).toFloat()
+                    val finalAngle = baseAngle + angleVariation
+                    
+                    val horizontalOffset = if (isLeft) -leafSize * 0.25f else leafSize * 0.25f
+                    val leafX = branchPoint.x + horizontalOffset
+                    
+                    val leaf = Leaf(
+                        x = leafX,
+                        y = targetY,
+                        size = leafSize,
+                        angle = finalAngle,
+                        isLeft = isLeft,
+                        stemIndex = branch.points.indexOf(branchPoint),
+                        branchIndex = branchIndex,
+                        leafType = leafType
+                    )
+                    
+                    leaves.add(leaf)
+                    isLeft = !isLeft
+                }
+                
+                currentHeight += leafSpacing * 1.2f + (Math.random() * 8f - 4f).toFloat()
             }
         }
     }
     
-    // ==================== CROISSANCE AVEC SOUFFLE ====================
-    
-    private fun growExistingLeaves(force: Float) {
-        for (i in leaves.indices) {
-            val leaf = leaves[i]
-            
-            if (leaf.growthProgress < 1f) {
-                val baseSpeed = when (leaf.leafType) {
-                    LeafType.BASAL_LARGE -> 0.012f
-                    LeafType.STEM_MEDIUM -> 0.018f
-                    LeafType.STEM_SMALL -> 0.025f
-                }
-                
-                // Vitesse selon l'âge (jeunes poussent plus vite)
-                val ageMultiplier = 1.3f - (leaf.ageStage * 0.5f)
-                
-                val forceQuality = force.coerceIn(0f, 1f)
-                val breathMultiplier = 0.4f + (forceQuality * 1.1f)
-                
-                val progressCurve = sqrt(1f - leaf.growthProgress)
-                val finalSpeed = baseSpeed * ageMultiplier * breathMultiplier * progressCurve
-                
-                leaves[i] = leaf.copy(
-                    growthProgress = (leaf.growthProgress + finalSpeed).coerceAtMost(1f)
-                )
-            }
-        }
-    }
-    
-    private fun updateLeafOscillations() {
-        for (i in leaves.indices) {
-            val leaf = leaves[i]
-            val time = System.currentTimeMillis()
-            
-            val windStrength = 0.5f
-            val timeOffset = i * 0.8f
-            val sizeMultiplier = when (leaf.leafType) {
-                LeafType.BASAL_LARGE -> 0.4f
-                LeafType.STEM_MEDIUM -> 0.7f
-                LeafType.STEM_SMALL -> 1.1f
-            }
-            
-            val primaryWave = sin((time * 0.0006f) + timeOffset)
-            val secondaryWave = sin((time * 0.0012f) + timeOffset * 1.7f) * 0.4f
-            val microTremor = sin((time * 0.003f) + timeOffset * 2.3f) * 0.15f
-            
-            val oscillation = (primaryWave + secondaryWave + microTremor) * 
-                             windStrength * sizeMultiplier * leaf.growthProgress
-            
-            leaves[i] = leaf.copy(oscillation = oscillation)
-        }
-    }
-    
-    // ==================== FORME RÉALISTE ====================
-    
-    fun getRealisticLeafPath(leaf: Leaf): List<Pair<Float, Float>> {
-        val points = mutableListOf<Pair<Float, Float>>()
-        val currentWidth = leaf.width * leaf.growthProgress
-        val currentHeight = leaf.height * leaf.growthProgress
-        
-        if (currentWidth < 4f || currentHeight < 4f) return points
-        
-        val centerX = leaf.x + leaf.oscillation
-        val centerY = leaf.y
-        
-        val totalPoints = leaf.lobeDensity * 3
-        
-        for (i in 0..totalPoints) {
-            val progress = i.toFloat() / totalPoints
-            val angle = progress * PI.toFloat() * 2f
-            
-            // Forme de base avec asymétrie
-            val asymmetryX = 1f + sin(angle * 2f) * leaf.asymmetryFactor * 0.3f
-            val asymmetryY = 1f + cos(angle * 3f) * leaf.asymmetryFactor * 0.2f
-            
-            val baseRadius = currentWidth * 0.5f * asymmetryX
-            val baseX = cos(angle) * baseRadius
-            val baseY = sin(angle) * currentHeight * 0.5f * asymmetryY
-            
-            // Lobes selon le type de feuille
-            val lobeFactor = when (leaf.leafShape) {
-                LeafShape.DEEPLY_LOBED -> {
-                    val majorLobes = 1f + sin(angle * leaf.lobeDensity * 0.5f) * leaf.serrationDepth
-                    val fineSerrations = 1f + sin(angle * leaf.lobeDensity * 2f) * (leaf.serrationDepth * 0.3f)
-                    majorLobes * fineSerrations
-                }
-                LeafShape.MODERATELY_LOBED -> {
-                    1f + sin(angle * leaf.lobeDensity * 0.7f) * leaf.serrationDepth
-                }
-                LeafShape.SLIGHTLY_TOOTHED -> {
-                    1f + sin(angle * leaf.lobeDensity * 1.2f) * leaf.serrationDepth
-                }
-            }
-            
-            // Variation naturelle
-            val naturalVariation = 1f + sin(angle * 7.3f + leaf.x * 0.1f) * 0.05f
-            
-            val finalX = centerX + (baseX * lobeFactor * naturalVariation)
-            val finalY = centerY + (baseY * lobeFactor * naturalVariation)
-            
-            points.add(Pair(finalX, finalY))
-        }
-        
-        return points
-    }
-    
-    // ==================== COULEURS RÉALISTES ====================
-    
-    fun getLeafColor(leaf: Leaf): Triple<Int, Int, Int> {
-        val baseColor = when (leaf.ageStage) {
-            in 0.0f..0.3f -> Triple(60, 180, 60)   // Jeune : vert clair
-            in 0.3f..0.7f -> Triple(50, 150, 50)   // Moyen : vert moyen
-            else -> Triple(34, 139, 34)            // Mature : vert foncé
-        }
-        
-        val variation = (leaf.asymmetryFactor * 30).toInt()
-        val r = (baseColor.first + (-variation..variation).random()).coerceIn(0, 255)
-        val g = (baseColor.second + (-variation..variation).random()).coerceIn(0, 255)
-        val b = (baseColor.third + (-variation..variation).random()).coerceIn(0, 255)
-        
-        return Triple(r, g, b)
-    }
-    
-    // ==================== UTILITAIRES ====================
-    
-    private fun determineSide(leafX: Float, baseX: Float): LeafSide {
-        return when {
-            leafX < baseX - 20 -> LeafSide.LEFT
-            leafX > baseX + 20 -> LeafSide.RIGHT
-            else -> LeafSide.CENTER
-        }
-    }
-    
-    private fun findStemPointAtHeight(points: List<PlantStem.StemPoint>, targetHeight: Float): PlantStem.StemPoint? {
-        if (points.isEmpty()) return null
-        
-        val baseY = plantStem.getStemBaseY()
-        val targetY = baseY - targetHeight
-        
+    private fun findClosestStemPoint(points: List<PlantStem.StemPoint>, targetY: Float): PlantStem.StemPoint? {
         return points.minByOrNull { abs(it.y - targetY) }
+    }
+    
+    private fun calculateLeafSize(currentHeight: Float, totalHeight: Float): Float {
+        val heightRatio = currentHeight / totalHeight
+        
+        return when {
+            heightRatio < 0.3f -> baseLeafSize * (0.7f + heightRatio) // Feuilles moyennes à la base
+            heightRatio < 0.7f -> baseLeafSize // Feuilles pleines au milieu
+            else -> baseLeafSize * (1.3f - heightRatio) // Feuilles qui diminuent vers le sommet
+        }.coerceAtLeast(minLeafSize)
+    }
+    
+    private fun determineLeafType(currentHeight: Float, totalHeight: Float): LeafType {
+        val heightRatio = currentHeight / totalHeight
+        
+        return when {
+            heightRatio < 0.2f -> LeafType.BASE
+            heightRatio > 0.8f -> LeafType.SMALL
+            else -> LeafType.NORMAL
+        }
+    }
+    
+    private fun drawSingleLeaf(canvas: Canvas, leaf: Leaf) {
+        val currentSize = leaf.size * leaf.growthProgress
+        if (currentSize < 2f) return
+        
+        canvas.save()
+        canvas.translate(leaf.x, leaf.y)
+        canvas.rotate(leaf.angle)
+        
+        // Dessiner la forme de feuille de marguerite (allongée avec bords lobés)
+        val path = createDaisyLeafPath(currentSize, leaf.leafType)
+        
+        // Remplissage de la feuille
+        leafPaint.color = getLeafColor(leaf)
+        canvas.drawPath(path, leafPaint)
+        
+        // Contour de la feuille
+        canvas.drawPath(path, leafOutlinePaint)
+        
+        // Nervure centrale
+        drawLeafVein(canvas, currentSize)
+        
+        canvas.restore()
+    }
+    
+    private fun createDaisyLeafPath(size: Float, leafType: LeafType): Path {
+        val path = Path()
+        
+        // Paramètres selon le type de feuille
+        val width = when (leafType) {
+            LeafType.BASE -> size * 0.7f
+            LeafType.SMALL -> size * 0.5f
+            LeafType.NORMAL -> size * 0.6f
+        }
+        
+        val length = size
+        val lobeDepth = width * 0.2f // Profondeur des lobes
+        val lobeCount = 4 // Nombre de lobes de chaque côté
+        
+        // Commencer à la base de la feuille
+        path.moveTo(0f, 0f)
+        
+        // Côté droit avec lobes
+        for (i in 0..lobeCount) {
+            val progress = i.toFloat() / lobeCount
+            val y = -length * progress
+            val baseX = width * 0.5f * (1f - progress * 0.3f) // Rétrécissement vers le sommet
+            
+            if (i > 0) {
+                // Créer un lobe
+                val lobeX = baseX + sin(progress * PI * 2) * lobeDepth * (1f - progress)
+                path.lineTo(lobeX.toFloat(), y)
+            } else {
+                path.lineTo(baseX, y)
+            }
+        }
+        
+        // Sommet pointu de la feuille
+        path.lineTo(0f, -length)
+        
+        // Côté gauche avec lobes (symétrique)
+        for (i in lobeCount downTo 0) {
+            val progress = i.toFloat() / lobeCount
+            val y = -length * progress
+            val baseX = -width * 0.5f * (1f - progress * 0.3f)
+            
+            if (i < lobeCount) {
+                val lobeX = baseX - sin(progress * PI * 2) * lobeDepth * (1f - progress)
+                path.lineTo(lobeX.toFloat(), y)
+            } else {
+                path.lineTo(baseX, y)
+            }
+        }
+        
+        path.close()
+        return path
+    }
+    
+    private fun getLeafColor(leaf: Leaf): Int {
+        val baseGreen = Color.rgb(60, 140, 60)
+        
+        // Variation subtile selon le type et la position
+        return when (leaf.leafType) {
+            LeafType.BASE -> Color.rgb(65, 145, 65) // Légèrement plus clair
+            LeafType.SMALL -> Color.rgb(55, 135, 55) // Légèrement plus foncé
+            LeafType.NORMAL -> baseGreen
+        }
+    }
+    
+    private fun drawLeafVein(canvas: Canvas, size: Float) {
+        // Nervure centrale simple
+        leafOutlinePaint.strokeWidth = 1f
+        canvas.drawLine(0f, 0f, 0f, -size * 0.8f, leafOutlinePaint)
+        
+        // Nervures secondaires
+        leafOutlinePaint.strokeWidth = 0.5f
+        val veinCount = 3
+        for (i in 1..veinCount) {
+            val progress = i.toFloat() / (veinCount + 1)
+            val y = -size * progress * 0.7f
+            val x = size * 0.15f * sin(progress * PI).toFloat()
+            
+            canvas.drawLine(-x, y, 0f, y * 1.1f, leafOutlinePaint)
+            canvas.drawLine(x, y, 0f, y * 1.1f, leafOutlinePaint)
+        }
+        
+        leafOutlinePaint.strokeWidth = 1.5f // Restaurer l'épaisseur normale
     }
 }
