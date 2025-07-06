@@ -42,7 +42,6 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     private var lastForce = 0f
     private var leafCreationTimer = 0L
     private val leafCreationInterval = 150L // Une feuille toutes les 150ms
-    private var basalLeavesCreated = false
     
     // ==================== PARAMÈTRES ====================
     
@@ -295,92 +294,6 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         )
     }
     
-    private fun createBasalLeafPath(path: Path, x: Float, y: Float, size: Float, personality: LeafPersonality, angle: Float): Path {
-        // Feuille basale : forme spatulée typique des marguerites
-        val length = size * 1.5f // Plus allongée
-        val maxWidth = size * 0.4f // Plus étroite
-        
-        val points = mutableListOf<Pair<Float, Float>>()
-        val lobeCount = 8 + (personality.teethCount % 4) // 8-12 lobes
-        
-        // Créer la forme spatulée avec lobes arrondis
-        for (i in 0..lobeCount) {
-            val t = i.toFloat() / lobeCount
-            
-            // Forme spatulée : étroite à la base, large au sommet
-            val widthAtT = maxWidth * (0.2f + 0.8f * t * t) // Progression quadratique
-            
-            // Position Y le long de la longueur
-            val yPos = -length * t
-            
-            // Lobes arrondis sur le côté gauche
-            val baseX = -widthAtT * 0.5f
-            val lobePhase = t * PI * 4 // 4 cycles de lobes
-            val lobeDepth = personality.teethDepth * widthAtT * 0.6f * sin(lobePhase).toFloat()
-            val leftX = baseX + lobeDepth
-            
-            points.add(Pair(leftX, yPos))
-        }
-        
-        // Côté droit (symétrique avec légère asymétrie)
-        for (i in lobeCount downTo 0) {
-            val t = i.toFloat() / lobeCount
-            val widthAtT = maxWidth * (0.2f + 0.8f * t * t)
-            val yPos = -length * t
-            
-            val baseX = widthAtT * 0.5f
-            val lobePhase = t * PI * 4
-            val lobeDepth = personality.teethDepth * widthAtT * 0.6f * sin(lobePhase).toFloat()
-            val asymmetryOffset = personality.asymmetry * widthAtT * t
-            val rightX = baseX - lobeDepth + asymmetryOffset
-            
-            points.add(Pair(rightX, yPos))
-        }
-        
-        // Rotation et construction du path
-        val rad = Math.toRadians(angle.toDouble())
-        val cos = cos(rad).toFloat()
-        val sin = sin(rad).toFloat()
-        
-        if (points.isNotEmpty()) {
-            val firstPoint = rotatePoint(points[0].first, points[0].second, cos, sin)
-            path.moveTo(x + firstPoint.first, y + firstPoint.second)
-            
-            for (i in 1 until points.size) {
-                val rotatedPoint = rotatePoint(points[i].first, points[i].second, cos, sin)
-                path.lineTo(x + rotatedPoint.first, y + rotatedPoint.second)
-            }
-            path.close()
-        }
-        
-        return path
-    }
-    
-    private fun createCaulineLeafPath(path: Path, x: Float, y: Float, size: Float, personality: LeafPersonality, angle: Float): Path {
-        // Feuille caulinaire : plus petite, forme lancéolée avec lobes moins profonds
-        val length = size * 1.3f // Allongée mais moins que les basales
-        val maxWidth = size * 0.35f // Encore plus étroite
-        
-        val points = mutableListOf<Pair<Float, Float>>()
-        val lobeCount = 4 + (personality.teethCount % 3) // 4-7 lobes
-        
-        // Forme lancéolée (effilée aux deux bouts)
-        for (i in 0..lobeCount) {
-            val t = i.toFloat() / lobeCount
-            
-            // Forme lancéolée : étroite aux bouts, large au milieu
-            val widthMultiplier = sin(PI * t).toFloat() // Courbe sinusoïdale
-            val widthAtT = maxWidth * (0.3f + 0.7f * widthMultiplier)
-            
-            val yPos = -length * t
-            
-            // Lobes plus doux et moins profonds
-            val baseX = -widthAtT * 0.5f
-            val lobePhase = t * PI * 3 // 3 cycles pour moins de lobes
-            val lobeDepth = personality.teethDepth * widthAtT * 0.4f * sin(lobePhase).toFloat()
-            val leftX = baseX + lobeDepth
-            
-            points.add(Pair(leftX, yPos))
     private fun growExistingLeaves(force: Float) {
         for (leaf in leaves) {
             if (leaf.currentSize < leaf.maxSize && force > forceThreshold) {
@@ -400,14 +313,6 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         }
     }
     
-    private fun rotatePoint(x: Float, y: Float, cos: Float, sin: Float): Pair<Float, Float> {
-        return Pair(
-            x * cos - y * sin,
-            x * sin + y * cos
-        )
-    }
-}
-    
     private fun updateLeafPhysics() {
         for (leaf in leaves) {
             // Oscillation réduite
@@ -416,5 +321,12 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             // Limiter l'oscillation
             leaf.oscillation = leaf.oscillation.coerceIn(-4f, 4f)
         }
+    }
+    
+    private fun rotatePoint(x: Float, y: Float, cos: Float, sin: Float): Pair<Float, Float> {
+        return Pair(
+            x * cos - y * sin,
+            x * sin + y * cos
+        )
     }
 }
