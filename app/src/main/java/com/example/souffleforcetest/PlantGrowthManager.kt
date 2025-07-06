@@ -197,16 +197,6 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 val currentX = baseX + totalCurve
                 val currentY = plantStem.getStemBaseY() - currentBranchHeight
                 
-                // DEBUG: Courbure réaliste par phases
-                if (branch.points.size <= 5) {
-                    val phase = when {
-                        heightRatio < 0.3f -> "DÉPART"
-                        heightRatio < 0.7f -> "MILIEU" 
-                        else -> "SOMMET"
-                    }
-                    println("Branche ${if (branch.angle < 0) "GAUCHE" else "DROITE"} - ${phase}: X=${currentX.toInt()} (courbe=${totalCurve.toInt()}px)")
-                }
-                
                 // Oscillation adaptée à chaque tige
                 val forceVariation = abs(force - plantStem.getLastForce()) * 2.5f * branch.personalityFactor
                 val heightMultiplier = 1f + progressFromBase * 0.4f
