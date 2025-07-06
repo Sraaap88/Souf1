@@ -58,7 +58,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
-    private val branchThreshold = 0.18f // Augmenté de 0.12f à 0.18f pour éviter branches accidentelles
+    private val branchThreshold = 0.3f // Augmenté de 0.18f à 0.3f pour moins de branches accidentelles
     private val emergenceDuration = 1000L
     private val maxBranches = 6 // 6 tiges secondaires + 1 principale = 7 total
     
@@ -104,8 +104,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 // Faire pousser TOUTES les branches actives - SIMPLE
                 growthManager.growAllBranches(force)
                 
-                // Détection ramification (souffle saccadé) - SEUIL RÉDUIT pour créer plus facilement
-                if (abs(force - lastForce) > 0.12f && stemHeight > 20f && branchCount < maxBranches) {
+                // Détection ramification (souffle saccadé) - SEUIL AUGMENTÉ pour moins de branches
+                if (abs(force - lastForce) > 0.25f && stemHeight > 30f && branchCount < maxBranches) {
                     createBranch()
                 }
             }
