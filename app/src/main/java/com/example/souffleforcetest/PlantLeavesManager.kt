@@ -6,7 +6,7 @@ import kotlin.math.*
 class PlantLeavesManager(private val plantStem: PlantStem) {
     
     // ==================== DATA CLASSES ====================
-     
+    
     data class Leaf(
         val x: Float,
         val y: Float,
@@ -41,7 +41,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     val leaves = mutableListOf<Leaf>()
     private var lastForce = 0f
     private var leafCreationTimer = 0L
-    private val leafCreationInterval = 300L // Une feuille toutes les 300ms
+    private val leafCreationInterval = 150L // Une feuille toutes les 150ms
     private var basalLeavesCreated = false
     
     // ==================== PARAMÈTRES ====================
@@ -104,13 +104,19 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     }
     
     fun getLeafColor(leaf: Leaf): Int {
-        // Variation de couleur selon la personnalité
-        val baseGreen = 34 + (leaf.personality.colorVariation * 40).toInt()
-        val variance = (15 * leaf.personality.colorVariation).toInt()
+        // Couleurs réalistes de marguerite avec dégradés
+        val baseValues = when (leaf.leafType) {
+            LeafType.BASAL -> Triple(45, 120, 35)      // Vert plus foncé pour feuilles basales
+            LeafType.CAULINE -> Triple(40, 130, 40)    // Vert légèrement plus clair pour caulinaires
+        }
         
-        val r = (baseGreen - variance).coerceIn(20, 60)
-        val g = (139 + variance).coerceIn(120, 180)
-        val b = (baseGreen).coerceIn(20, 60)
+        // Variation selon la personnalité et la maturité
+        val maturity = leaf.currentSize / leaf.maxSize
+        val maturityBonus = (maturity * 20).toInt() // Plus mature = plus foncé
+        
+        val r = (baseValues.first + (leaf.personality.colorVariation * 15).toInt() - maturityBonus).coerceIn(25, 65)
+        val g = (baseValues.second + (leaf.personality.colorVariation * 25).toInt() + maturityBonus).coerceIn(100, 160)
+        val b = (baseValues.third + (leaf.personality.colorVariation * 10).toInt() - maturityBonus).coerceIn(25, 55)
         
         return android.graphics.Color.rgb(r, g, b)
     }
@@ -262,47 +268,59 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     }
     
     private fun createBasalLeafPath(path: Path, x: Float, y: Float, size: Float, personality: LeafPersonality, angle: Float): Path {
-        // Feuille basale : grande, très dentée, allongée
-        val length = size
-        val width = size * personality.widthRatio
+        // Feuille basale : forme spatulée typique des marguerites
+        val length = size * 1.5f // Plus allongée
+        val maxWidth = size * 0.4f // Plus étroite
         
-        // Points de la feuille avec dents
         val points = mutableListOf<Pair<Float, Float>>()
+        val lobeCount = 8 + (personality.teethCount % 4) // 8-12 lobes
         
-        // Côté gauche avec dents
-        for (i in 0..personality.teethCount) {
-            val t = i.toFloat() / personality.teethCount
-            val baseY = -length * t
-            val baseX = -width * 0.5f * sin(PI * t).toFloat() * (1f + personality.curvature * t)
+        // Créer la forme spatulée avec lobes arrondis
+        for (i in 0..lobeCount) {
+            val t = i.toFloat() / lobeCount
             
-            // Ajouter la dent
-            val toothDepth = personality.teethDepth * width * sin(PI * t * 2).toFloat()
-            val toothX = baseX + toothDepth
+            // Forme spatulée : étroite à la base, large au sommet
+            val widthAtT = maxWidth * (0.2f + 0.8f * t * t) // Progression quadratique
             
-            points.add(Pair(toothX, baseY))
+            // Position Y le long de la longueur
+            val yPos = -length * t
+            
+            // Lobes arrondis sur le côté gauche
+            val baseX = -widthAtT * 0.5f
+            val lobePhase = t * PI * 4 // 4 cycles de lobes
+            val lobeDepth = personality.teethDepth * widthAtT * 0.6f * sin(lobePhase).toFloat()
+            val leftX = baseX + lobeDepth
+            
+            points.add(Pair(leftX, yPos))
         }
         
-        // Côté droit avec dents (symétrique mais avec asymétrie)
-        for (i in personality.teethCount downTo 0) {
-            val t = i.toFloat() / personality.teethCount
-            val baseY = -length * t
-            val baseX = width * 0.5f * sin(PI * t).toFloat() * (1f + personality.curvature * t)
+        // Côté droit (symétrique avec légère asymétrie)
+        for (i in lobeCount downTo 0) {
+            val t = i.toFloat() / lobeCount
+            val widthAtT = maxWidth * (0.2f + 0.8f * t * t)
+            val yPos = -length * t
             
-            // Asymétrie
-            val asymmetryOffset = personality.asymmetry * width * t
+            val baseX = widthAtT * 0.5f
+            val lobePhase = t * PI * 4
+            val lobeDepth = personality.teethDepth * widthAtT * 0.6f * sin(lobePhase).toFloat()
+            val asymmetryOffset = personality.asymmetry * widthAtT * t
+            val rightX = baseX - lobeDepth + asymmetryOffset
             
-            // Ajouter la dent
-            val toothDepth = personality.teethDepth * width * sin(PI * t * 2).toFloat()
-            val toothX = baseX - toothDepth + asymmetryOffset
-            
-            points.add(Pair(toothX, baseY))
+            points.add(Pair(rightX, yPos))
         }
         
-        // Construire le path
+        // Rotation et construction du path
+        val rad = Math.toRadians(angle.toDouble())
+        val cos = cos(rad).toFloat()
+        val sin = sin(rad).toFloat()
+        
         if (points.isNotEmpty()) {
-            path.moveTo(x + points[0].first, y + points[0].second)
+            val firstPoint = rotatePoint(points[0].first, points[0].second, cos, sin)
+            path.moveTo(x + firstPoint.first, y + firstPoint.second)
+            
             for (i in 1 until points.size) {
-                path.lineTo(x + points[i].first, y + points[i].second)
+                val rotatedPoint = rotatePoint(points[i].first, points[i].second, cos, sin)
+                path.lineTo(x + rotatedPoint.first, y + rotatedPoint.second)
             }
             path.close()
         }
@@ -311,38 +329,49 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     }
     
     private fun createCaulineLeafPath(path: Path, x: Float, y: Float, size: Float, personality: LeafPersonality, angle: Float): Path {
-        // Feuille caulinaire : plus petite, lobée
-        val length = size * 0.8f
-        val width = size * personality.widthRatio
+        // Feuille caulinaire : plus petite, forme lancéolée avec lobes moins profonds
+        val length = size * 1.3f // Allongée mais moins que les basales
+        val maxWidth = size * 0.35f // Encore plus étroite
         
         val points = mutableListOf<Pair<Float, Float>>()
+        val lobeCount = 4 + (personality.teethCount % 3) // 4-7 lobes
         
-        // Forme plus simple, lobée
-        for (i in 0..personality.teethCount) {
-            val t = i.toFloat() / personality.teethCount
-            val baseY = -length * t
-            val baseX = -width * 0.5f * sin(PI * t).toFloat()
+        // Forme lancéolée (effilée aux deux bouts)
+        for (i in 0..lobeCount) {
+            val t = i.toFloat() / lobeCount
             
-            // Lobes plus doux
-            val lobeDepth = personality.teethDepth * width * 0.7f
-            val lobeX = baseX + lobeDepth * sin(PI * t * 3).toFloat()
+            // Forme lancéolée : étroite aux bouts, large au milieu
+            val widthMultiplier = sin(PI * t).toFloat() // Courbe sinusoïdale
+            val widthAtT = maxWidth * (0.3f + 0.7f * widthMultiplier)
             
-            points.add(Pair(lobeX, baseY))
+            val yPos = -length * t
+            
+            // Lobes plus doux et moins profonds
+            val baseX = -widthAtT * 0.5f
+            val lobePhase = t * PI * 3 // 3 cycles pour moins de lobes
+            val lobeDepth = personality.teethDepth * widthAtT * 0.4f * sin(lobePhase).toFloat()
+            val leftX = baseX + lobeDepth
+            
+            points.add(Pair(leftX, yPos))
         }
         
         // Côté droit
-        for (i in personality.teethCount downTo 0) {
-            val t = i.toFloat() / personality.teethCount
-            val baseY = -length * t
-            val baseX = width * 0.5f * sin(PI * t).toFloat()
+        for (i in lobeCount downTo 0) {
+            val t = i.toFloat() / lobeCount
+            val widthMultiplier = sin(PI * t).toFloat()
+            val widthAtT = maxWidth * (0.3f + 0.7f * widthMultiplier)
+            val yPos = -length * t
             
-            val lobeDepth = personality.teethDepth * width * 0.7f
-            val lobeX = baseX - lobeDepth * sin(PI * t * 3).toFloat()
+            val baseX = widthAtT * 0.5f
+            val lobePhase = t * PI * 3
+            val lobeDepth = personality.teethDepth * widthAtT * 0.4f * sin(lobePhase).toFloat()
+            val asymmetryOffset = personality.asymmetry * widthAtT * 0.5f
+            val rightX = baseX - lobeDepth + asymmetryOffset
             
-            points.add(Pair(lobeX, baseY))
+            points.add(Pair(rightX, yPos))
         }
         
-        // Construire le path avec rotation
+        // Rotation et construction du path
         val rad = Math.toRadians(angle.toDouble())
         val cos = cos(rad).toFloat()
         val sin = sin(rad).toFloat()
