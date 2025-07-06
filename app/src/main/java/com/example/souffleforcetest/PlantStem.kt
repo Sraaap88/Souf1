@@ -57,7 +57,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private val oscillationDecay = 0.98f
     private val branchThreshold = 0.18f // Augmenté de 0.12f à 0.18f pour éviter branches accidentelles
     private val emergenceDuration = 1000L
-    private val maxBranches = 6 // 6 tiges secondaires + 1 principale = 7 total
+    private val maxBranches = 5 // 5 tiges secondaires + 1 principale = 6 total
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
@@ -166,60 +166,24 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // UTILISER LA LOGIQUE "PROCHE" QUI FONCTIONNE pour toutes les tiges
-        val (isLeft, distance) = when (branchCount) {
-            1 -> Pair(false, "proche")     // Tige 1: droite proche ✅
-            2 -> Pair(true, "proche")      // Tige 2: gauche proche ✅  
-            3 -> Pair(false, "proche")     // Tige 3: droite proche (comme tige 1)
-            4 -> Pair(true, "proche")      // Tige 4: gauche proche (comme tige 2)
-            5 -> Pair(false, "proche")     // Tige 5: droite proche (comme tige 1)
-            6 -> Pair(true, "proche")      // Tige 6: gauche proche (comme tige 2)
-            else -> Pair(false, "proche")  // Fallback
+        // NOUVELLE APPROCHE : Les 3 premières comme avant, les 2 nouvelles IDENTIQUES aux tiges 2-3
+        val (isLeft, basePos, heightRange, thickness) = when (branchCount) {
+            1 -> Pair(false, 40f to 60f, 0.75f to 0.85f, 0.90f)      // Tige 1: droite proche ✅
+            2 -> Pair(true, -60f to -40f, 0.70f to 0.80f, 0.85f)     // Tige 2: gauche proche ✅  
+            3 -> Pair(false, 70f to 90f, 0.70f to 0.80f, 0.80f)      // Tige 3: droite loin ✅
+            4 -> Pair(true, -80f to -60f, 0.70f to 0.80f, 0.85f)     // Tige 4: COPIE de tige 2 (gauche)
+            5 -> Pair(false, 90f to 110f, 0.70f to 0.80f, 0.80f)     // Tige 5: COPIE de tige 3 (droite)
+            else -> Pair(false, 40f to 60f, 0.70f to 0.80f, 0.80f)
         }
         
-        // POSITIONS avec la logique "proche" qui marche, mais espacées différemment
-        val basePosition = when (branchCount) {
-            1 -> (40f to 60f)     // Droite proche
-            2 -> (-60f to -40f)   // Gauche proche  
-            3 -> (70f to 90f)     // Droite plus loin
-            4 -> (-90f to -70f)   // Gauche plus loin
-            5 -> (100f to 120f)   // Droite encore plus loin
-            6 -> (-120f to -100f) // Gauche encore plus loin
-            else -> (40f to 60f)
-        }
-        
-        val forcedOffset = (basePosition.first + Math.random() * (basePosition.second - basePosition.first)).toFloat()
-        
-        // ANGLES simples comme tiges 1-2
-        val forcedAngle = if (isLeft) -12f else +12f // Même angle pour toutes
-        
-        // HAUTEURS ALÉATOIRES avec plages PLUS HAUTES pour toutes
-        val baseHeightRange = when (branchCount) {
-            1 -> (0.75f to 0.85f)  // Tige 1: 75-85%
-            2 -> (0.70f to 0.80f)  // Tige 2: 70-80%
-            3 -> (0.70f to 0.80f)  // Tige 3: 70-80% (augmenté)
-            4 -> (0.65f to 0.75f)  // Tige 4: 65-75% (augmenté) 
-            5 -> (0.65f to 0.75f)  // Tige 5: 65-75% (augmenté de 55-65%)
-            6 -> (0.60f to 0.70f)  // Tige 6: 60-70% (augmenté de 50-60%)
-            else -> (0.65f to 0.75f)
-        }
-        
-        val baseHeightRatio = (baseHeightRange.first + Math.random() * (baseHeightRange.second - baseHeightRange.first)).toFloat()
+        val forcedOffset = (basePos.first + Math.random() * (basePos.second - basePos.first)).toFloat()
+        val forcedAngle = if (isLeft) -12f else +12f
+        val baseHeightRatio = (heightRange.first + Math.random() * (heightRange.second - heightRange.first)).toFloat()
         val branchMaxHeight = maxPossibleHeight * baseHeightRatio
+        val thicknessVar = thickness
         
-        // ÉPAISSEURS DÉCROISSANTES selon l'ordre
-        val thicknessVar = when (branchCount) {
-            1 -> 0.90f  // Tige 1: 90%
-            2 -> 0.85f  // Tige 2: 85%
-            3 -> 0.80f  // Tige 3: 80%
-            4 -> 0.75f  // Tige 4: 75%
-            5 -> 0.70f  // Tige 5: 70% (nouveau)
-            6 -> 0.65f  // Tige 6: 65% (nouveau)
-            else -> 0.70f
-        }
-        
-        // PERSONNALITÉS comme tiges 1-2
-        val personalityFactor = 0.95f // Même personnalité stable pour toutes
+        // PERSONNALITÉ : Identique pour tiges 4-5 comme tiges 2-3
+        val personalityFactor = 0.95f
         val trembleFreq = 1.0f
         val curvatureDir = if (isLeft) -1f else 1f
         
@@ -241,21 +205,18 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // DIVERGENCES comme tiges 1-2 mais plus espacées
-        val divergenceRange = when (branchCount) {
-            1 -> (50f to 70f)      // Droite proche
-            2 -> (-70f to -50f)    // Gauche proche
-            3 -> (80f to 100f)     // Droite plus loin
-            4 -> (-100f to -80f)   // Gauche plus loin  
-            5 -> (110f to 130f)    // Droite encore plus loin
-            6 -> (-130f to -110f)  // Gauche encore plus loin
-            else -> (50f to 70f)
+        // DIVERGENCES : Nouvelles tiges COPIENT les tiges 2-3
+        val divergenceForce = when (branchCount) {
+            1 -> (50f + Math.random() * 20f).toFloat()         // Droite: 50-70
+            2 -> (-70f + Math.random() * 20f).toFloat()        // Gauche: -70 à -50
+            3 -> (80f + Math.random() * 20f).toFloat()         // Droite: 80-100
+            4 -> (-80f + Math.random() * 20f).toFloat()        // Gauche: -80 à -60 (comme tige 2)
+            5 -> (90f + Math.random() * 20f).toFloat()         // Droite: 90-110 (comme tige 3)
+            else -> (60f).toFloat()
         }
         
+        
         val initialHeight = 12f
-        
-        val divergenceForce = (divergenceRange.first + Math.random() * (divergenceRange.second - divergenceRange.first)).toFloat()
-        
         val initialX = startX + divergenceForce
         val initialY = stemBaseY - initialHeight
         val initialThickness = startThickness * 0.95f
