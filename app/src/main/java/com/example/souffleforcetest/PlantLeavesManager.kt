@@ -46,8 +46,8 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
-    private val baseLeafSize = 35f
-    private val maxLeafSize = 75f
+    private val baseLeafSize = 42f  // +20%
+    private val maxLeafSize = 90f   // +20%
     private val growthRate = 600f
     private val oscillationDecay = 0.96f
     
@@ -141,39 +141,70 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     }
     
     private fun createRealisticLeafPath(path: Path, x: Float, y: Float, size: Float, personality: LeafPersonality, angle: Float): Path {
-        // Forme unique spatulée pour toutes les feuilles
+        // Forme unique spatulée pour toutes les feuilles avec extrémité arrondie
         val length = size * 1.4f
         val maxWidth = size * 0.4f
         
         val points = mutableListOf<Pair<Float, Float>>()
         val lobeCount = 6 + (personality.teethCount % 4)
         
-        // Créer la forme spatulée réaliste
+        // Créer la forme spatulée réaliste avec extrémité arrondie
         for (i in 0..lobeCount) {
             val t = i.toFloat() / lobeCount
             
-            // Forme spatulée : étroite à la base, large au sommet
-            val widthAtT = maxWidth * (0.15f + 0.85f * t * t)
+            // Forme spatulée : étroite à la base, large au sommet avec extrémité arrondie
+            val widthAtT = if (t > 0.85f) {
+                // Extrémité arrondie : réduction progressive de la largeur
+                val tipT = (t - 0.85f) / 0.15f // 0 à 1 pour les derniers 15%
+                val roundingFactor = 1f - tipT * tipT // Courbe quadratique pour arrondir
+                maxWidth * (0.15f + 0.85f * 0.85f * 0.85f) * roundingFactor
+            } else {
+                maxWidth * (0.15f + 0.85f * t * t)
+            }
+            
             val yPos = -length * t
             
-            // Lobes arrondis et naturels
+            // Lobes arrondis sur les côtés + 2 petites ondulations à l'extrémité
             val baseX = -widthAtT * 0.5f
             val lobePhase = t * PI * 3.5f
-            val lobeDepth = personality.teethDepth * widthAtT * 0.5f * sin(lobePhase).toFloat()
-            val leftX = baseX + lobeDepth
+            var lobeDepth = personality.teethDepth * widthAtT * 0.5f * sin(lobePhase).toFloat()
             
+            // Ajouter 2 petites ondulations à l'extrémité (85% à 100%)
+            if (t > 0.85f) {
+                val tipT = (t - 0.85f) / 0.15f
+                val tipUndulation = sin(tipT * PI * 4).toFloat() * widthAtT * 0.15f // 2 ondulations (4 = 2*2)
+                lobeDepth += tipUndulation
+            }
+            
+            val leftX = baseX + lobeDepth
             points.add(Pair(leftX, yPos))
         }
         
-        // Côté droit avec asymétrie naturelle
+        // Côté droit avec asymétrie naturelle + ondulations symétriques
         for (i in lobeCount downTo 0) {
             val t = i.toFloat() / lobeCount
-            val widthAtT = maxWidth * (0.15f + 0.85f * t * t)
+            
+            val widthAtT = if (t > 0.85f) {
+                val tipT = (t - 0.85f) / 0.15f
+                val roundingFactor = 1f - tipT * tipT
+                maxWidth * (0.15f + 0.85f * 0.85f * 0.85f) * roundingFactor
+            } else {
+                maxWidth * (0.15f + 0.85f * t * t)
+            }
+            
             val yPos = -length * t
             
             val baseX = widthAtT * 0.5f
             val lobePhase = t * PI * 3.5f
-            val lobeDepth = personality.teethDepth * widthAtT * 0.5f * sin(lobePhase).toFloat()
+            var lobeDepth = personality.teethDepth * widthAtT * 0.5f * sin(lobePhase).toFloat()
+            
+            // Ondulations à l'extrémité côté droit
+            if (t > 0.85f) {
+                val tipT = (t - 0.85f) / 0.15f
+                val tipUndulation = sin(tipT * PI * 4).toFloat() * widthAtT * 0.15f
+                lobeDepth += tipUndulation
+            }
+            
             val asymmetryOffset = personality.asymmetry * widthAtT * t
             val rightX = baseX - lobeDepth + asymmetryOffset
             
@@ -203,19 +234,48 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val mainStem = plantStem.mainStem
         if (mainStem.size < 4) return
         
-        // Chercher un point approprié pour une nouvelle feuille
+        // Répartition naturelle : plus de feuilles vers le bas, moins vers le haut
+        val totalHeight = plantStem.getMaxPossibleHeight()
         val availablePoints = mutableListOf<Int>()
+        
         for (i in 2 until mainStem.size - 2) {
             val hasLeaf = leaves.any { it.stemIndex == -1 && it.pointIndex == i }
-            if (!hasLeaf && i % 2 == 0) { // Plus de feuilles
-                availablePoints.add(i)
+            if (!hasLeaf) {
+                val point = mainStem[i]
+                val heightRatio = (plantStem.getStemBaseY() - point.y) / totalHeight
+                
+                // Probabilité naturelle : plus de chances vers le bas
+                val naturalProbability = when {
+                    heightRatio < 0.3f -> 0.8f    // 80% de chance en bas
+                    heightRatio < 0.6f -> 0.5f    // 50% de chance au milieu
+                    else -> 0.2f                  // 20% de chance en haut
+                }
+                
+                // Espacement naturel avec variation aléatoire
+                val lastLeafDistance = leaves.filter { it.stemIndex == -1 }
+                    .minByOrNull { abs(it.pointIndex - i) }?.let { abs(it.pointIndex - i) } ?: 10
+                
+                val minDistance = 3 + (Math.random() * 2).toInt() // 3-5 points minimum
+                
+                if (lastLeafDistance >= minDistance && Math.random() < naturalProbability) {
+                    availablePoints.add(i)
+                }
             }
         }
         
         if (availablePoints.isNotEmpty()) {
             val pointIndex = availablePoints.random()
             val point = mainStem[pointIndex]
-            val side = (pointIndex % 2 == 0)
+            
+            // Alternance naturelle avec variation
+            val existingLeaves = leaves.filter { it.stemIndex == -1 }
+            val lastSide = existingLeaves.lastOrNull()?.side
+            val naturalSide = if (lastSide == null) {
+                Math.random() > 0.5
+            } else {
+                // 70% de chance d'alterner, 30% de garder le même côté (naturel)
+                if (Math.random() < 0.7) !lastSide else lastSide
+            }
             
             // Taille selon la hauteur : feuilles basses plus grandes
             val heightRatio = (plantStem.getStemBaseY() - point.y) / plantStem.getMaxPossibleHeight()
@@ -232,7 +292,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 stemIndex = -1,
                 pointIndex = pointIndex,
                 maxSize = size,
-                side = side,
+                side = naturalSide,
                 leafType = LeafType.CAULINE,
                 personality = personality
             )
@@ -245,19 +305,45 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val branch = plantStem.branches[branchIndex]
         if (branch.points.size < 4) return
         
-        // Chercher un point approprié pour une nouvelle feuille
+        // Répartition naturelle sur les branches aussi
         val availablePoints = mutableListOf<Int>()
+        
         for (i in 1 until branch.points.size - 1) {
             val hasLeaf = leaves.any { it.stemIndex == branchIndex && it.pointIndex == i }
-            if (!hasLeaf && i % 3 == 0) { // Espacement sur branches
-                availablePoints.add(i)
+            if (!hasLeaf) {
+                val point = branch.points[i]
+                val branchHeightRatio = i.toFloat() / branch.points.size
+                
+                // Plus de feuilles vers la base des branches
+                val naturalProbability = when {
+                    branchHeightRatio < 0.4f -> 0.6f    // 60% de chance vers la base
+                    branchHeightRatio < 0.7f -> 0.3f    // 30% de chance au milieu
+                    else -> 0.1f                        // 10% de chance vers le bout
+                }
+                
+                val lastLeafDistance = leaves.filter { it.stemIndex == branchIndex }
+                    .minByOrNull { abs(it.pointIndex - i) }?.let { abs(it.pointIndex - i) } ?: 5
+                
+                val minDistance = 2 + (Math.random() * 2).toInt() // 2-4 points minimum
+                
+                if (lastLeafDistance >= minDistance && Math.random() < naturalProbability) {
+                    availablePoints.add(i)
+                }
             }
         }
         
         if (availablePoints.isNotEmpty()) {
             val pointIndex = availablePoints.random()
             val point = branch.points[pointIndex]
-            val side = (pointIndex % 2 == 0)
+            
+            // Alternance naturelle sur la branche
+            val existingBranchLeaves = leaves.filter { it.stemIndex == branchIndex }
+            val lastSide = existingBranchLeaves.lastOrNull()?.side
+            val naturalSide = if (lastSide == null) {
+                Math.random() > 0.5
+            } else {
+                if (Math.random() < 0.6) !lastSide else lastSide // 60% alternance
+            }
             
             // Taille selon la hauteur sur la branche
             val heightRatio = (plantStem.getStemBaseY() - point.y) / plantStem.getMaxPossibleHeight()
@@ -274,7 +360,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 stemIndex = branchIndex,
                 pointIndex = pointIndex,
                 maxSize = size,
-                side = side,
+                side = naturalSide,
                 leafType = LeafType.CAULINE,
                 personality = personality
             )
