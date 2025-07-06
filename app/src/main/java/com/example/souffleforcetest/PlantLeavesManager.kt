@@ -12,12 +12,13 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val y: Float,
         val size: Float,
         val angle: Float,
-        val stemIndex: Int,          // -1 pour tige principale, 0+ pour branches
+        val stemIndex: Int,          // -1 pour tige principale, -2 pour basales, 0+ pour branches
         val pointIndex: Int,         // Index du point sur la tige
         var currentSize: Float = 0f,
         val maxSize: Float,
         val side: Boolean,           // true = droite, false = gauche
         var oscillation: Float = 0f,
+        var permanentCurve: Float = 0f, // AJOUT : courbure permanente comme les tiges
         val leafType: LeafType,      // Type de feuille
         val personality: LeafPersonality // Caractéristiques uniques
     )
@@ -46,17 +47,26 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
-    private val baseLeafSize = 42f  // +20%
-    private val maxLeafSize = 90f   // +20%
+    private val baseLeafSize = 50f  // +20% encore (42f → 50f)
+    private val maxLeafSize = 108f  // +20% encore (90f → 108f)
+    private val basalLeafSize = 65f // Feuilles basales plus longues
+    private val maxBasalLeafSize = 125f
     private val growthRate = 600f
     private val oscillationDecay = 0.96f
+    private var basalLeavesCreated = false
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processLeavesGrowth(force: Float) {
         val currentTime = System.currentTimeMillis()
         
-        // Créer des feuilles sur toutes les tiges (plus de rosette basale artificielle)
+        // Créer les feuilles basales en premier (rosette dense)
+        if (!basalLeavesCreated && force > forceThreshold) {
+            createBasalRosette()
+            basalLeavesCreated = true
+        }
+        
+        // Créer des feuilles sur toutes les tiges
         if (force > forceThreshold && currentTime - leafCreationTimer > leafCreationInterval) {
             createRealisticLeaves()
             leafCreationTimer = currentTime
@@ -65,7 +75,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         // Faire grandir les feuilles existantes
         growExistingLeaves(force)
         
-        // Mettre à jour les oscillations et effet poids
+        // Mettre à jour les oscillations et courbure par poids
         updateLeafPhysics()
         
         lastForce = force
@@ -75,6 +85,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         leaves.clear()
         lastForce = 0f
         leafCreationTimer = 0L
+        basalLeavesCreated = false
     }
     
     fun createLeafPath(leaf: Leaf): Path {
@@ -83,12 +94,12 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         if (currentSize <= 0) return path
         
         val personality = leaf.personality
-        val adjustedX = leaf.x + leaf.oscillation
+        val adjustedX = leaf.x + leaf.oscillation + leaf.permanentCurve
         
         // Calculer l'angle réaliste avec effet poids
         val realAngle = calculateRealisticLeafAngle(leaf)
         
-        // Toutes les feuilles utilisent la même forme (plus de distinction basal/cauline)
+        // Toutes les feuilles utilisent la même forme
         createRealisticLeafPath(path, adjustedX, leaf.y, currentSize, personality, realAngle)
         
         return path
@@ -111,6 +122,41 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     }
     
     // ==================== FONCTIONS PRIVÉES ====================
+    
+    private fun createBasalRosette() {
+        val baseX = plantStem.getStemBaseX()
+        val baseY = plantStem.getStemBaseY()
+        
+        // Créer 12-15 feuilles basales en rosette dense
+        val leafCount = 12 + (Math.random() * 4).toInt()
+        
+        for (i in 0 until leafCount) {
+            val angle = (i * 360f / leafCount) + (Math.random() * 20f - 10f).toFloat()
+            val distance = 25f + (Math.random() * 15f).toFloat() // Plus près de la base
+            
+            val leafX = baseX + cos(Math.toRadians(angle.toDouble())).toFloat() * distance
+            val leafY = baseY + sin(Math.toRadians(angle.toDouble())).toFloat() * distance * 0.3f
+            
+            // Feuilles basales plus longues
+            val size = basalLeafSize + (Math.random() * (maxBasalLeafSize - basalLeafSize)).toFloat()
+            val personality = generateLeafPersonality()
+            
+            val basalLeaf = Leaf(
+                x = leafX,
+                y = leafY,
+                size = size,
+                angle = angle + 90f, // Orientées vers l'extérieur
+                stemIndex = -2, // Code pour feuilles basales
+                pointIndex = -1,
+                maxSize = size,
+                side = angle > 0,
+                leafType = LeafType.BASAL,
+                personality = personality
+            )
+            
+            leaves.add(basalLeaf)
+        }
+    }
     
     private fun createRealisticLeaves() {
         // Créer feuilles sur la tige principale
@@ -169,10 +215,10 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val lobePhase = t * PI * 3.5f
             var lobeDepth = personality.teethDepth * widthAtT * 0.5f * sin(lobePhase).toFloat()
             
-            // Ajouter 2 petites ondulations à l'extrémité (85% à 100%)
+            // Ajouter 4 petites ondulations à l'extrémité (85% à 100%)
             if (t > 0.85f) {
                 val tipT = (t - 0.85f) / 0.15f
-                val tipUndulation = sin(tipT * PI * 4).toFloat() * widthAtT * 0.15f // 2 ondulations (4 = 2*2)
+                val tipUndulation = sin(tipT * PI * 8).toFloat() * widthAtT * 0.12f // 4 ondulations (8 = 4*2)
                 lobeDepth += tipUndulation
             }
             
@@ -198,10 +244,10 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val lobePhase = t * PI * 3.5f
             var lobeDepth = personality.teethDepth * widthAtT * 0.5f * sin(lobePhase).toFloat()
             
-            // Ondulations à l'extrémité côté droit
+            // Ondulations à l'extrémité côté droit (4 ondulations)
             if (t > 0.85f) {
                 val tipT = (t - 0.85f) / 0.15f
-                val tipUndulation = sin(tipT * PI * 4).toFloat() * widthAtT * 0.15f
+                val tipUndulation = sin(tipT * PI * 8).toFloat() * widthAtT * 0.12f // 4 ondulations
                 lobeDepth += tipUndulation
             }
             
@@ -401,11 +447,30 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     
     private fun updateLeafPhysics() {
         for (leaf in leaves) {
-            // Oscillation réduite
+            // Oscillation temporaire réduite
             leaf.oscillation *= oscillationDecay
             
-            // Limiter l'oscillation
+            // Courbure permanente par poids (comme les tiges)
+            val maturity = leaf.currentSize / leaf.maxSize
+            val weightStrength = maturity * maturity * 2f // Plus matures = plus lourdes
+            
+            // Direction de courbure selon le côté et la taille
+            val weightDirection = if (leaf.side) 1f else -1f
+            val weightInfluence = weightStrength * weightDirection * 0.015f
+            
+            // Transfert oscillation → courbure permanente
+            if (abs(leaf.oscillation) > 0.3f) {
+                val transferRate = 0.01f
+                leaf.permanentCurve += leaf.oscillation * transferRate
+                leaf.oscillation *= (1f - transferRate)
+            }
+            
+            // Ajouter effet poids progressif
+            leaf.permanentCurve += weightInfluence
+            
+            // Limites pour éviter courbures excessives
             leaf.oscillation = leaf.oscillation.coerceIn(-4f, 4f)
+            leaf.permanentCurve = leaf.permanentCurve.coerceIn(-15f, 15f)
         }
     }
     
