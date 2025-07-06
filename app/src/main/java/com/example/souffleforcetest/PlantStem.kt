@@ -166,8 +166,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // ESPACEMENT PROGRESSIF : Même distance entre chaque tige
-        // Distance de base entre tige 1 et 2 = environ 50px
+        // ESPACEMENT PROGRESSIF : Distance cumulative par rapport aux tiges précédentes du même côté
         val baseSpacing = 50f
         
         val isLeft: Boolean
@@ -190,25 +189,29 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             }
             3 -> {
                 isLeft = false
-                position = baseSpacing * 2                // +100px (droite, loin)
+                // Tige 3 = tige 1 + baseSpacing = 50 + 50 = 100px (droite)
+                position = baseSpacing * 2                
                 heightRange = Pair(0.70f, 0.80f)
                 thickness = 0.80f
             }
             4 -> {
                 isLeft = true
-                position = -baseSpacing * 2               // -100px (gauche, loin)
+                // Tige 4 = tige 2 + baseSpacing = -50 + (-50) = -100px (gauche)
+                position = -baseSpacing * 2               
                 heightRange = Pair(0.70f, 0.80f)
                 thickness = 0.80f
             }
             5 -> {
                 isLeft = false
-                position = baseSpacing * 3                // +150px (droite, très loin)
+                // Tige 5 = tige 3 + baseSpacing = 100 + 50 = 150px (droite)
+                position = baseSpacing * 3                
                 heightRange = Pair(0.65f, 0.75f)
                 thickness = 0.75f
             }
             6 -> {
                 isLeft = true
-                position = -baseSpacing * 3               // -150px (gauche, très loin)
+                // Tige 6 = tige 4 + baseSpacing = -100 + (-50) = -150px (gauche)
+                position = -baseSpacing * 3               
                 heightRange = Pair(0.65f, 0.75f)
                 thickness = 0.75f
             }
@@ -249,9 +252,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // DIVERGENCES : Même espacement que positions
+        // DIVERGENCES : Positionnement par rapport à la tige précédente du même côté
         val divergenceForce = position + (Math.random().toFloat() * 20f - 10f) // ±10px de variation
-        
         
         val initialHeight = 12f
         val initialX = startX + divergenceForce
@@ -263,7 +265,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} créée")
+        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} créée à position ${position.toInt()}px")
     }
     
     // ==================== UTILITAIRES ====================
