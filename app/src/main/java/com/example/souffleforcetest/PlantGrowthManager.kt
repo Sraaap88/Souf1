@@ -119,9 +119,9 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
     private fun growBranch(branch: PlantStem.Branch, force: Float) {
         if (branch.currentHeight >= branch.maxHeight) return
         
-        // DEBUG: Vérifier les valeurs de la branche
-        if (branch.points.size <= 2) { // Seulement au début
-            println("GROW BRANCH - baseOffset: ${branch.baseOffset}, angle: ${branch.angle}")
+        // DEBUG: Vérification de croissance pour toutes les branches
+        if (branch.points.size <= 3) {
+            println("BRANCH DEBUG - Num: ${plantStem.branches.indexOf(branch) + 1}, Height: ${branch.currentHeight.toInt()}, MaxHeight: ${branch.maxHeight.toInt()}, Growth: ${adjustedGrowth}")
         }
         
         // RÉSISTANCE PROGRESSIVE pour tiges secondaires aussi
@@ -167,8 +167,8 @@ class PlantGrowthManager(private val plantStem: PlantStem) {
                 // PHASE 1: Divergence TRÈS forte et immédiate (0-15%)
                 val earlyDivergence = if (heightRatio < 0.15f) {
                     val divergenceRatio = heightRatio / 0.15f
-                    divergenceRatio * 50f * branchDirection // Augmenté de 25f à 50f - TRÈS espacé
-                } else 50f * branchDirection
+                    divergenceRatio * 60f * branchDirection // Augmenté de 50f à 60f
+                } else 60f * branchDirection
                 
                 // PHASE 2: Courbure gracieuse continue (15-70%)
                 val midCurve = if (heightRatio > 0.15f && heightRatio < 0.7f) {
