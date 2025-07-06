@@ -166,19 +166,54 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // NOUVELLE APPROCHE : Les 3 premières comme avant, les 2 nouvelles IDENTIQUES aux tiges 2-3
-        val (isLeft, basePos, heightRange, thickness) = when (branchCount) {
-            1 -> Pair(false, 40f to 60f, 0.75f to 0.85f, 0.90f)      // Tige 1: droite proche ✅
-            2 -> Pair(true, -60f to -40f, 0.70f to 0.80f, 0.85f)     // Tige 2: gauche proche ✅  
-            3 -> Pair(false, 70f to 90f, 0.70f to 0.80f, 0.80f)      // Tige 3: droite loin ✅
-            4 -> Pair(true, -80f to -60f, 0.70f to 0.80f, 0.85f)     // Tige 4: COPIE de tige 2 (gauche)
-            5 -> Pair(false, 90f to 110f, 0.70f to 0.80f, 0.80f)     // Tige 5: COPIE de tige 3 (droite)
-            else -> Pair(false, 40f to 60f, 0.70f to 0.80f, 0.80f)
+        // NOUVELLE APPROCHE : Variables séparées pour éviter erreurs syntaxe
+        val isLeft: Boolean
+        val basePos: Pair<Float, Float>
+        val heightRange: Pair<Float, Float>
+        val thickness: Float
+        
+        when (branchCount) {
+            1 -> {
+                isLeft = false
+                basePos = Pair(40f, 60f)
+                heightRange = Pair(0.75f, 0.85f)
+                thickness = 0.90f
+            }
+            2 -> {
+                isLeft = true
+                basePos = Pair(-60f, -40f)
+                heightRange = Pair(0.70f, 0.80f)
+                thickness = 0.85f
+            }
+            3 -> {
+                isLeft = false
+                basePos = Pair(70f, 90f)
+                heightRange = Pair(0.70f, 0.80f)
+                thickness = 0.80f
+            }
+            4 -> {
+                isLeft = true
+                basePos = Pair(-80f, -60f)
+                heightRange = Pair(0.70f, 0.80f)
+                thickness = 0.85f
+            }
+            5 -> {
+                isLeft = false
+                basePos = Pair(90f, 110f)
+                heightRange = Pair(0.70f, 0.80f)
+                thickness = 0.80f
+            }
+            else -> {
+                isLeft = false
+                basePos = Pair(40f, 60f)
+                heightRange = Pair(0.70f, 0.80f)
+                thickness = 0.80f
+            }
         }
         
-        val forcedOffset = (basePos.first + Math.random() * (basePos.second - basePos.first)).toFloat()
+        val forcedOffset = (basePos.first + Math.random().toFloat() * (basePos.second - basePos.first))
         val forcedAngle = if (isLeft) -12f else +12f
-        val baseHeightRatio = (heightRange.first + Math.random() * (heightRange.second - heightRange.first)).toFloat()
+        val baseHeightRatio = (heightRange.first + Math.random().toFloat() * (heightRange.second - heightRange.first))
         val branchMaxHeight = maxPossibleHeight * baseHeightRatio
         val thicknessVar = thickness
         
@@ -207,12 +242,12 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         // DIVERGENCES : Nouvelles tiges COPIENT les tiges 2-3
         val divergenceForce = when (branchCount) {
-            1 -> (50f + Math.random() * 20f).toFloat()         // Droite: 50-70
-            2 -> (-70f + Math.random() * 20f).toFloat()        // Gauche: -70 à -50
-            3 -> (80f + Math.random() * 20f).toFloat()         // Droite: 80-100
-            4 -> (-80f + Math.random() * 20f).toFloat()        // Gauche: -80 à -60 (comme tige 2)
-            5 -> (90f + Math.random() * 20f).toFloat()         // Droite: 90-110 (comme tige 3)
-            else -> (60f).toFloat()
+            1 -> (50f + Math.random().toFloat() * 20f)         // Droite: 50-70
+            2 -> (-70f + Math.random().toFloat() * 20f)        // Gauche: -70 à -50
+            3 -> (80f + Math.random().toFloat() * 20f)         // Droite: 80-100
+            4 -> (-80f + Math.random().toFloat() * 20f)        // Gauche: -80 à -60 (comme tige 2)
+            5 -> (90f + Math.random().toFloat() * 20f)         // Droite: 90-110 (comme tige 3)
+            else -> 60f
         }
         
         
