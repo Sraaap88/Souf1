@@ -235,22 +235,29 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // AJOUT - Fonction pour dessiner les feuilles
+    // AJOUT - Fonction pour dessiner les feuilles réalistes
     private fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>) {
-        leafPaint.color = Color.rgb(34, 139, 34)
+        val stem = plantStem ?: return
         
         for (leaf in leaves) {
             if (leaf.currentSize > 0) {
-                val adjustedX = leaf.x + leaf.oscillation
-                val leafSize = leaf.currentSize
+                // Couleur unique pour chaque feuille
+                leafPaint.color = stem.getLeavesManager().getLeafColor(leaf)
                 
-                // Dessiner feuille simple (ovale)
-                val left = adjustedX - leafSize * 0.5f
-                val top = leaf.y - leafSize * 0.3f
-                val right = adjustedX + leafSize * 0.5f
-                val bottom = leaf.y + leafSize * 0.3f
+                // Créer le path de la feuille avec forme réaliste
+                val leafPath = stem.getLeavesManager().createLeafPath(leaf)
                 
-                canvas.drawOval(left, top, right, bottom, leafPaint)
+                // Dessiner la feuille
+                canvas.drawPath(leafPath, leafPaint)
+                
+                // Optionnel : contour plus foncé pour définition
+                if (leaf.currentSize > leaf.maxSize * 0.7f) {
+                    leafPaint.style = Paint.Style.STROKE
+                    leafPaint.strokeWidth = 1.5f
+                    leafPaint.color = Color.rgb(20, 80, 20)
+                    canvas.drawPath(leafPath, leafPaint)
+                    leafPaint.style = Paint.Style.FILL
+                }
             }
         }
     }
