@@ -100,8 +100,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 // Faire pousser TOUTES les branches actives - SIMPLE
                 growthManager.growAllBranches(force)
                 
-                // Détection ramification (souffle saccadé) - max 6 branches
-                if (abs(force - lastForce) > branchThreshold && stemHeight > 20f && branchCount < maxBranches) {
+                // Détection ramification (souffle saccadé) - SEUIL RÉDUIT pour créer plus facilement
+                if (abs(force - lastForce) > 0.12f && stemHeight > 20f && branchCount < maxBranches) {
                     createBranch()
                 }
             }
@@ -265,7 +265,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} - Position: ${forcedOffset.toInt()}px, Hauteur: ${(baseHeightRatio*100).toInt()}%")
+        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} créée")
     }
     
     // ==================== UTILITAIRES ====================
