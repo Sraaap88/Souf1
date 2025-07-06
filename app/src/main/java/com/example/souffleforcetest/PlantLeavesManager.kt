@@ -1,0 +1,177 @@
+package com.example.souffleforcetest
+
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Color
+import kotlin.math.*
+
+class PlantLeavesManager(private val plantStem: PlantStem) {
+    
+    // ==================== DATA CLASSES ====================
+    
+    data class Leaf(
+        val x: Float,
+        val y: Float,
+        val size: Float,
+        val angle: Float,
+        val stemIndex: Int,
+        val isOnMainStem: Boolean,
+        val branchIndex: Int = -1,
+        var growth: Float = 0f,
+        val maxGrowth: Float = 1f,
+        val side: Int // -1 = gauche, 1 = droite
+    )
+    
+    // ==================== VARIABLES ====================
+    
+    private val leaves = mutableListOf<Leaf>()
+    private var lastMainStemSize = 0
+    private val branchLastSizes = mutableMapOf<Int, Int>()
+    
+    private val leafPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+        color = Color.rgb(34, 139, 34)
+    }
+    
+    // ==================== PARAMÈTRES ====================
+    
+    private val leafSpacing = 15f // Distance entre feuilles sur une tige
+    private val leafBaseSize = 8f // Taille de base des feuilles
+    private val leafGrowthRate = 0.02f // Vitesse de croissance des feuilles
+    
+    // ==================== FONCTIONS PUBLIQUES ====================
+    
+    fun updateLeaves() {
+        generateNewLeaves()
+        growExistingLeaves()
+    }
+    
+    fun drawLeaves(canvas: Canvas) {
+        for (leaf in leaves) {
+            if (leaf.growth > 0.1f) {
+                drawSingleLeaf(canvas, leaf)
+            }
+        }
+    }
+    
+    fun resetLeaves() {
+        leaves.clear()
+        lastMainStemSize = 0
+        branchLastSizes.clear()
+    }
+    
+    // ==================== FONCTIONS PRIVÉES ====================
+    
+    private fun generateNewLeaves() {
+        // Feuilles sur tige principale
+        val currentMainSize = plantStem.mainStem.size
+        if (currentMainSize > lastMainStemSize && currentMainSize > 5) {
+            for (i in lastMainStemSize until currentMainSize) {
+                if (i % 3 == 0 && i < plantStem.mainStem.size) { // Feuille tous les 3 segments
+                    val stemPoint = plantStem.mainStem[i]
+                    val side = if (i % 6 == 0) 1 else -1 // Alternance gauche/droite
+                    
+                    val leaf = Leaf(
+                        x = stemPoint.x,
+                        y = stemPoint.y,
+                        size = leafBaseSize * (0.8f + Math.random().toFloat() * 0.4f),
+                        angle = side * (45f + Math.random().toFloat() * 30f),
+                        stemIndex = i,
+                        isOnMainStem = true,
+                        growth = 0f,
+                        maxGrowth = 0.7f + Math.random().toFloat() * 0.3f,
+                        side = side
+                    )
+                    leaves.add(leaf)
+                }
+            }
+        }
+        lastMainStemSize = currentMainSize
+        
+        // Feuilles sur branches
+        for ((branchIndex, branch) in plantStem.branches.withIndex()) {
+            if (!branch.isActive) continue
+            
+            val currentBranchSize = branch.points.size
+            val lastSize = branchLastSizes[branchIndex] ?: 0
+            
+            if (currentBranchSize > lastSize && currentBranchSize > 3) {
+                for (i in lastSize until currentBranchSize) {
+                    if (i % 4 == 0 && i < branch.points.size) { // Feuilles moins denses sur branches
+                        val branchPoint = branch.points[i]
+                        val side = if (i % 8 == 0) 1 else -1
+                        
+                        val leaf = Leaf(
+                            x = branchPoint.x,
+                            y = branchPoint.y,
+                            size = leafBaseSize * (0.6f + Math.random().toFloat() * 0.3f),
+                            angle = side * (30f + Math.random().toFloat() * 40f),
+                            stemIndex = i,
+                            isOnMainStem = false,
+                            branchIndex = branchIndex,
+                            growth = 0f,
+                            maxGrowth = 0.6f + Math.random().toFloat() * 0.2f,
+                            side = side
+                        )
+                        leaves.add(leaf)
+                    }
+                }
+            }
+            branchLastSizes[branchIndex] = currentBranchSize
+        }
+    }
+    
+    private fun growExistingLeaves() {
+        for (leaf in leaves) {
+            if (leaf.growth < leaf.maxGrowth) {
+                leaf.growth = (leaf.growth + leafGrowthRate).coerceAtMost(leaf.maxGrowth)
+            }
+        }
+    }
+    
+    private fun drawSingleLeaf(canvas: Canvas, leaf: Leaf) {
+        val actualSize = leaf.size * leaf.growth
+        if (actualSize < 1f) return
+        
+        // Position de base de la feuille
+        val baseX = leaf.x + (leaf.side * actualSize * 0.3f)
+        val baseY = leaf.y
+        
+        // Forme simple de feuille (ellipse allongée)
+        val leafWidth = actualSize * 0.6f
+        val leafHeight = actualSize * 1.2f
+        
+        // Rotation selon l'angle
+        val angleRad = leaf.angle * PI / 180f
+        val cos = cos(angleRad)
+        val sin = sin(angleRad)
+        
+        // Points de l'ellipse simplifiée
+        val points = FloatArray(16) // 8 points pour faire une ellipse
+        for (i in 0 until 8) {
+            val angle = i * PI.toFloat() / 4f
+            val localX = cos(angle) * leafWidth
+            val localY = sin(angle) * leafHeight
+            
+            // Rotation et position
+            points[i * 2] = baseX + (localX * cos - localY * sin)
+            points[i * 2 + 1] = baseY + (localX * sin + localY * cos)
+        }
+        
+        // Dessiner la feuille (forme simple pour commencer)
+        for (i in 0 until 7) {
+            canvas.drawLine(
+                points[i * 2], points[i * 2 + 1],
+                points[(i + 1) * 2], points[(i + 1) * 2 + 1],
+                leafPaint
+            )
+        }
+        // Fermer la forme
+        canvas.drawLine(
+            points[14], points[15],
+            points[0], points[1],
+            leafPaint
+        )
+    }
+}
