@@ -1,7 +1,6 @@
 package com.example.souffleforcetest
 
 import kotlin.math.*
-import kotlin.random.Random
 
 class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
@@ -45,65 +44,38 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var branchSide = true
     private var branchCount = 0
     
-    // ==================== NOUVEAUX: ANALYSE DU SOUFFLE ====================
-    
-    private val forceHistory = mutableListOf<Float>()
-    private val forceTimestamps = mutableListOf<Long>()
-    private var breathQuality = 0f
-    private var breathStyle = BreathStyle.UNKNOWN
-    private var maxBranchesAllowed = 6
-    private var plantPersonality = PlantPersonality.TALL_STRAIGHT
-    private val maxHistorySize = 50
-    
-    enum class BreathStyle {
-        UNKNOWN, STABLE_LONG, SHORT_STRONG, IRREGULAR
-    }
-    
-    enum class PlantPersonality {
-        TALL_STRAIGHT,    // Souffle stable → plante haute et droite
-        COMPACT_WIDE,     // Souffle fort court → plante trapue écartée  
-        CURVED_WILD       // Souffle irrégulier → courbures et asymétries
-    }
-    
     // Instance du gestionnaire de croissance - initialisation tardive
     private lateinit var growthManager: PlantGrowthManager
     
+    // Instance du gestionnaire de feuilles - AJOUT
+    private lateinit var leavesManager: PlantLeavesManager
+    
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.25f
-    private val maxStemHeight = 0.8f
+    private val forceThreshold = 0.25f // Augmenté de 0.15f à 0.25f (moins sensible)
+    private val maxStemHeight = 0.8f // Remis à la hauteur originale
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
+    private val branchThreshold = 0.18f // Augmenté de 0.12f à 0.18f pour éviter branches accidentelles
     private val emergenceDuration = 1000L
-    
-    // ==================== PARAMÈTRES VARIABLES SELON STYLE ====================
-    
-    private var dynamicBranchThreshold = 0.18f
-    private var dynamicMaxBranches = 6
-    private var dynamicGrowthStyle = 1f
+    private val maxBranches = 6 // 6 tiges secondaires + 1 principale = 7 total
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
-        growthManager = PlantGrowthManager(this)
+        growthManager = PlantGrowthManager(this) // Initialisation après la création de l'objet
+        leavesManager = PlantLeavesManager(this) // AJOUT
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processStemGrowth(force: Float, phaseTime: Long) {
-        // Enregistrer l'historique du souffle pour analyse
-        recordBreathData(force)
-        
-        // Analyser le style de respiration toutes les 500ms
-        if (forceHistory.size % 10 == 0) {
-            analyzeBreathPattern()
-        }
-        
         // INITIALISATION FORCÉE : créer le point de base dès le premier appel
         if (mainStem.isEmpty() && !isEmerging) {
             isEmerging = true
             emergenceStartTime = System.currentTimeMillis()
+            // Créer immédiatement un point de base visible
             mainStem.add(StemPoint(stemBaseX, stemBaseY, baseThickness))
         }
         
@@ -125,13 +97,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         // Phase de croissance normale - STRICTEMENT avec souffle actif
         if (force > forceThreshold && mainStem.isNotEmpty()) {
+            // Vérification RENFORCÉE : force doit être stable et forte
             if (force > forceThreshold * 1.5f) {
                 growthManager.growMainStem(force)
+                
+                // Faire pousser TOUTES les branches actives - SIMPLE
                 growthManager.growAllBranches(force)
                 
-                // Détection ramification INTELLIGENTE basée sur le style de respiration
-                val shouldCreateBranch = shouldCreateNewBranch(force)
-                if (shouldCreateBranch && stemHeight > 20f && branchCount < dynamicMaxBranches) {
+                // Détection ramification (souffle saccadé) - SEUIL RÉDUIT pour créer plus facilement
+                if (abs(force - lastForce) > 0.12f && stemHeight > 20f && branchCount < maxBranches) {
                     createBranch()
                 }
             }
@@ -142,6 +116,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         lastForce = force
     }
     
+    // AJOUT - Fonction pour la croissance des feuilles
+    fun processLeavesGrowth(force: Float) {
+        leavesManager.processLeavesGrowth(force)
+    }
+    
     fun resetStem() {
         mainStem.clear()
         branches.clear()
@@ -150,20 +129,14 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         isEmerging = false
         branchSide = true
         branchCount = 0
-        
-        // Reset de l'analyse du souffle
-        forceHistory.clear()
-        forceTimestamps.clear()
-        breathQuality = 0f
-        breathStyle = BreathStyle.UNKNOWN
-        plantPersonality = PlantPersonality.TALL_STRAIGHT
-        resetDynamicParameters()
+        leavesManager.resetLeaves() // AJOUT
     }
     
     fun getStemHeight(): Float = stemHeight
-    fun hasVisibleStem(): Boolean = mainStem.size >= 1
-    fun getBreathStyle(): BreathStyle = breathStyle
-    fun getPlantPersonality(): PlantPersonality = plantPersonality
+    fun hasVisibleStem(): Boolean = mainStem.size >= 1 // Au moins 1 point pour être visible
+    
+    // AJOUT - Getter pour les feuilles
+    fun getLeaves(): List<PlantLeavesManager.Leaf> = leavesManager.leaves
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
     
@@ -175,108 +148,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     fun getTipThickness(): Float = tipThickness
     fun getGrowthRate(): Float = growthRate
     fun getOscillationDecay(): Float = oscillationDecay
-    fun getDynamicGrowthStyle(): Float = dynamicGrowthStyle
+    
+    // ==================== SETTERS POUR GROWTHMANAGER ====================
     
     fun setStemHeight(height: Float) {
         stemHeight = height
-    }
-    
-    // ==================== ANALYSE DU SOUFFLE ====================
-    
-    private fun recordBreathData(force: Float) {
-        val currentTime = System.currentTimeMillis()
-        forceHistory.add(force)
-        forceTimestamps.add(currentTime)
-        
-        // Garder seulement les dernières données
-        if (forceHistory.size > maxHistorySize) {
-            forceHistory.removeAt(0)
-            forceTimestamps.removeAt(0)
-        }
-    }
-    
-    private fun analyzeBreathPattern() {
-        if (forceHistory.size < 20) return
-        
-        val recentForces = forceHistory.takeLast(20)
-        val avgForce = recentForces.average().toFloat()
-        val maxForce = recentForces.maxOrNull() ?: 0f
-        val minForce = recentForces.minOrNull() ?: 0f
-        val forceRange = maxForce - minForce
-        
-        // Calculer la stabilité (variation)
-        val variance = recentForces.map { (it - avgForce) * (it - avgForce) }.average().toFloat()
-        val stability = 1f - (variance / (avgForce * avgForce)).coerceAtMost(1f)
-        
-        // Analyser le style de respiration
-        breathStyle = when {
-            stability > 0.8f && avgForce > 0.4f -> BreathStyle.STABLE_LONG
-            avgForce > 0.6f && forceRange > 0.3f -> BreathStyle.SHORT_STRONG  
-            stability < 0.6f -> BreathStyle.IRREGULAR
-            else -> breathStyle // Garder l'analyse précédente
-        }
-        
-        // Déterminer la personnalité de la plante
-        plantPersonality = when (breathStyle) {
-            BreathStyle.STABLE_LONG -> PlantPersonality.TALL_STRAIGHT
-            BreathStyle.SHORT_STRONG -> PlantPersonality.COMPACT_WIDE
-            BreathStyle.IRREGULAR -> PlantPersonality.CURVED_WILD
-            else -> PlantPersonality.TALL_STRAIGHT
-        }
-        
-        // Ajuster les paramètres dynamiques
-        updateDynamicParameters()
-        
-        breathQuality = stability * avgForce
-    }
-    
-    private fun updateDynamicParameters() {
-        when (plantPersonality) {
-            PlantPersonality.TALL_STRAIGHT -> {
-                dynamicMaxBranches = Random.nextInt(2, 5) // Peu de branches
-                dynamicBranchThreshold = 0.25f // Plus difficile de créer des branches
-                dynamicGrowthStyle = 1.2f // Croissance plus verticale
-            }
-            PlantPersonality.COMPACT_WIDE -> {
-                dynamicMaxBranches = Random.nextInt(4, 7) // Plus de branches
-                dynamicBranchThreshold = 0.15f // Plus facile de créer des branches
-                dynamicGrowthStyle = 0.8f // Croissance plus compacte
-            }
-            PlantPersonality.CURVED_WILD -> {
-                dynamicMaxBranches = Random.nextInt(1, 6) // Variable
-                dynamicBranchThreshold = 0.12f // Très sensible aux variations
-                dynamicGrowthStyle = 0.9f // Croissance irrégulière
-            }
-        }
-    }
-    
-    private fun resetDynamicParameters() {
-        dynamicMaxBranches = 6
-        dynamicBranchThreshold = 0.18f
-        dynamicGrowthStyle = 1f
-    }
-    
-    private fun shouldCreateNewBranch(force: Float): Boolean {
-        val forceVariation = abs(force - lastForce)
-        
-        return when (breathStyle) {
-            BreathStyle.STABLE_LONG -> {
-                // Branches rares, seulement sur variations intentionnelles
-                forceVariation > dynamicBranchThreshold * 1.5f
-            }
-            BreathStyle.SHORT_STRONG -> {
-                // Branches sur pics de force
-                force > 0.7f && forceVariation > dynamicBranchThreshold
-            }
-            BreathStyle.IRREGULAR -> {
-                // Branches fréquentes sur variations
-                forceVariation > dynamicBranchThreshold * 0.8f
-            }
-            else -> {
-                // Comportement par défaut
-                forceVariation > dynamicBranchThreshold
-            }
-        }
     }
     
     // ==================== FONCTIONS PRIVÉES ====================
@@ -289,15 +165,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             val segmentProgress = i / 5f
             val y = stemBaseY - emergenceHeight * segmentProgress
             val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
-            
-            // Oscillation selon la personnalité
-            val personalityWiggle = when (plantPersonality) {
-                PlantPersonality.TALL_STRAIGHT -> 0.2f
-                PlantPersonality.COMPACT_WIDE -> 0.8f
-                PlantPersonality.CURVED_WILD -> 1.5f
-            }
-            
-            val wiggle = sin(progress * PI * 3 + i * 0.5) * personalityWiggle * progress
+            // Tige principale PRESQUE DROITE - oscillation très réduite
+            val wiggle = sin(progress * PI * 3 + i * 0.5) * 0.5f * progress
             
             mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
         }
@@ -310,12 +179,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch() {
         branchCount++
         
-        // Espacement et positionnement adaptatif selon la personnalité
-        val baseSpacing = when (plantPersonality) {
-            PlantPersonality.TALL_STRAIGHT -> 60f // Plus écartées
-            PlantPersonality.COMPACT_WIDE -> 35f  // Plus serrées
-            PlantPersonality.CURVED_WILD -> Random.nextFloat() * 40f + 30f // Aléatoire 30-70f
-        }
+        // ESPACEMENT PROGRESSIF : Même distance entre chaque tige
+        // Distance de base entre tige 1 et 2 = environ 50px
+        val baseSpacing = 50f
         
         val isLeft: Boolean
         val position: Float
@@ -325,51 +191,37 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         when (branchCount) {
             1 -> {
                 isLeft = false
-                position = baseSpacing
-                heightRange = when (plantPersonality) {
-                    PlantPersonality.TALL_STRAIGHT -> Pair(0.8f, 0.9f)
-                    PlantPersonality.COMPACT_WIDE -> Pair(0.6f, 0.7f)
-                    else -> Pair(0.75f, 0.85f)
-                }
+                position = baseSpacing                    // +50px (droite)
+                heightRange = Pair(0.75f, 0.85f)
                 thickness = 0.90f
             }
             2 -> {
                 isLeft = true  
-                position = -baseSpacing
-                heightRange = when (plantPersonality) {
-                    PlantPersonality.TALL_STRAIGHT -> Pair(0.75f, 0.85f)
-                    PlantPersonality.COMPACT_WIDE -> Pair(0.55f, 0.65f)
-                    else -> Pair(0.70f, 0.80f)
-                }
+                position = -baseSpacing                   // -50px (gauche)
+                heightRange = Pair(0.70f, 0.80f)
                 thickness = 0.85f
             }
             3 -> {
                 isLeft = false
-                position = baseSpacing * 2
-                heightRange = when (plantPersonality) {
-                    PlantPersonality.COMPACT_WIDE -> Pair(0.50f, 0.60f)
-                    else -> Pair(0.70f, 0.80f)
-                }
+                position = baseSpacing * 2                // +100px (droite, loin)
+                heightRange = Pair(0.70f, 0.80f)
                 thickness = 0.80f
             }
             4 -> {
                 isLeft = true
-                position = -baseSpacing * 2
-                heightRange = when (plantPersonality) {
-                    PlantPersonality.COMPACT_WIDE -> Pair(0.45f, 0.55f)
-                    else -> Pair(0.70f, 0.80f)
-                }
+                position = -baseSpacing * 2               // -100px (gauche, loin)
+                heightRange = Pair(0.70f, 0.80f)
                 thickness = 0.80f
             }
             5 -> {
                 isLeft = false
-                position = baseSpacing * 3
+                position = baseSpacing * 3                // +150px (droite, très loin)
                 heightRange = Pair(0.65f, 0.75f)
                 thickness = 0.75f
             }
             6 -> {
                 isLeft = true
-                position = -baseSpacing * 3
+                position = -baseSpacing * 3               // -150px (gauche, très loin)
                 heightRange = Pair(0.65f, 0.75f)
                 thickness = 0.75f
             }
@@ -381,37 +233,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             }
         }
         
-        // Variation selon la personnalité
-        val personalityVariation = when (plantPersonality) {
-            PlantPersonality.TALL_STRAIGHT -> 5f
-            PlantPersonality.COMPACT_WIDE -> 15f
-            PlantPersonality.CURVED_WILD -> 25f
-        }
-        
-        val forcedOffset = position + (Random.nextFloat() * personalityVariation - personalityVariation/2)
-        
-        val forcedAngle = when (plantPersonality) {
-            PlantPersonality.TALL_STRAIGHT -> if (isLeft) -8f else +8f
-            PlantPersonality.COMPACT_WIDE -> if (isLeft) -20f else +20f
-            PlantPersonality.CURVED_WILD -> if (isLeft) Random.nextFloat() * 20f - 25f else Random.nextFloat() * 20f + 5f
-        }
-        
-        val baseHeightRatio = (heightRange.first + Random.nextFloat() * (heightRange.second - heightRange.first))
-        val branchMaxHeight = maxPossibleHeight * baseHeightRatio * dynamicGrowthStyle
+        val forcedOffset = position + (Math.random().toFloat() * 10f - 5f) // ±5px de variation
+        val forcedAngle = if (isLeft) -12f else +12f
+        val baseHeightRatio = (heightRange.first + Math.random().toFloat() * (heightRange.second - heightRange.first))
+        val branchMaxHeight = maxPossibleHeight * baseHeightRatio
         val thicknessVar = thickness
         
-        val personalityFactor = when (plantPersonality) {
-            PlantPersonality.TALL_STRAIGHT -> 0.98f
-            PlantPersonality.COMPACT_WIDE -> 0.90f  
-            PlantPersonality.CURVED_WILD -> Random.nextFloat() * 0.2f + 0.85f
-        }
-        
-        val trembleFreq = when (plantPersonality) {
-            PlantPersonality.TALL_STRAIGHT -> 0.8f
-            PlantPersonality.COMPACT_WIDE -> 1.2f
-            PlantPersonality.CURVED_WILD -> Random.nextFloat() * 0.9f + 0.6f
-        }
-        
+        // PERSONNALITÉ : Identique pour tiges 4-5 comme tiges 2-3
+        val personalityFactor = 0.95f
+        val trembleFreq = 1.0f
         val curvatureDir = if (isLeft) -1f else 1f
         
         val newBranch = Branch(
@@ -427,11 +257,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             thicknessVariation = thicknessVar
         )
         
-        val startX = stemBaseX
+        // Point de départ IDENTIQUE pour toutes les tiges (même base)
+        val startX = stemBaseX // MÊME POINT pour toutes
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        val divergenceForce = position + (Random.nextFloat() * 20f - 10f)
+        // DIVERGENCES : Même espacement que positions
+        val divergenceForce = position + (Math.random().toFloat() * 20f - 10f) // ±10px de variation
+        
+        
         val initialHeight = 12f
         val initialX = startX + divergenceForce
         val initialY = stemBaseY - initialHeight
@@ -441,7 +275,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         newBranch.currentHeight = initialHeight
         
         branches.add(newBranch)
+        
+        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} créée")
     }
+    
+    // ==================== UTILITAIRES ====================
     
     private fun lerp(start: Float, end: Float, fraction: Float): Float {
         return start + fraction * (end - start)
