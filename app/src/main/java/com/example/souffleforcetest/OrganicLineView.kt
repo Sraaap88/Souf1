@@ -43,6 +43,13 @@ class OrganicLineView @JvmOverloads constructor(
         color = Color.rgb(40, 100, 40)
     }
     
+    // AJOUT - Paint pour les feuilles
+    private val leafPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+        color = Color.rgb(34, 139, 34)
+    }
+    
     // ==================== ÉTATS DU SYSTÈME ====================
     
     private var showResetButton = false
@@ -56,7 +63,6 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== LOGIQUE DE PLANTE ====================
     
     private var plantStem: PlantStem? = null
-    private var leavesManager: PlantLeavesManager? = null
     
     enum class LightState {
         YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
@@ -71,7 +77,6 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         plantStem = PlantStem(w, h)
-        leavesManager = PlantLeavesManager(plantStem!!)
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -81,7 +86,6 @@ class OrganicLineView @JvmOverloads constructor(
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
         plantStem?.resetStem()
-        leavesManager?.resetLeaves()
         invalidate()
     }
     
@@ -93,8 +97,9 @@ class OrganicLineView @JvmOverloads constructor(
             plantStem?.processStemGrowth(force, phaseTime)
         }
         
+        // AJOUT - Croissance des feuilles pendant GREEN_LEAVES
         if (lightState == LightState.GREEN_LEAVES) {
-            leavesManager?.updateLeaves()
+            plantStem?.processLeavesGrowth(force)
         }
         
         if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
@@ -116,7 +121,7 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.GREEN_GROW -> {
-                if (elapsedTime >= 5000) {
+                if (elapsedTime >= 5000) {  // CORRIGÉ: 5 secondes au lieu de 4000
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                 }
@@ -150,13 +155,6 @@ class OrganicLineView @JvmOverloads constructor(
             drawPlantStem(canvas)
         }
         
-        // Dessiner les feuilles dans les phases appropriées
-        if (lightState == LightState.GREEN_LEAVES || 
-            lightState == LightState.GREEN_FLOWER || 
-            lightState == LightState.RED) {
-            leavesManager?.drawLeaves(canvas)
-        }
-        
         drawTrafficLight(canvas)
     }
     
@@ -168,6 +166,13 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Dessiner les branches
         drawBranches(canvas, stem.branches)
+        
+        // AJOUT - Dessiner les feuilles pendant GREEN_LEAVES et après
+        if (lightState == LightState.GREEN_LEAVES || 
+            lightState == LightState.GREEN_FLOWER || 
+            lightState == LightState.RED) {
+            drawLeaves(canvas, stem.getLeaves())
+        }
     }
     
     private fun drawMainStem(canvas: Canvas, mainStem: List<PlantStem.StemPoint>) {
@@ -230,6 +235,26 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
+    // AJOUT - Fonction pour dessiner les feuilles
+    private fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>) {
+        leafPaint.color = Color.rgb(34, 139, 34)
+        
+        for (leaf in leaves) {
+            if (leaf.currentSize > 0) {
+                val adjustedX = leaf.x + leaf.oscillation
+                val leafSize = leaf.currentSize
+                
+                // Dessiner feuille simple (ovale)
+                val left = adjustedX - leafSize * 0.5f
+                val top = leaf.y - leafSize * 0.3f
+                val right = adjustedX + leafSize * 0.5f
+                val bottom = leaf.y + leafSize * 0.3f
+                
+                canvas.drawOval(left, top, right, bottom, leafPaint)
+            }
+        }
+    }
+    
     private fun drawTrafficLight(canvas: Canvas) {
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
@@ -262,7 +287,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Texte et timer
         val timeRemaining = when (lightState) {
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))
+            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))  // CORRIGÉ: 5 secondes au lieu de 4
             LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000))
             LightState.GREEN_FLOWER -> max(0, 3 - (elapsedTime / 1000))
             LightState.RED -> 0
