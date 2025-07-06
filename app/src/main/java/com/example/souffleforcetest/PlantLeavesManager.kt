@@ -47,10 +47,8 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
-    private val baseLeafSize = 18f
-    private val maxLeafSize = 45f
-    private val basalLeafSize = 35f
-    private val maxBasalLeafSize = 65f
+    private val baseLeafSize = 35f
+    private val maxLeafSize = 75f
     private val growthRate = 600f
     private val oscillationDecay = 0.96f
     
@@ -59,23 +57,17 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     fun processLeavesGrowth(force: Float) {
         val currentTime = System.currentTimeMillis()
         
-        // Créer les feuilles basales en premier (rosette)
-        if (!basalLeavesCreated && force > forceThreshold) {
-            createBasalLeaves()
-            basalLeavesCreated = true
-        }
-        
-        // Créer les feuilles caulinaires sur les tiges
+        // Créer des feuilles sur toutes les tiges (plus de rosette basale artificielle)
         if (force > forceThreshold && currentTime - leafCreationTimer > leafCreationInterval) {
-            createCaulineLeaves()
+            createRealisticLeaves()
             leafCreationTimer = currentTime
         }
         
         // Faire grandir les feuilles existantes
         growExistingLeaves(force)
         
-        // Mettre à jour les oscillations
-        updateLeafOscillations()
+        // Mettre à jour les oscillations et effet poids
+        updateLeafPhysics()
         
         lastForce = force
     }
@@ -84,7 +76,6 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         leaves.clear()
         lastForce = 0f
         leafCreationTimer = 0L
-        basalLeavesCreated = false
     }
     
     fun createLeafPath(leaf: Leaf): Path {
@@ -95,69 +86,34 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val personality = leaf.personality
         val adjustedX = leaf.x + leaf.oscillation
         
-        when (leaf.leafType) {
-            LeafType.BASAL -> createBasalLeafPath(path, adjustedX, leaf.y, currentSize, personality, leaf.angle)
-            LeafType.CAULINE -> createCaulineLeafPath(path, adjustedX, leaf.y, currentSize, personality, leaf.angle)
-        }
+        // Calculer l'angle réaliste avec effet poids
+        val realAngle = calculateRealisticLeafAngle(leaf)
+        
+        // Toutes les feuilles utilisent la même forme (plus de distinction basal/cauline)
+        createRealisticLeafPath(path, adjustedX, leaf.y, currentSize, personality, realAngle)
         
         return path
     }
     
     fun getLeafColor(leaf: Leaf): Int {
-        // Couleurs réalistes de marguerite avec dégradés
-        val baseValues = when (leaf.leafType) {
-            LeafType.BASAL -> Triple(45, 120, 35)      // Vert plus foncé pour feuilles basales
-            LeafType.CAULINE -> Triple(40, 130, 40)    // Vert légèrement plus clair pour caulinaires
-        }
-        
-        // Variation selon la personnalité et la maturité
+        // Couleurs réalistes avec dégradés selon la position
         val maturity = leaf.currentSize / leaf.maxSize
-        val maturityBonus = (maturity * 20).toInt() // Plus mature = plus foncé
+        val maturityBonus = (maturity * 15).toInt()
         
-        val r = (baseValues.first + (leaf.personality.colorVariation * 15).toInt() - maturityBonus).coerceIn(25, 65)
-        val g = (baseValues.second + (leaf.personality.colorVariation * 25).toInt() + maturityBonus).coerceIn(100, 160)
-        val b = (baseValues.third + (leaf.personality.colorVariation * 10).toInt() - maturityBonus).coerceIn(25, 55)
+        // Feuilles plus basses = plus foncées
+        val heightRatio = (plantStem.getStemBaseY() - leaf.y) / plantStem.getMaxPossibleHeight()
+        val heightDarkening = (heightRatio * 20).toInt()
+        
+        val r = (45 + (leaf.personality.colorVariation * 10).toInt() - maturityBonus - heightDarkening).coerceIn(25, 65)
+        val g = (125 + (leaf.personality.colorVariation * 20).toInt() + maturityBonus).coerceIn(100, 160)
+        val b = (40 + (leaf.personality.colorVariation * 8).toInt() - maturityBonus - heightDarkening).coerceIn(25, 55)
         
         return android.graphics.Color.rgb(r, g, b)
     }
     
     // ==================== FONCTIONS PRIVÉES ====================
     
-    private fun createBasalLeaves() {
-        val baseX = plantStem.getStemBaseX()
-        val baseY = plantStem.getStemBaseY()
-        
-        // Créer 6-8 feuilles basales en rosette
-        val leafCount = 6 + (Math.random() * 3).toInt()
-        
-        for (i in 0 until leafCount) {
-            val angle = (i * 360f / leafCount) + (Math.random() * 30f - 15f).toFloat()
-            val distance = 40f + (Math.random() * 25f).toFloat()
-            
-            val leafX = baseX + cos(Math.toRadians(angle.toDouble())).toFloat() * distance
-            val leafY = baseY + sin(Math.toRadians(angle.toDouble())).toFloat() * distance * 0.5f
-            
-            val size = basalLeafSize + (Math.random() * (maxBasalLeafSize - basalLeafSize)).toFloat()
-            val personality = generateLeafPersonality(LeafType.BASAL)
-            
-            val basalLeaf = Leaf(
-                x = leafX,
-                y = leafY,
-                size = size,
-                angle = angle,
-                stemIndex = -2, // Code spécial pour feuilles basales
-                pointIndex = -1,
-                maxSize = size,
-                side = angle > 0,
-                leafType = LeafType.BASAL,
-                personality = personality
-            )
-            
-            leaves.add(basalLeaf)
-        }
-    }
-    
-    private fun createCaulineLeaves() {
+    private fun createRealisticLeaves() {
         // Créer feuilles sur la tige principale
         createLeavesOnMainStem()
         
@@ -167,15 +123,92 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         }
     }
     
+    private fun calculateRealisticLeafAngle(leaf: Leaf): Float {
+        val maturity = leaf.currentSize / leaf.maxSize
+        val heightRatio = (plantStem.getStemBaseY() - leaf.y) / plantStem.getMaxPossibleHeight()
+        
+        // Commencer vertical (0°), puis s'écarter avec effet poids
+        val baseAngle = 0f // Toutes commencent verticales
+        
+        // Écartement progressif selon la maturité
+        val spreadAngle = if (leaf.side) 45f else -45f
+        val maturitySpread = spreadAngle * maturity * maturity // Progression quadratique
+        
+        // Effet poids : les feuilles retombent
+        val weightEffect = maturity * maturity * 30f // Plus matures = plus lourdes
+        val finalWeight = if (heightRatio < 0.3f) weightEffect * 1.5f else weightEffect // Feuilles basses plus lourdes
+        
+        return baseAngle + maturitySpread + finalWeight
+    }
+    
+    private fun createRealisticLeafPath(path: Path, x: Float, y: Float, size: Float, personality: LeafPersonality, angle: Float): Path {
+        // Forme unique spatulée pour toutes les feuilles
+        val length = size * 1.4f
+        val maxWidth = size * 0.4f
+        
+        val points = mutableListOf<Pair<Float, Float>>()
+        val lobeCount = 6 + (personality.teethCount % 4)
+        
+        // Créer la forme spatulée réaliste
+        for (i in 0..lobeCount) {
+            val t = i.toFloat() / lobeCount
+            
+            // Forme spatulée : étroite à la base, large au sommet
+            val widthAtT = maxWidth * (0.15f + 0.85f * t * t)
+            val yPos = -length * t
+            
+            // Lobes arrondis et naturels
+            val baseX = -widthAtT * 0.5f
+            val lobePhase = t * PI * 3.5f
+            val lobeDepth = personality.teethDepth * widthAtT * 0.5f * sin(lobePhase).toFloat()
+            val leftX = baseX + lobeDepth
+            
+            points.add(Pair(leftX, yPos))
+        }
+        
+        // Côté droit avec asymétrie naturelle
+        for (i in lobeCount downTo 0) {
+            val t = i.toFloat() / lobeCount
+            val widthAtT = maxWidth * (0.15f + 0.85f * t * t)
+            val yPos = -length * t
+            
+            val baseX = widthAtT * 0.5f
+            val lobePhase = t * PI * 3.5f
+            val lobeDepth = personality.teethDepth * widthAtT * 0.5f * sin(lobePhase).toFloat()
+            val asymmetryOffset = personality.asymmetry * widthAtT * t
+            val rightX = baseX - lobeDepth + asymmetryOffset
+            
+            points.add(Pair(rightX, yPos))
+        }
+        
+        // Rotation et construction du path
+        val rad = Math.toRadians(angle.toDouble())
+        val cos = cos(rad).toFloat()
+        val sin = sin(rad).toFloat()
+        
+        if (points.isNotEmpty()) {
+            val firstPoint = rotatePoint(points[0].first, points[0].second, cos, sin)
+            path.moveTo(x + firstPoint.first, y + firstPoint.second)
+            
+            for (i in 1 until points.size) {
+                val rotatedPoint = rotatePoint(points[i].first, points[i].second, cos, sin)
+                path.lineTo(x + rotatedPoint.first, y + rotatedPoint.second)
+            }
+            path.close()
+        }
+        
+        return path
+    }
+    
     private fun createLeavesOnMainStem() {
         val mainStem = plantStem.mainStem
         if (mainStem.size < 4) return
         
         // Chercher un point approprié pour une nouvelle feuille
         val availablePoints = mutableListOf<Int>()
-        for (i in 3 until mainStem.size - 2) { // Éviter base et sommet
+        for (i in 2 until mainStem.size - 2) {
             val hasLeaf = leaves.any { it.stemIndex == -1 && it.pointIndex == i }
-            if (!hasLeaf && i % 3 == 0) { // Espacement naturel
+            if (!hasLeaf && i % 2 == 0) { // Plus de feuilles
                 availablePoints.add(i)
             }
         }
@@ -185,15 +218,18 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val point = mainStem[pointIndex]
             val side = (pointIndex % 2 == 0)
             
-            val size = baseLeafSize + (Math.random() * (maxLeafSize - baseLeafSize)).toFloat()
-            val leafAngle = if (side) 65f else -65f + (Math.random() * 40f - 20f).toFloat()
-            val personality = generateLeafPersonality(LeafType.CAULINE)
+            // Taille selon la hauteur : feuilles basses plus grandes
+            val heightRatio = (plantStem.getStemBaseY() - point.y) / plantStem.getMaxPossibleHeight()
+            val heightMultiplier = 0.7f + (1f - heightRatio) * 0.8f // 0.7x à 1.5x selon hauteur
+            val size = (baseLeafSize + (Math.random() * (maxLeafSize - baseLeafSize)).toFloat()) * heightMultiplier
+            
+            val personality = generateLeafPersonality()
             
             val newLeaf = Leaf(
                 x = point.x,
                 y = point.y,
                 size = size,
-                angle = leafAngle,
+                angle = 0f, // Sera calculé dynamiquement
                 stemIndex = -1,
                 pointIndex = pointIndex,
                 maxSize = size,
@@ -212,9 +248,9 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         
         // Chercher un point approprié pour une nouvelle feuille
         val availablePoints = mutableListOf<Int>()
-        for (i in 2 until branch.points.size - 1) {
+        for (i in 1 until branch.points.size - 1) {
             val hasLeaf = leaves.any { it.stemIndex == branchIndex && it.pointIndex == i }
-            if (!hasLeaf && i % 4 == 0) { // Espacement plus large sur branches
+            if (!hasLeaf && i % 3 == 0) { // Espacement sur branches
                 availablePoints.add(i)
             }
         }
@@ -224,16 +260,18 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val point = branch.points[pointIndex]
             val side = (pointIndex % 2 == 0)
             
-            val size = baseLeafSize * 0.7f + (Math.random() * (maxLeafSize * 0.7f - baseLeafSize * 0.7f)).toFloat()
-            val branchDirection = if (branch.angle > 0) 1f else -1f
-            val leafAngle = branchDirection * 75f + (Math.random() * 50f - 25f).toFloat()
-            val personality = generateLeafPersonality(LeafType.CAULINE)
+            // Taille selon la hauteur sur la branche
+            val heightRatio = (plantStem.getStemBaseY() - point.y) / plantStem.getMaxPossibleHeight()
+            val heightMultiplier = 0.6f + (1f - heightRatio) * 0.6f // Plus petites sur branches
+            val size = (baseLeafSize * 0.8f + (Math.random() * (maxLeafSize * 0.8f - baseLeafSize * 0.8f)).toFloat()) * heightMultiplier
+            
+            val personality = generateLeafPersonality()
             
             val newLeaf = Leaf(
                 x = point.x,
                 y = point.y,
                 size = size,
-                angle = leafAngle,
+                angle = 0f, // Sera calculé dynamiquement
                 stemIndex = branchIndex,
                 pointIndex = pointIndex,
                 maxSize = size,
@@ -246,25 +284,15 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         }
     }
     
-    private fun generateLeafPersonality(type: LeafType): LeafPersonality {
-        return when (type) {
-            LeafType.BASAL -> LeafPersonality(
-                teethDepth = 0.25f + (Math.random() * 0.15f).toFloat(),
-                teethCount = 6 + (Math.random() * 3).toInt(),
-                widthRatio = 0.4f + (Math.random() * 0.2f).toFloat(),
-                curvature = (Math.random() * 0.4f - 0.2f).toFloat(),
-                asymmetry = (Math.random() * 0.15f).toFloat(),
-                colorVariation = (Math.random() * 0.25f).toFloat()
-            )
-            LeafType.CAULINE -> LeafPersonality(
-                teethDepth = 0.15f + (Math.random() * 0.1f).toFloat(),
-                teethCount = 3 + (Math.random() * 3).toInt(),
-                widthRatio = 0.3f + (Math.random() * 0.2f).toFloat(),
-                curvature = (Math.random() * 0.3f - 0.15f).toFloat(),
-                asymmetry = (Math.random() * 0.1f).toFloat(),
-                colorVariation = (Math.random() * 0.2f).toFloat()
-            )
-        }
+    private fun generateLeafPersonality(): LeafPersonality {
+        return LeafPersonality(
+            teethDepth = 0.2f + (Math.random() * 0.15f).toFloat(),
+            teethCount = 5 + (Math.random() * 4).toInt(),
+            widthRatio = 0.35f + (Math.random() * 0.15f).toFloat(),
+            curvature = (Math.random() * 0.3f - 0.15f).toFloat(),
+            asymmetry = (Math.random() * 0.12f).toFloat(),
+            colorVariation = (Math.random() * 0.2f).toFloat()
+        )
     }
     
     private fun createBasalLeafPath(path: Path, x: Float, y: Float, size: Float, personality: LeafPersonality, angle: Float): Path {
@@ -353,50 +381,6 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val leftX = baseX + lobeDepth
             
             points.add(Pair(leftX, yPos))
-        }
-        
-        // Côté droit
-        for (i in lobeCount downTo 0) {
-            val t = i.toFloat() / lobeCount
-            val widthMultiplier = sin(PI * t).toFloat()
-            val widthAtT = maxWidth * (0.3f + 0.7f * widthMultiplier)
-            val yPos = -length * t
-            
-            val baseX = widthAtT * 0.5f
-            val lobePhase = t * PI * 3
-            val lobeDepth = personality.teethDepth * widthAtT * 0.4f * sin(lobePhase).toFloat()
-            val asymmetryOffset = personality.asymmetry * widthAtT * 0.5f
-            val rightX = baseX - lobeDepth + asymmetryOffset
-            
-            points.add(Pair(rightX, yPos))
-        }
-        
-        // Rotation et construction du path
-        val rad = Math.toRadians(angle.toDouble())
-        val cos = cos(rad).toFloat()
-        val sin = sin(rad).toFloat()
-        
-        if (points.isNotEmpty()) {
-            val firstPoint = rotatePoint(points[0].first, points[0].second, cos, sin)
-            path.moveTo(x + firstPoint.first, y + firstPoint.second)
-            
-            for (i in 1 until points.size) {
-                val rotatedPoint = rotatePoint(points[i].first, points[i].second, cos, sin)
-                path.lineTo(x + rotatedPoint.first, y + rotatedPoint.second)
-            }
-            path.close()
-        }
-        
-        return path
-    }
-    
-    private fun rotatePoint(x: Float, y: Float, cos: Float, sin: Float): Pair<Float, Float> {
-        return Pair(
-            x * cos - y * sin,
-            x * sin + y * cos
-        )
-    }
-    
     private fun growExistingLeaves(force: Float) {
         for (leaf in leaves) {
             if (leaf.currentSize < leaf.maxSize && force > forceThreshold) {
@@ -411,19 +395,26 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 
                 // Oscillation lors de la croissance
                 val forceVariation = abs(force - lastForce) * 2f
-                val oscillationStrength = if (leaf.leafType == LeafType.BASAL) 1.5f else 3f
-                leaf.oscillation = sin(System.currentTimeMillis() * 0.003f) * forceVariation * oscillationStrength
+                leaf.oscillation = sin(System.currentTimeMillis() * 0.003f) * forceVariation * 2f
             }
         }
     }
     
-    private fun updateLeafOscillations() {
+    private fun rotatePoint(x: Float, y: Float, cos: Float, sin: Float): Pair<Float, Float> {
+        return Pair(
+            x * cos - y * sin,
+            x * sin + y * cos
+        )
+    }
+}
+    
+    private fun updateLeafPhysics() {
         for (leaf in leaves) {
+            // Oscillation réduite
             leaf.oscillation *= oscillationDecay
             
-            // Limiter l'oscillation selon le type
-            val maxOscillation = if (leaf.leafType == LeafType.BASAL) 3f else 5f
-            leaf.oscillation = leaf.oscillation.coerceIn(-maxOscillation, maxOscillation)
+            // Limiter l'oscillation
+            leaf.oscillation = leaf.oscillation.coerceIn(-4f, 4f)
         }
     }
 }
