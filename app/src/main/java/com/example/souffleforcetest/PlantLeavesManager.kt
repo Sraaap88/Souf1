@@ -6,7 +6,7 @@ import kotlin.math.*
 class PlantLeavesManager(private val plantStem: PlantStem) {
     
     // ==================== DATA CLASSES ====================
-    
+     
     data class Leaf(
         val x: Float,
         val y: Float,
