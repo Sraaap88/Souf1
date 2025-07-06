@@ -44,9 +44,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var branchSide = true
     private var branchCount = 0
     
-    // Gestionnaires des composants
+    // Gestionnaire de croissance SEULEMENT
     private lateinit var growthManager: PlantGrowthManager
-    private lateinit var leavesManager: PlantLeavesManager
     
     // ==================== PARAMÈTRES ====================
     
@@ -63,7 +62,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
         growthManager = PlantGrowthManager(this)
-        leavesManager = PlantLeavesManager(this)
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
@@ -108,10 +106,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         lastForce = force
     }
     
-    fun processLeafGrowth(force: Float) {
-        leavesManager.updateLeaves(force)
-    }
-    
     fun resetStem() {
         mainStem.clear()
         branches.clear()
@@ -120,12 +114,10 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         isEmerging = false
         branchSide = true
         branchCount = 0
-        leavesManager.resetLeaves()
     }
     
     fun getStemHeight(): Float = stemHeight
     fun hasVisibleStem(): Boolean = mainStem.size >= 1
-    fun getLeaves() = leavesManager.getLeaves()
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
     
