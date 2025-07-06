@@ -144,8 +144,8 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         
         // Rotation selon l'angle
         val angleRad = leaf.angle * PI / 180f
-        val cos = cos(angleRad)
-        val sin = sin(angleRad)
+        val cosVal = cos(angleRad)
+        val sinVal = sin(angleRad)
         
         // Points de l'ellipse simplifiée
         val points = FloatArray(16) // 8 points pour faire une ellipse
@@ -155,8 +155,8 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val localY = sin(angle) * leafHeight
             
             // Rotation et position
-            points[i * 2] = baseX + (localX * cos - localY * sin)
-            points[i * 2 + 1] = baseY + (localX * sin + localY * cos)
+            points[i * 2] = baseX + (localX * cosVal - localY * sinVal).toFloat()
+            points[i * 2 + 1] = baseY + (localX * sinVal + localY * cosVal).toFloat()
         }
         
         // Dessiner la feuille (forme simple pour commencer)
