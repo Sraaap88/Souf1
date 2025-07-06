@@ -205,7 +205,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val forceRange = maxForce - minForce
         
         // Calculer la stabilité (variation)
-        val variance = recentForces.map { (it - avgForce) * (it - avgForce) }.average()
+        val variance = recentForces.map { (it - avgForce) * (it - avgForce) }.average().toFloat()
         val stability = 1f - (variance / (avgForce * avgForce)).coerceAtMost(1f)
         
         // Analyser le style de respiration
