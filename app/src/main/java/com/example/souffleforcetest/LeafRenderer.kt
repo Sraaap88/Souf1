@@ -14,14 +14,17 @@ class LeafRenderer(private val plantStem: PlantStem) {
     // ==================== FONCTIONS DE RENDU ====================
     
     fun createRealisticLeafPath(path: Path, x: Float, y: Float, size: Float, personality: PlantLeavesManager.LeafPersonality, angle: Float): Path {
-        // Forme unique spatulée pour toutes les feuilles avec extrémité arrondie
+        // Forme unique spatulée pour toutes les feuilles avec extrémité arrondie ET courbure gravitationnelle
         val length = size * 1.4f
         val maxWidth = size * 0.4f
         
         val points = mutableListOf<Pair<Float, Float>>()
         val lobeCount = 6 + (personality.teethCount % 4)
         
-        // Créer la forme spatulée réaliste avec extrémité arrondie
+        // Calculer la courbure gravitationnelle (plus la feuille est grande, plus elle se plie)
+        val gravityEffect = (size / 100f).coerceAtMost(1.2f) // Effet proportionnel à la taille
+        
+        // Créer la forme spatulée réaliste avec extrémité arrondie ET arc gravitationnel
         for (i in 0..lobeCount) {
             val t = i.toFloat() / lobeCount
             
@@ -35,7 +38,18 @@ class LeafRenderer(private val plantStem: PlantStem) {
                 maxWidth * (0.15f + 0.85f * t * t)
             }
             
-            val yPos = -length * t
+            // Position Y avec courbure gravitationnelle progressive
+            var yPos = -length * t
+            
+            // COURBURE EN ARC : la feuille se plie sous la gravité
+            // Base (t=0) : pas de courbure
+            // Milieu (t=0.5) : courbure modérée
+            // Extrémité (t=1) : courbure maximale
+            if (t > 0.1f) { // Garder la base droite
+                val curveFactor = (t - 0.1f) / 0.9f // 0 à 1 pour la partie qui se courbe
+                val gravityCurve = curveFactor * curveFactor * gravityEffect * 15f // Arc progressif
+                yPos += gravityCurve // Décalage vers le bas (courbure)
+            }
             
             // Lobes arrondis sur les côtés + 4 petites ondulations à l'extrémité
             val baseX = -widthAtT * 0.5f
@@ -53,7 +67,7 @@ class LeafRenderer(private val plantStem: PlantStem) {
             points.add(Pair(leftX, yPos))
         }
         
-        // Côté droit avec asymétrie naturelle + ondulations symétriques
+        // Côté droit avec asymétrie naturelle + ondulations symétriques + même courbure
         for (i in lobeCount downTo 0) {
             val t = i.toFloat() / lobeCount
             
@@ -65,7 +79,13 @@ class LeafRenderer(private val plantStem: PlantStem) {
                 maxWidth * (0.15f + 0.85f * t * t)
             }
             
-            val yPos = -length * t
+            // Position Y avec même courbure gravitationnelle
+            var yPos = -length * t
+            if (t > 0.1f) {
+                val curveFactor = (t - 0.1f) / 0.9f
+                val gravityCurve = curveFactor * curveFactor * gravityEffect * 15f
+                yPos += gravityCurve
+            }
             
             val baseX = widthAtT * 0.5f
             val lobePhase = t * PI * 3.5f
