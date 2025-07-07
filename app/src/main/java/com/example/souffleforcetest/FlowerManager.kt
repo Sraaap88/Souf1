@@ -471,7 +471,7 @@ class FlowerManager(private val plantStem: PlantStem) {
             val sepaleLength = size * 0.25f
             val sepaleWidth = size * 0.08f
             
-            val rad = Math.toRadians(angle)
+            val rad = Math.toRadians(angle.toDouble())
             val endX = x + cos(rad).toFloat() * sepaleLength
             val endY = y + sin(rad).toFloat() * sepaleLength
             
@@ -498,7 +498,7 @@ class FlowerManager(private val plantStem: PlantStem) {
             val sepaleLength = size * 0.35f
             val sepaleWidth = size * 0.1f
             
-            val rad = Math.toRadians(angle)
+            val rad = Math.toRadians(angle.toDouble())
             val startDistance = radius * 0.7f
             val startX = x + cos(rad).toFloat() * startDistance
             val startY = y + sin(rad).toFloat() * startDistance
@@ -528,7 +528,7 @@ class FlowerManager(private val plantStem: PlantStem) {
             val angle = i * 360f / petalCount + Math.random() * 10f - 5f
             val petalLength = size * (0.15f + Math.random() * 0.1f).toFloat()
             
-            val rad = Math.toRadians(angle)
+            val rad = Math.toRadians(angle.toDouble())
             val startX = x + cos(rad).toFloat() * baseRadius
             val startY = y + sin(rad).toFloat() * baseRadius
             val endX = x + cos(rad).toFloat() * (baseRadius + petalLength)
@@ -544,7 +544,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         
         for (i in 0..4) {
             val angle = i * 72f + 45f
-            val rad = Math.toRadians(angle)
+            val rad = Math.toRadians(angle.toDouble())
             val sepaleLength = size * 0.4f
             val sepaleWidth = size * 0.08f
             
@@ -594,7 +594,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         
         for (i in 0..4) {
             val angle = i * 72f + 30f
-            val rad = Math.toRadians(angle)
+            val rad = Math.toRadians(angle.toDouble())
             val sepaleLength = size * 0.3f
             
             val endX = x + cos(rad).toFloat() * sepaleLength
