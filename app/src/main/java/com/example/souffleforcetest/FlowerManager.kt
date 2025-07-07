@@ -81,6 +81,14 @@ class FlowerManager(private val plantStem: PlantStem) {
         }
     }
     
+    fun drawSpecificFlowers(canvas: Canvas, specificFlowers: List<Flower>, flowerPaint: Paint, centerPaint: Paint) {
+        for (flower in specificFlowers) {
+            if (flower.currentSize > 0) {
+                drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
+            }
+        }
+    }
+    
     // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createFlowersOnStems() {
