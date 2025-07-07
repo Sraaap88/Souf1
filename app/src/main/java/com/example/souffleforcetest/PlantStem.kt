@@ -43,45 +43,95 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var emergenceStartTime = 0L
     private var branchSide = true
     private var branchCount = 0
-    private var branchCreationOrder = mutableListOf<Int>() // AJOUT : ordre aléatoire de création
+    private var branchCreationOrder = mutableListOf<Int>()
+    
+    // ==================== NOUVEAU SYSTÈME DE CONTRÔLE PROGRESSIF ====================
+    
+    // Historique des forces pour analyser la stabilité
+    private val forceHistory = mutableListOf<Float>()
+    private val maxHistorySize = 30 // 1 seconde d'historique à 30 FPS
+    
+    // Seuils progressifs pour chaque niveau de tiges
+    private val breathControlLevels = mapOf(
+        1 to BreathControlLevel(
+            minStabilityTime = 500L,        // 0.5 seconde stable
+            maxForceVariation = 0.4f,       // Variation permise assez large
+            minForce = 0.2f,                // Force minimum faible
+            description = "Souffle doux et régulier"
+        ),
+        3 to BreathControlLevel(
+            minStabilityTime = 1000L,       // 1 seconde stable
+            maxForceVariation = 0.25f,      // Variation plus stricte
+            minForce = 0.3f,                // Force minimum plus élevée
+            description = "Souffle modéré et contrôlé"
+        ),
+        5 to BreathControlLevel(
+            minStabilityTime = 1500L,       // 1.5 seconde stable
+            maxForceVariation = 0.15f,      // Variation stricte
+            minForce = 0.4f,                // Force minimum élevée
+            description = "Souffle fort et précis"
+        ),
+        7 to BreathControlLevel(
+            minStabilityTime = 2000L,       // 2 secondes stable
+            maxForceVariation = 0.1f,       // Variation très stricte
+            minForce = 0.5f,                // Force minimum très élevée
+            description = "Maîtrise parfaite du souffle"
+        )
+    )
+    
+    data class BreathControlLevel(
+        val minStabilityTime: Long,     // Temps minimum de stabilité requis
+        val maxForceVariation: Float,   // Variation maximale permise
+        val minForce: Float,            // Force minimum requise
+        val description: String
+    )
+    
+    // État du contrôle du souffle
+    private var currentStabilityStart = 0L
+    private var lastStableForce = 0f
+    private var isBreathStable = false
     
     // Instance du gestionnaire de croissance - initialisation tardive
     private lateinit var growthManager: PlantGrowthManager
     
-    // Instance du gestionnaire de feuilles - AJOUT
+    // Instance du gestionnaire de feuilles
     private lateinit var leavesManager: PlantLeavesManager
     
-    // Instance du gestionnaire de fleurs - AJOUT
+    // Instance du gestionnaire de fleurs
     private lateinit var flowerManager: FlowerManager
     
     // ==================== PARAMÈTRES ====================
     
-    private val forceThreshold = 0.25f // Augmenté de 0.15f à 0.25f (moins sensible)
-    private val maxStemHeight = 0.8f // Remis à la hauteur originale
+    private val forceThreshold = 0.15f // Réduit pour détecter plus facilement
+    private val maxStemHeight = 0.75f // Réduit pour que les branches soient plus hautes
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
-    private val branchThreshold = 0.3f // Augmenté de 0.18f à 0.3f pour moins de branches accidentelles
     private val emergenceDuration = 1000L
     private val maxBranches = 6 // 6 tiges secondaires + 1 principale = 7 total
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
-        growthManager = PlantGrowthManager(this) // Initialisation après la création de l'objet
-        leavesManager = PlantLeavesManager(this) // AJOUT
-        flowerManager = FlowerManager(this) // AJOUT
-        initializeBranchOrder() // AJOUT : initialiser ordre aléatoire
+        growthManager = PlantGrowthManager(this)
+        leavesManager = PlantLeavesManager(this)
+        flowerManager = FlowerManager(this)
+        initializeBranchOrder()
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processStemGrowth(force: Float, phaseTime: Long) {
+        // Mettre à jour l'historique des forces
+        updateForceHistory(force)
+        
+        // Analyser la stabilité du souffle
+        analyzeBreathStability(force)
+        
         // INITIALISATION FORCÉE : créer le point de base dès le premier appel
         if (mainStem.isEmpty() && !isEmerging) {
             isEmerging = true
             emergenceStartTime = System.currentTimeMillis()
-            // Créer immédiatement un point de base visible
             mainStem.add(StemPoint(stemBaseX, stemBaseY, baseThickness))
         }
         
@@ -101,33 +151,25 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             return
         }
         
-        // Phase de croissance normale - STRICTEMENT avec souffle actif
+        // Phase de croissance normale
         if (force > forceThreshold && mainStem.isNotEmpty()) {
-            // Vérification RENFORCÉE : force doit être stable et forte
             if (force > forceThreshold * 1.5f) {
                 growthManager.growMainStem(force)
-                
-                // Faire pousser TOUTES les branches actives - SIMPLE
                 growthManager.growAllBranches(force)
                 
-                // Détection ramification (souffle saccadé) - SEUIL AUGMENTÉ pour moins de branches
-                if (abs(force - lastForce) > 0.25f && stemHeight > 30f && branchCount < maxBranches) {
-                    createBranchInOrder() // MODIFIÉ : créer dans l'ordre aléatoire
-                }
+                // NOUVEAU SYSTÈME : Création de branches basée sur le contrôle du souffle
+                checkForNewBranchCreation(force)
             }
         }
         
-        // Mise à jour des oscillations même sans souffle
         growthManager.updateOscillations()
         lastForce = force
     }
     
-    // AJOUT - Fonction pour la croissance des feuilles
     fun processLeavesGrowth(force: Float) {
         leavesManager.processLeavesGrowth(force)
     }
     
-    // AJOUT - Fonction pour la croissance des fleurs
     fun processFlowerGrowth(force: Float) {
         flowerManager.processFlowerGrowth(force)
     }
@@ -140,25 +182,24 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         isEmerging = false
         branchSide = true
         branchCount = 0
-        branchCreationOrder.clear() // AJOUT : reset ordre
-        initializeBranchOrder() // AJOUT : créer nouvel ordre aléatoire
-        leavesManager.resetLeaves() // AJOUT
-        flowerManager.resetFlowers() // AJOUT
+        branchCreationOrder.clear()
+        initializeBranchOrder()
+        leavesManager.resetLeaves()
+        flowerManager.resetFlowers()
+        
+        // Reset du système de contrôle du souffle
+        forceHistory.clear()
+        currentStabilityStart = 0L
+        lastStableForce = 0f
+        isBreathStable = false
     }
     
     fun getStemHeight(): Float = stemHeight
-    fun hasVisibleStem(): Boolean = mainStem.size >= 1 // Au moins 1 point pour être visible
+    fun hasVisibleStem(): Boolean = mainStem.size >= 1
     
-    // AJOUT - Getter pour les feuilles
     fun getLeaves(): List<PlantLeavesManager.Leaf> = leavesManager.leaves
-    
-    // AJOUT - Getter pour le manager de feuilles
     fun getLeavesManager(): PlantLeavesManager = leavesManager
-    
-    // AJOUT - Getter pour les fleurs
     fun getFlowers(): List<FlowerManager.Flower> = flowerManager.flowers
-    
-    // AJOUT - Getter pour le manager de fleurs
     fun getFlowerManager(): FlowerManager = flowerManager
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
@@ -178,18 +219,116 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         stemHeight = height
     }
     
-    // ==================== FONCTIONS PRIVÉES ====================
+    // ==================== NOUVEAU SYSTÈME DE CONTRÔLE PROGRESSIF ====================
+    
+    private fun updateForceHistory(force: Float) {
+        forceHistory.add(force)
+        if (forceHistory.size > maxHistorySize) {
+            forceHistory.removeAt(0)
+        }
+    }
+    
+    private fun analyzeBreathStability(force: Float) {
+        if (forceHistory.size < 10) return // Attendre un minimum de données
+        
+        // Calculer la variation récente
+        val recentForces = forceHistory.takeLast(10)
+        val avgForce = recentForces.average().toFloat()
+        val maxVariation = recentForces.maxOf { abs(it - avgForce) }
+        
+        val currentTime = System.currentTimeMillis()
+        
+        // Vérifier si le souffle est stable selon les critères actuels
+        val targetBranchCount = getTargetBranchCount()
+        val level = breathControlLevels[targetBranchCount]
+        
+        if (level != null) {
+            val isCurrentlyStable = force >= level.minForce && 
+                                  maxVariation <= level.maxForceVariation
+            
+            if (isCurrentlyStable) {
+                if (!isBreathStable) {
+                    // Début d'une période stable
+                    currentStabilityStart = currentTime
+                    isBreathStable = true
+                    lastStableForce = force
+                }
+            } else {
+                // Perte de stabilité
+                isBreathStable = false
+                currentStabilityStart = 0L
+            }
+        }
+    }
+    
+    private fun getTargetBranchCount(): Int {
+        // Déterminer combien de tiges le joueur essaie d'obtenir
+        return when (branchCount + 1) { // +1 pour inclure la tige principale
+            0, 1 -> 1
+            2, 3 -> 3
+            4, 5 -> 5
+            else -> 7
+        }
+    }
+    
+    private fun checkForNewBranchCreation(force: Float) {
+        if (branchCount >= maxBranches || stemHeight < 30f) return
+        
+        val targetBranchCount = getTargetBranchCount()
+        val level = breathControlLevels[targetBranchCount] ?: return
+        
+        val currentTime = System.currentTimeMillis()
+        val stabilityDuration = if (isBreathStable) currentTime - currentStabilityStart else 0L
+        
+        // Vérifier si les conditions sont remplies pour créer une nouvelle tige
+        if (isBreathStable && 
+            stabilityDuration >= level.minStabilityTime &&
+            force >= level.minForce) {
+            
+            // Conditions supplémentaires selon le niveau
+            val shouldCreateBranch = when (targetBranchCount) {
+                1 -> true // Toujours facile pour la première
+                3 -> {
+                    // Pour 3 tiges : stabilité simple
+                    val avgForce = forceHistory.takeLast(15).average().toFloat()
+                    abs(force - avgForce) < 0.2f
+                }
+                5 -> {
+                    // Pour 5 tiges : stabilité + force précise
+                    val avgForce = forceHistory.takeLast(20).average().toFloat()
+                    abs(force - avgForce) < 0.15f && force in 0.4f..0.7f
+                }
+                7 -> {
+                    // Pour 7 tiges : maîtrise parfaite
+                    val avgForce = forceHistory.takeLast(25).average().toFloat()
+                    abs(force - avgForce) < 0.1f && 
+                    force in 0.5f..0.65f &&
+                    stabilityDuration >= 2500L // Encore plus de stabilité
+                }
+                else -> false
+            }
+            
+            if (shouldCreateBranch) {
+                createBranchInOrder()
+                // Reset de la stabilité pour éviter de créer plusieurs tiges d'un coup
+                isBreathStable = false
+                currentStabilityStart = 0L
+                
+                println("Nouvelle tige créée ! Total: ${branchCount + 1} tiges (niveau: ${level.description})")
+            }
+        }
+    }
+    
+    // ==================== FONCTIONS PRIVÉES EXISTANTES ====================
     
     private fun initializeBranchOrder() {
-        // Créer un ordre aléatoire pour les 6 branches (1,2,3,4,5,6)
         branchCreationOrder = (1..maxBranches).toMutableList()
-        branchCreationOrder.shuffle() // Mélanger l'ordre
+        branchCreationOrder.shuffle()
     }
     
     private fun createBranchInOrder() {
         if (branchCount >= maxBranches || branchCount >= branchCreationOrder.size) return
         
-        // Prendre le prochain numéro dans l'ordre aléatoire
         val branchNumber = branchCreationOrder[branchCount]
         createBranch(branchNumber)
     }
@@ -202,7 +341,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             val segmentProgress = i / 5f
             val y = stemBaseY - emergenceHeight * segmentProgress
             val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
-            // Tige principale PRESQUE DROITE - oscillation très réduite
             val wiggle = sin(progress * PI * 3 + i * 0.5) * 0.5f * progress
             
             mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
@@ -216,9 +354,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createBranch(branchNumber: Int) {
         branchCount++
         
-        // ESPACEMENT PROGRESSIF : Même distance entre chaque tige
-        // Distance de base entre tige 1 et 2 = environ 50px
-        val baseSpacing = 50f
+        // ESPACEMENT AUGMENTÉ : Plus d'espace entre les tiges
+        val baseSpacing = 85f // Augmenté de 50f à 85f (+70% d'espace)
         
         val isLeft: Boolean
         val position: Float
@@ -228,63 +365,62 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         when (branchNumber) {
             1 -> {
                 isLeft = false
-                position = baseSpacing                    // +50px (droite)
-                heightRange = Pair(0.75f, 0.85f)
+                position = baseSpacing
+                heightRange = Pair(0.85f, 0.95f) // TOUJOURS plus haute que principale (0.75f)
                 thickness = 0.90f
             }
             2 -> {
                 isLeft = true  
-                position = -baseSpacing                   // -50px (gauche)
-                heightRange = Pair(0.70f, 0.80f)
+                position = -baseSpacing
+                heightRange = Pair(0.80f, 0.90f) // Plus haute que principale
                 thickness = 0.85f
             }
             3 -> {
                 isLeft = false
-                position = baseSpacing * 2                // +100px (droite, loin)
-                heightRange = Pair(0.70f, 0.80f)
+                position = baseSpacing * 2
+                heightRange = Pair(0.78f, 0.88f) // Plus haute que principale
                 thickness = 0.80f
             }
             4 -> {
                 isLeft = true
-                position = -baseSpacing * 2               // -100px (gauche, loin)
-                heightRange = Pair(0.70f, 0.80f)
+                position = -baseSpacing * 2
+                heightRange = Pair(0.78f, 0.88f) // Plus haute que principale
                 thickness = 0.80f
             }
             5 -> {
                 isLeft = false
-                position = baseSpacing * 3                // +150px (droite, très loin)
-                heightRange = Pair(0.65f, 0.75f)
+                position = baseSpacing * 3
+                heightRange = Pair(0.76f, 0.86f) // Plus haute que principale
                 thickness = 0.75f
             }
             6 -> {
                 isLeft = true
-                position = -baseSpacing * 3               // -150px (gauche, très loin)
-                heightRange = Pair(0.65f, 0.75f)
+                position = -baseSpacing * 3
+                heightRange = Pair(0.76f, 0.86f) // Plus haute que principale
                 thickness = 0.75f
             }
             else -> {
                 isLeft = false
                 position = baseSpacing
-                heightRange = Pair(0.70f, 0.80f)
+                heightRange = Pair(0.80f, 0.90f)
                 thickness = 0.80f
             }
         }
         
-        // MODIFICATION : Une des branches peut être plus haute que la principale
-        val adjustedHeightRange = if (branches.isEmpty() && Math.random() < 0.7f) {
-            // Première branche créée a 70% de chance d'être plus haute
-            Pair(0.85f, 0.95f) // Plus haute que la principale (0.8f)
+        // GARANTIE : Au moins une tige sera plus haute que la principale
+        val adjustedHeightRange = if (branchCount == 1) {
+            // La PREMIÈRE branche est TOUJOURS plus haute que la principale
+            Pair(0.85f, 0.95f) // Garantie d'être plus haute que 0.75f
         } else {
             heightRange
         }
         
-        val forcedOffset = position + (Math.random().toFloat() * 10f - 5f) // ±5px de variation
+        val forcedOffset = position + (Math.random().toFloat() * 15f - 7.5f) // Variation augmentée
         val forcedAngle = if (isLeft) -12f else +12f
         val baseHeightRatio = (adjustedHeightRange.first + Math.random().toFloat() * (adjustedHeightRange.second - adjustedHeightRange.first))
         val branchMaxHeight = maxPossibleHeight * baseHeightRatio
         val thicknessVar = thickness
         
-        // PERSONNALITÉ : Identique pour tiges 4-5 comme tiges 2-3
         val personalityFactor = 0.95f
         val trembleFreq = 1.0f
         val curvatureDir = if (isLeft) -1f else 1f
@@ -302,13 +438,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             thicknessVariation = thicknessVar
         )
         
-        // Point de départ IDENTIQUE pour toutes les tiges (même base)
-        val startX = stemBaseX // MÊME POINT pour toutes
+        val startX = stemBaseX
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        // DIVERGENCES : Même espacement que positions
-        val divergenceForce = position + (Math.random().toFloat() * 20f - 10f) // ±10px de variation
+        val divergenceForce = position + (Math.random().toFloat() * 30f - 15f) // Divergence augmentée
         
         val initialHeight = 12f
         val initialX = startX + divergenceForce
@@ -320,7 +454,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        println("Tige ${branchNumber} (${branchCount}ème créée): ${if (isLeft) "GAUCHE" else "DROITE"} - Hauteur max: ${(baseHeightRatio * 100).toInt()}%")
+        println("Tige ${branchNumber} (${branchCount}ème créée): ${if (isLeft) "GAUCHE" else "DROITE"} - Hauteur max: ${(baseHeightRatio * 100).toInt()}% (Principal: 75%)")
     }
     
     // ==================== UTILITAIRES ====================
