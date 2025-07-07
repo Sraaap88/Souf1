@@ -1,5 +1,5 @@
 package com.example.souffleforcetest
- 
+
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
@@ -99,6 +99,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         val mainStem = plantStem.mainStem
         if (mainStem.size < 3) return
         
+        // Prendre le DERNIER point (sommet de la tige)
         val topPoint = mainStem.last()
         val size = baseFlowerSize + (Math.random() * (maxFlowerSize - baseFlowerSize)).toFloat()
         
@@ -110,8 +111,8 @@ class FlowerManager(private val plantStem: PlantStem) {
         )
         
         val flower = Flower(
-            x = topPoint.x,
-            y = topPoint.y - 10f, // Légèrement au-dessus du point de tige
+            x = topPoint.x + topPoint.oscillation + topPoint.permanentWave, // Position exacte du sommet
+            y = topPoint.y - 15f, // Légèrement au-dessus pour être visible
             stemIndex = -1,
             maxSize = size,
             perspective = perspective
@@ -126,6 +127,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         val branch = plantStem.branches[branchIndex]
         if (branch.points.size < 2) return
         
+        // Prendre le DERNIER point (bout de la branche)
         val topPoint = branch.points.last()
         val size = (baseFlowerSize * 0.8f) + (Math.random() * (maxFlowerSize * 0.8f - baseFlowerSize * 0.8f)).toFloat()
         
@@ -138,8 +140,8 @@ class FlowerManager(private val plantStem: PlantStem) {
         )
         
         val flower = Flower(
-            x = topPoint.x,
-            y = topPoint.y - 8f,
+            x = topPoint.x, // Position exacte du bout de branche
+            y = topPoint.y - 12f, // Légèrement au-dessus pour être visible
             stemIndex = branchIndex,
             maxSize = size,
             perspective = perspective
