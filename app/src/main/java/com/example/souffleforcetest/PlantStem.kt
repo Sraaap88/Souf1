@@ -180,6 +180,20 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     // ==================== FONCTIONS PRIVÉES ====================
     
+    private fun initializeBranchOrder() {
+        // Créer un ordre aléatoire pour les 6 branches (1,2,3,4,5,6)
+        branchCreationOrder = (1..maxBranches).toMutableList()
+        branchCreationOrder.shuffle() // Mélanger l'ordre
+    }
+    
+    private fun createBranchInOrder() {
+        if (branchCount >= maxBranches || branchCount >= branchCreationOrder.size) return
+        
+        // Prendre le prochain numéro dans l'ordre aléatoire
+        val branchNumber = branchCreationOrder[branchCount]
+        createBranch(branchNumber)
+    }
+    
     private fun createEmergenceStem(progress: Float) {
         mainStem.clear()
         val emergenceHeight = 30f * progress
@@ -199,7 +213,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         }
     }
     
-    private fun createBranch() {
     private fun createBranch(branchNumber: Int) {
         branchCount++
         
@@ -297,7 +310,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         // DIVERGENCES : Même espacement que positions
         val divergenceForce = position + (Math.random().toFloat() * 20f - 10f) // ±10px de variation
         
-        
         val initialHeight = 12f
         val initialX = startX + divergenceForce
         val initialY = stemBaseY - initialHeight
@@ -316,4 +328,4 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun lerp(start: Float, end: Float, fraction: Float): Float {
         return start + fraction * (end - start)
     }
-    }
+}
