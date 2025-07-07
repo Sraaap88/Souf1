@@ -49,8 +49,8 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
-    private val baseFlowerSize = 60f
-    private val maxFlowerSize = 120f
+    private val baseFlowerSize = 180f  // 60f × 3
+    private val maxFlowerSize = 360f   // 120f × 3
     private val growthRate = 400f
     private val petalCount = 18 + (Math.random() * 8).toInt() // 18-26 pétales
     
