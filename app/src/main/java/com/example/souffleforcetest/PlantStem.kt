@@ -41,62 +41,52 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var lastForce = 0f
     private var isEmerging = false
     private var emergenceStartTime = 0L
-    private var branchSide = true
     private var branchCount = 0
-    private var branchCreationOrder = mutableListOf<Int>()
     
-    // ==================== NOUVEAU SYSTÈME SACCADES SIMPLE ====================
+    // ==================== SYSTÈME ORDRE ALÉATOIRE DE TIGES ====================
     
     private var saccadeCount = 0
     private var isCurrentlyBreathing = false
     private var lastSaccadeTime = 0L
-    private var lastForceState = 0f
-    private val saccadeCooldown = 300L // 300ms minimum entre saccades
+    private val saccadeCooldown = 300L
     private val breathStartThreshold = 0.3f
     private val breathEndThreshold = 0.2f
     
-    // NOUVEAU : Système de tiges individuelles aléatoires
-    private var stemPool = mutableListOf<Int>() // Pool des 7 tiges possibles (-1 à 5)
-    private var currentActiveStem = -1 // Tige actuellement active (-1 = aucune)
-    private val maxTotalStems = 7 // 1 principale + 6 branches
+    // Pool de toutes les tiges possibles en ordre aléatoire
+    private var stemOrderPool = mutableListOf<Int>() // 0=principale, 1-6=branches
+    private var currentActiveStemIndex = -1 // Index dans le pool (-1 = aucune active)
     
-    // NOUVEAU : Courbures aléatoires pour chaque tige
-    private val stemCurvatures = mutableMapOf<Int, Float>() // Courbure de base pour chaque tige
-    private val stemDirections = mutableMapOf<Int, Float>() // Direction préférée pour chaque tige
+    // Courbures aléatoires naturelles pour chaque tige
+    private val stemRandomCurvatures = mutableMapOf<Int, Float>()
     
-    // Instance du gestionnaire de croissance - initialisation tardive
+    // Instance du gestionnaire de croissance
     private lateinit var growthManager: PlantGrowthManager
-    
-    // Instance du gestionnaire de feuilles
     private lateinit var leavesManager: PlantLeavesManager
-    
-    // Instance du gestionnaire de fleurs
     private lateinit var flowerManager: FlowerManager
     
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.15f
-    private val maxStemHeight = 0.75f // Réduit pour que les branches soient plus hautes
+    private val maxStemHeight = 0.75f
     private val baseThickness = 25f
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
     private val emergenceDuration = 1000L
-    private val maxBranches = 6 // 6 tiges secondaires + 1 principale = 7 total
+    private val maxBranches = 6
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
         growthManager = PlantGrowthManager(this)
         leavesManager = PlantLeavesManager(this)
         flowerManager = FlowerManager(this)
-        initializeBranchOrder()
-        initializeRandomStemSystem()
+        setupRandomStemOrder()
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processStemGrowth(force: Float, phaseTime: Long) {
-        // INITIALISATION FORCÉE : créer le point de base dès le premier appel
+        // INITIALISATION : créer le point de base
         if (mainStem.isEmpty() && !isEmerging) {
             isEmerging = true
             emergenceStartTime = System.currentTimeMillis()
@@ -119,16 +109,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             return
         }
         
-        // NOUVEAU : Détection des saccades pendant toute la phase de croissance
-        detectSaccades(force, System.currentTimeMillis())
+        // Détection des saccades et activation des tiges
+        detectSaccadesAndActivateStems(force, System.currentTimeMillis())
         
-        // Phase de croissance avec UNE SEULE tige active à la fois
-        if (force > forceThreshold && mainStem.isNotEmpty() && currentActiveStem != -1) {
-            if (force > forceThreshold * 1.5f) {
-                growActiveStemOnly(force)
-            }
+        // Faire pousser SEULEMENT la tige actuellement active
+        if (force > forceThreshold && currentActiveStemIndex >= 0) {
+            growOnlyActiveStem(force)
         }
         
+        // Mise à jour des oscillations pour toutes les tiges
         growthManager.updateOscillations()
         lastForce = force
     }
@@ -147,23 +136,17 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         stemHeight = 0f
         lastForce = 0f
         isEmerging = false
-        branchSide = true
         branchCount = 0
-        branchCreationOrder.clear()
-        initializeBranchOrder()
         leavesManager.resetLeaves()
         flowerManager.resetFlowers()
         
-        // NOUVEAU : Reset du système de saccades et tiges aléatoires
+        // Reset du système aléatoire
         saccadeCount = 0
         isCurrentlyBreathing = false
         lastSaccadeTime = 0L
-        lastForceState = 0f
-        currentActiveStem = -1
-        stemPool.clear()
-        stemCurvatures.clear()
-        stemDirections.clear()
-        initializeRandomStemSystem()
+        currentActiveStemIndex = -1
+        stemRandomCurvatures.clear()
+        setupRandomStemOrder()
     }
     
     fun getStemHeight(): Float = stemHeight
@@ -173,195 +156,185 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     fun getLeavesManager(): PlantLeavesManager = leavesManager
     fun getFlowers(): List<FlowerManager.Flower> = flowerManager.flowers
     fun getFlowerManager(): FlowerManager = flowerManager
-    
-    // EXPOSER GROWTHMANAGER POUR STEMCONTROLLER
     fun getGrowthManager(): PlantGrowthManager = growthManager
     
-    // ==================== NOUVEAU SYSTÈME SACCADES ====================
+    // ==================== SYSTÈME ORDRE ALÉATOIRE ====================
     
-    private fun initializeRandomStemSystem() {
-        // Créer le pool aléatoire des 7 tiges possibles
-        stemPool = mutableListOf(-1, 0, 1, 2, 3, 4, 5) // -1 = principale, 0-5 = branches
-        stemPool.shuffle() // Ordre aléatoire à chaque reset
+    private fun setupRandomStemOrder() {
+        // Créer un pool des 7 tiges possibles (0=principale, 1-6=branches)
+        stemOrderPool = mutableListOf(0, 1, 2, 3, 4, 5, 6)
+        stemOrderPool.shuffle() // Mélanger l'ordre de façon aléatoire
         
-        // Générer des courbures aléatoires naturelles pour chaque tige
-        for (stemIndex in stemPool) {
-            // Courbure de base aléatoire mais naturelle
-            val baseCurvature = (Math.random().toFloat() - 0.5f) * 0.6f // -0.3 à +0.3
-            stemCurvatures[stemIndex] = baseCurvature
-            
-            // Direction préférée avec évitement des superpositions
-            val baseDirection = when (stemIndex) {
-                -1 -> 0f // Principale au centre
-                0, 2, 4 -> 0.3f + Math.random().toFloat() * 0.4f // Branches droites
-                1, 3, 5 -> -0.3f - Math.random().toFloat() * 0.4f // Branches gauches
-                else -> (Math.random().toFloat() - 0.5f) * 0.8f
-            }
-            stemDirections[stemIndex] = baseDirection
+        // Générer des courbures aléatoires pour chaque tige
+        for (i in 0..6) {
+            val randomCurvature = (Math.random().toFloat() - 0.5f) * 0.8f // -0.4 à +0.4
+            stemRandomCurvatures[i] = randomCurvature
         }
         
-        println("Pool de tiges aléatoire: ${stemPool.map { if (it == -1) "P" else (it+1).toString() }}")
+        println("Ordre aléatoire des tiges: ${stemOrderPool.map { if (it == 0) "P" else it.toString() }}")
     }
     
-    private fun detectSaccades(force: Float, currentTime: Long) {
+    private fun detectSaccadesAndActivateStems(force: Float, currentTime: Long) {
         val wasBreathing = isCurrentlyBreathing
         val isNowBreathing = force > breathStartThreshold
         
-        // Détection début de souffle (saccade)
+        // Détection début de souffle = nouvelle saccade
         if (!wasBreathing && isNowBreathing) {
-            // Vérifier le cooldown pour éviter les faux positifs
             if (currentTime - lastSaccadeTime > saccadeCooldown) {
                 saccadeCount++
                 lastSaccadeTime = currentTime
                 isCurrentlyBreathing = true
                 
-                // Activer la prochaine tige du pool aléatoire
-                activateNextRandomStem()
-                
-                println("Saccade $saccadeCount détectée ! Tige active: ${getStemName(currentActiveStem)}")
+                // Activer la prochaine tige selon l'ordre aléatoire
+                activateNextStemInOrder()
             }
         }
         
         // Détection fin de souffle
         if (wasBreathing && force < breathEndThreshold) {
             isCurrentlyBreathing = false
-            // La tige reste active jusqu'à la prochaine saccade
         }
-        
-        lastForceState = force
     }
     
-    private fun activateNextRandomStem() {
-        if (saccadeCount <= stemPool.size) {
-            val stemIndex = stemPool[saccadeCount - 1] // -1 car saccadeCount commence à 1
-            currentActiveStem = stemIndex
+    private fun activateNextStemInOrder() {
+        if (saccadeCount <= stemOrderPool.size) {
+            // Prendre la tige suivante dans l'ordre aléatoire
+            val stemTypeToActivate = stemOrderPool[saccadeCount - 1]
+            currentActiveStemIndex = saccadeCount - 1
             
-            // Créer la tige si elle n'existe pas encore
-            if (stemIndex == -1) {
-                // Tige principale déjà créée
+            if (stemTypeToActivate == 0) {
+                // Tige principale (déjà créée)
+                println("Saccade $saccadeCount: Tige PRINCIPALE activée")
             } else {
-                // Créer la branche si nécessaire
-                if (branches.size <= stemIndex) {
-                    createSpecificBranch(stemIndex + 1) // +1 car createBranch attend 1-6
-                }
+                // Créer la branche si elle n'existe pas
+                ensureBranchExists(stemTypeToActivate)
+                println("Saccade $saccadeCount: Branche $stemTypeToActivate activée")
             }
         }
     }
     
-    private fun growActiveStemOnly(force: Float) {
-        when (currentActiveStem) {
-            -1 -> {
-                // Faire pousser la tige principale avec courbure aléatoire
-                growthManager.growMainStem(force)
-                applyRandomCurvature(-1, force)
-            }
-            else -> {
-                // Faire pousser seulement la branche active avec courbure aléatoire
-                if (currentActiveStem < branches.size && branches[currentActiveStem].isActive) {
-                    growthManager.growAllBranches(force) // Seules les actives poussent
-                    applyRandomCurvature(currentActiveStem, force)
-                }
+    private fun ensureBranchExists(branchNumber: Int) {
+        // S'assurer que cette branche existe
+        while (branches.size < branchNumber) {
+            createBranchWithRandomCurvature(branches.size + 1)
+        }
+    }
+    
+    private fun growOnlyActiveStem(force: Float) {
+        if (currentActiveStemIndex < 0 || currentActiveStemIndex >= stemOrderPool.size) return
+        
+        val activeStemType = stemOrderPool[currentActiveStemIndex]
+        
+        if (activeStemType == 0) {
+            // Faire pousser SEULEMENT la tige principale
+            growthManager.growMainStem(force)
+            applyRandomCurvatureToMainStem(force)
+        } else {
+            // Faire pousser SEULEMENT cette branche spécifique
+            val branchIndex = activeStemType - 1
+            if (branchIndex < branches.size) {
+                growSpecificBranch(branchIndex, force)
+                applyRandomCurvatureToBranch(branchIndex, force)
             }
         }
     }
     
-    private fun applyRandomCurvature(stemIndex: Int, force: Float) {
-        val baseCurvature = stemCurvatures[stemIndex] ?: 0f
-        val direction = stemDirections[stemIndex] ?: 0f
+    private fun growSpecificBranch(branchIndex: Int, force: Float) {
+        val branch = branches[branchIndex]
+        if (branch.currentHeight >= branch.maxHeight) return
         
-        // Appliquer une courbure naturelle mais aléatoire
-        val curvatureStrength = baseCurvature * force * 0.5f
-        val directionInfluence = direction * force * 0.3f
+        // Copie de la logique de croissance d'une seule branche
+        val branchHeightRatio = branch.currentHeight / branch.maxHeight
+        val branchResistance = if (branchHeightRatio > 0.667f) 0.8f else 1f
         
-        // Éviter les superpositions en ajustant dynamiquement
-        val adjustedCurvature = avoidStemOverlap(stemIndex, curvatureStrength + directionInfluence)
+        val branchGrowthMultiplier = 1.0f * branch.personalityFactor * branchResistance
+        val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
+        val qualityMultiplier = 0.5f + forceStability * 0.5f
         
-        // Appliquer la courbure aux points de la tige (simplifié pour l'instant)
-        // TODO: Implémenter l'application réelle aux StemPoints
-    }
-    
-    private fun avoidStemOverlap(stemIndex: Int, proposedCurvature: Float): Float {
-        // Logique simple d'évitement des superpositions
-        // Pour l'instant, on garde la courbure proposée
-        // TODO: Analyser les positions des autres tiges et ajuster si nécessaire
-        return proposedCurvature.coerceIn(-0.8f, 0.8f)
-    }
-    
-    private fun getStemName(stemIndex: Int): String {
-        return if (stemIndex == -1) "Principale" else "Branche ${stemIndex + 1}"
-    }
-    
-    private fun createSpecificBranch(branchNumber: Int) {
-        // Utiliser la fonction existante mais pour une branche spécifique
-        val currentBranchCount = branchCount
-        createBranch(branchNumber)
+        val growthProgress = branch.currentHeight / branch.maxHeight
+        val progressCurve = 1f - growthProgress * growthProgress
+        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f * 9f * branchGrowthMultiplier
         
-        // Marquer cette branche comme active
-        if (branches.size > currentBranchCount) {
-            branches.last().isActive = true
-        }
-    }
-    
-    fun getSaccadeInfo(): String {
-        val activeStem = getStemName(currentActiveStem)
-        val remaining = maxOf(0, stemPool.size - saccadeCount)
-        return "Saccades: $saccadeCount, Active: $activeStem, Restantes: $remaining tiges"
-    }
-    
-    // ==================== GETTERS POUR GROWTHMANAGER ====================
-    
-    fun getMaxPossibleHeight(): Float = maxPossibleHeight
-    fun getStemBaseX(): Float = stemBaseX
-    fun getStemBaseY(): Float = stemBaseY
-    fun getLastForce(): Float = lastForce
-    fun getBaseThickness(): Float = baseThickness
-    fun getTipThickness(): Float = tipThickness
-    fun getGrowthRate(): Float = growthRate
-    fun getOscillationDecay(): Float = oscillationDecay
-    
-    // ==================== SETTERS POUR GROWTHMANAGER ====================
-    
-    fun setStemHeight(height: Float) {
-        stemHeight = height
-    }
-    
-    // ==================== FONCTIONS PRIVÉES EXISTANTES ====================
-    
-    private fun initializeBranchOrder() {
-        branchCreationOrder = (1..maxBranches).toMutableList()
-        branchCreationOrder.shuffle()
-    }
-    
-    private fun createBranchInOrder() {
-        if (branchCount >= maxBranches || branchCount >= branchCreationOrder.size) return
-        
-        val branchNumber = branchCreationOrder[branchCount]
-        createBranch(branchNumber)
-    }
-    
-    private fun createEmergenceStem(progress: Float) {
-        mainStem.clear()
-        val emergenceHeight = 30f * progress
-        
-        for (i in 0..5) {
-            val segmentProgress = i / 5f
-            val y = stemBaseY - emergenceHeight * segmentProgress
-            val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
-            val wiggle = sin(progress * PI * 3 + i * 0.5) * 0.5f * progress
+        if (adjustedGrowth > 0) {
+            branch.currentHeight += adjustedGrowth
             
-            mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
-        }
-        
-        if (progress >= 1f) {
-            stemHeight = emergenceHeight
+            val lastPoint = branch.points.lastOrNull() ?: return
+            val segmentHeight = 7f + (Math.random() * 2f).toFloat()
+            val segments = (adjustedGrowth / segmentHeight).toInt().coerceAtLeast(1)
+            
+            for (i in 1..segments) {
+                val currentBranchHeight = branch.currentHeight - adjustedGrowth + (adjustedGrowth * i / segments)
+                val progressFromBase = currentBranchHeight / branch.maxHeight
+                
+                val baseThicknessBranch = baseThickness * 0.9f * branch.thicknessVariation
+                val thicknessProgress = progressFromBase * 0.4f
+                val microVariation = (Math.random() * 0.03f - 0.015f).toFloat()
+                val thickness = baseThicknessBranch * (1f - thicknessProgress + microVariation)
+                
+                val lastPointX = lastPoint.x + lastPoint.oscillation + lastPoint.permanentWave
+                val baseX = stemBaseX
+                
+                val branchDirection = if (branch.angle < 0) -1f else 1f
+                val heightRatio = currentBranchHeight / branch.maxHeight
+                
+                val baseDistance = abs(branch.baseOffset)
+                val divergenceMultiplier = baseDistance / 50f
+                
+                val earlyDivergence = if (heightRatio < 0.15f) {
+                    val divergenceRatio = heightRatio / 0.15f
+                    divergenceRatio * 60f * branchDirection * divergenceMultiplier
+                } else 60f * branchDirection * divergenceMultiplier
+                
+                val midCurve = if (heightRatio > 0.15f && heightRatio < 0.7f) {
+                    val midRatio = (heightRatio - 0.15f) / 0.55f
+                    val additionalCurve = sin(midRatio * PI.toFloat()) * 20f * divergenceMultiplier
+                    additionalCurve * branchDirection
+                } else 0f
+                
+                val finalCurve = if (heightRatio > 0.7f) {
+                    val finalRatio = (heightRatio - 0.7f) / 0.3f
+                    val elegantCurve = finalRatio * finalRatio * finalRatio * 15f * divergenceMultiplier
+                    val downwardBend = finalRatio * finalRatio * 6f * divergenceMultiplier
+                    
+                    val curveReduction = if (heightRatio > 0.667f) 0.8f else 1f
+                    (elegantCurve * branchDirection + downwardBend * abs(branchDirection) * 0.3f) * curveReduction
+                } else 0f
+                
+                val naturalWeight = heightRatio * heightRatio * 5f * abs(branchDirection) * divergenceMultiplier
+                
+                val totalCurve = earlyDivergence + midCurve + finalCurve + naturalWeight
+                val currentX = baseX + totalCurve
+                val currentY = stemBaseY - currentBranchHeight
+                
+                val forceVariation = abs(force - lastForce) * 2.5f * branch.personalityFactor
+                val heightMultiplier = 1f + progressFromBase * 0.4f
+                val phaseOffset = branch.angle * 0.08f + (if (branch.angle > 0) 0f else PI.toFloat())
+                val oscillation = sin(System.currentTimeMillis() * 0.0025f * branch.trembleFrequency + phaseOffset) * 
+                                forceVariation * 5f * heightMultiplier
+                
+                val newPoint = StemPoint(currentX, currentY, thickness, oscillation)
+                branch.points.add(newPoint)
+            }
         }
     }
     
-    private fun createBranch(branchNumber: Int) {
+    private fun applyRandomCurvatureToMainStem(force: Float) {
+        val randomCurvature = stemRandomCurvatures[0] ?: 0f
+        // Application simple de la courbure aléatoire à la tige principale
+        // Pour l'instant, on garde la courbure naturelle existante
+    }
+    
+    private fun applyRandomCurvatureToBranch(branchIndex: Int, force: Float) {
+        val branchType = branchIndex + 1
+        val randomCurvature = stemRandomCurvatures[branchType] ?: 0f
+        // Application simple de la courbure aléatoire à cette branche
+        // Pour l'instant, on garde la courbure naturelle existante
+    }
+    
+    private fun createBranchWithRandomCurvature(branchNumber: Int) {
         branchCount++
         
-        // ESPACEMENT AUGMENTÉ : Plus d'espace entre les tiges
-        val baseSpacing = 85f // Augmenté de 50f à 85f (+70% d'espace)
+        val baseSpacing = 85f
         
         val isLeft: Boolean
         val position: Float
@@ -372,37 +345,37 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             1 -> {
                 isLeft = false
                 position = baseSpacing
-                heightRange = Pair(0.85f, 0.95f) // TOUJOURS plus haute que principale (0.75f)
+                heightRange = Pair(0.85f, 0.95f)
                 thickness = 0.90f
             }
             2 -> {
                 isLeft = true  
                 position = -baseSpacing
-                heightRange = Pair(0.80f, 0.90f) // Plus haute que principale
+                heightRange = Pair(0.80f, 0.90f)
                 thickness = 0.85f
             }
             3 -> {
                 isLeft = false
                 position = baseSpacing * 2
-                heightRange = Pair(0.78f, 0.88f) // Plus haute que principale
+                heightRange = Pair(0.78f, 0.88f)
                 thickness = 0.80f
             }
             4 -> {
                 isLeft = true
                 position = -baseSpacing * 2
-                heightRange = Pair(0.78f, 0.88f) // Plus haute que principale
+                heightRange = Pair(0.78f, 0.88f)
                 thickness = 0.80f
             }
             5 -> {
                 isLeft = false
                 position = baseSpacing * 3
-                heightRange = Pair(0.76f, 0.86f) // Plus haute que principale
+                heightRange = Pair(0.76f, 0.86f)
                 thickness = 0.75f
             }
             6 -> {
                 isLeft = true
                 position = -baseSpacing * 3
-                heightRange = Pair(0.76f, 0.86f) // Plus haute que principale
+                heightRange = Pair(0.76f, 0.86f)
                 thickness = 0.75f
             }
             else -> {
@@ -413,15 +386,15 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             }
         }
         
-        // GARANTIE : Au moins une tige sera plus haute que la principale
         val adjustedHeightRange = if (branchCount == 1) {
-            // La PREMIÈRE branche est TOUJOURS plus haute que la principale
-            Pair(0.85f, 0.95f) // Garantie d'être plus haute que 0.75f
+            Pair(0.85f, 0.95f)
         } else {
             heightRange
         }
         
-        val forcedOffset = position + (Math.random().toFloat() * 15f - 7.5f) // Variation augmentée
+        // Ajouter courbure aléatoire à la position
+        val randomCurvature = stemRandomCurvatures[branchNumber] ?: 0f
+        val forcedOffset = position + (Math.random().toFloat() * 15f - 7.5f) + (randomCurvature * 30f)
         val forcedAngle = if (isLeft) -12f else +12f
         val baseHeightRatio = (adjustedHeightRange.first + Math.random().toFloat() * (adjustedHeightRange.second - adjustedHeightRange.first))
         val branchMaxHeight = maxPossibleHeight * baseHeightRatio
@@ -448,7 +421,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val startThickness = baseThickness * thicknessVar
         newBranch.points.add(StemPoint(startX, stemBaseY, startThickness))
         
-        val divergenceForce = position + (Math.random().toFloat() * 30f - 15f) // Divergence augmentée
+        val divergenceForce = position + (Math.random().toFloat() * 30f - 15f)
         
         val initialHeight = 12f
         val initialX = startX + divergenceForce
@@ -460,7 +433,51 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        println("Tige ${branchNumber} (${branchCount}ème créée): ${if (isLeft) "GAUCHE" else "DROITE"} - Hauteur max: ${(baseHeightRatio * 100).toInt()}% (Principal: 75%)")
+        println("Branche $branchNumber créée avec courbure ${randomCurvature}")
+    }
+    
+    // ==================== FONCTIONS PRIVÉES EXISTANTES ====================
+    
+    private fun createEmergenceStem(progress: Float) {
+        mainStem.clear()
+        val emergenceHeight = 30f * progress
+        
+        for (i in 0..5) {
+            val segmentProgress = i / 5f
+            val y = stemBaseY - emergenceHeight * segmentProgress
+            val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
+            val wiggle = sin(progress * PI * 3 + i * 0.5) * 0.5f * progress
+            
+            mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
+        }
+        
+        if (progress >= 1f) {
+            stemHeight = emergenceHeight
+        }
+    }
+    
+    // ==================== GETTERS POUR GROWTHMANAGER ====================
+    
+    fun getMaxPossibleHeight(): Float = maxPossibleHeight
+    fun getStemBaseX(): Float = stemBaseX
+    fun getStemBaseY(): Float = stemBaseY
+    fun getLastForce(): Float = lastForce
+    fun getBaseThickness(): Float = baseThickness
+    fun getTipThickness(): Float = tipThickness
+    fun getGrowthRate(): Float = growthRate
+    fun getOscillationDecay(): Float = oscillationDecay
+    
+    fun setStemHeight(height: Float) {
+        stemHeight = height
+    }
+    
+    fun getSaccadeInfo(): String {
+        val activeStem = if (currentActiveStemIndex >= 0 && currentActiveStemIndex < stemOrderPool.size) {
+            val stemType = stemOrderPool[currentActiveStemIndex]
+            if (stemType == 0) "Principale" else "Branche $stemType"
+        } else "Aucune"
+        
+        return "Saccades: $saccadeCount, Active: $activeStem"
     }
     
     // ==================== UTILITAIRES ====================
