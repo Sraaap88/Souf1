@@ -49,8 +49,8 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
-    private val baseFlowerSize = 234f  // 180f × 1.3
-    private val maxFlowerSize = 468f   // 360f × 1.3
+    private val baseFlowerSize = 234f  // +30% (180f × 1.3)
+    private val maxFlowerSize = 468f   // +30% (360f × 1.3)
     private val growthRate = 400f
     private val petalCount = 18 + (Math.random() * 8).toInt() // 18-26 pétales
     
@@ -84,90 +84,34 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createFlowersOnStems() {
-        // Déterminer quelle tige sera la "dominante" (plus haute avec grosse fleur de face)
-        val dominantStemIndex = findDominantStem()
-        val hasSideViewFlower = flowers.any { it.perspective.viewAngle > 60f }
-        
-        // Créer fleur sur tige principale
+        // Créer fleur sur tige principale si elle a une taille suffisante
         if (!flowers.any { it.stemIndex == -1 } && plantStem.mainStem.size > 5) {
-            val isMainDominant = (dominantStemIndex == -1)
-            val needsSideView = !hasSideViewFlower && flowers.size == 0 // Première fleur peut être de côté
-            createFlowerOnMainStem(isMainDominant, needsSideView)
+            createFlowerOnMainStem()
         }
         
-        // Créer fleurs sur chaque branche
+        // Créer fleurs sur chaque branche qui a une taille suffisante
         for (branchIndex in plantStem.branches.indices) {
             val branch = plantStem.branches[branchIndex]
             if (!flowers.any { it.stemIndex == branchIndex } && branch.points.size > 3) {
-                val isBranchDominant = (dominantStemIndex == branchIndex)
-                val needsSideView = !hasSideViewFlower
-                createFlowerOnBranch(branchIndex, isBranchDominant, needsSideView)
+                createFlowerOnBranch(branchIndex)
             }
         }
     }
     
-    private fun findDominantStem(): Int {
-        // Si tige principale seule, elle reste dominante
-        if (plantStem.branches.isEmpty()) {
-            return -1
-        }
-        
-        // Trouver la tige la plus haute (principale ou branche)
-        val mainHeight = if (plantStem.mainStem.isNotEmpty()) {
-            plantStem.getStemBaseY() - plantStem.mainStem.last().y
-        } else 0f
-        
-        var highestStem = -1
-        var maxHeight = mainHeight
-        
-        for (branchIndex in plantStem.branches.indices) {
-            val branch = plantStem.branches[branchIndex]
-            if (branch.points.isNotEmpty()) {
-                val branchHeight = plantStem.getStemBaseY() - branch.points.last().y
-                if (branchHeight > maxHeight) {
-                    maxHeight = branchHeight
-                    highestStem = branchIndex
-                }
-            }
-        }
-        
-        return highestStem
-    }
-    
-    private fun createFlowerOnMainStem(isDominant: Boolean, needsSideView: Boolean) {
+    private fun createFlowerOnMainStem() {
         val mainStem = plantStem.mainStem
         if (mainStem.size < 5) return
         
         // Prendre le DERNIER point (sommet de la tige)
         val topPoint = mainStem.last()
+        val size = baseFlowerSize + (Math.random() * (maxFlowerSize - baseFlowerSize)).toFloat()
         
-        // Taille selon si c'est la tige dominante
-        val sizeMultiplier = if (isDominant) 1.2f else 0.8f
-        val size = (baseFlowerSize + (Math.random() * (maxFlowerSize - baseFlowerSize)).toFloat()) * sizeMultiplier
-        
-        // Perspective selon les besoins
-        val perspective = if (needsSideView) {
-            // Vue de côté forcée
-            FlowerPerspective(
-                viewAngle = 85f + (Math.random() * 10f).toFloat(), // 85-95° (presque profil)
-                tiltAngle = (Math.random() * 20f - 10f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat()
-            )
-        } else if (isDominant) {
-            // Vue de face pour tige dominante
-            FlowerPerspective(
-                viewAngle = 0f + (Math.random() * 15f - 7.5f).toFloat(),
-                tiltAngle = (Math.random() * 10f - 5f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat()
-            )
-        } else {
-            // Perspective aléatoire pour les autres
-            FlowerPerspective(
-                viewAngle = 20f + (Math.random() * 40f).toFloat(),
-                tiltAngle = (Math.random() * 30f - 15f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat()
-            )
-        }
+        // Tige principale = vue de face (perspective frontale simple)
+        val perspective = FlowerPerspective(
+            viewAngle = 0f + (Math.random() * 10f - 5f).toFloat(), // Presque face avec légère variation
+            tiltAngle = (Math.random() * 15f - 7.5f).toFloat(),    // Légère inclinaison
+            rotationAngle = (Math.random() * 360f).toFloat()        // Rotation aléatoire
+        )
         
         val flower = Flower(
             x = topPoint.x,
@@ -177,45 +121,26 @@ class FlowerManager(private val plantStem: PlantStem) {
             perspective = perspective
         )
         
+        // Créer les pétales
         createPetalsForFlower(flower)
         flowers.add(flower)
     }
     
-    private fun createFlowerOnBranch(branchIndex: Int, isDominant: Boolean, needsSideView: Boolean) {
+    private fun createFlowerOnBranch(branchIndex: Int) {
         val branch = plantStem.branches[branchIndex]
         if (branch.points.size < 3) return
         
         // Prendre le DERNIER point (bout de la branche)
         val topPoint = branch.points.last()
+        val size = (baseFlowerSize * 0.8f) + (Math.random() * (maxFlowerSize * 0.8f - baseFlowerSize * 0.8f)).toFloat()
         
-        // Taille selon si c'est la tige dominante
-        val sizeMultiplier = if (isDominant) 1.3f else 0.7f // Branches dominantes encore plus grandes
-        val size = (baseFlowerSize + (Math.random() * (maxFlowerSize - baseFlowerSize)).toFloat()) * sizeMultiplier
-        
-        // Perspective selon les besoins
+        // Branches = perspectives variées selon leur angle
         val branchAngle = branch.angle
-        val perspective = if (needsSideView && !isDominant) {
-            // Vue de côté forcée pour une branche non-dominante
-            FlowerPerspective(
-                viewAngle = 85f + (Math.random() * 10f).toFloat(),
-                tiltAngle = branchAngle * 0.2f + (Math.random() * 15f - 7.5f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat()
-            )
-        } else if (isDominant) {
-            // Vue de face pour branche dominante
-            FlowerPerspective(
-                viewAngle = 0f + (Math.random() * 12f - 6f).toFloat(),
-                tiltAngle = (Math.random() * 8f - 4f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat()
-            )
-        } else {
-            // Perspectives variées pour les autres branches
-            FlowerPerspective(
-                viewAngle = 25f + (Math.random() * 35f).toFloat(),
-                tiltAngle = branchAngle * 0.3f + (Math.random() * 25f - 12.5f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat()
-            )
-        }
+        val perspective = FlowerPerspective(
+            viewAngle = 30f + abs(branchAngle) * 0.5f + (Math.random() * 20f - 10f).toFloat(), // Plus inclinées
+            tiltAngle = branchAngle * 0.3f + (Math.random() * 20f - 10f).toFloat(),
+            rotationAngle = (Math.random() * 360f).toFloat()
+        )
         
         val flower = Flower(
             x = topPoint.x,
@@ -238,7 +163,7 @@ class FlowerManager(private val plantStem: PlantStem) {
             val length = baseLength + (Math.random() * baseLength * 0.3f).toFloat()
             val width = length * 0.25f + (Math.random() * length * 0.1f).toFloat()
             
-            // Calculer la perspective du pétale
+            // Calculer la perspective du pétale (version simple)
             val petalPerspective = calculatePetalPerspective(angle, flower.perspective)
             
             val petal = Petal(
@@ -260,14 +185,11 @@ class FlowerManager(private val plantStem: PlantStem) {
         // Facteur de profondeur selon l'angle de vue
         val depthFactor = cos(radians).toFloat() * sin(Math.toRadians(flowerPerspective.viewAngle.toDouble())).toFloat()
         
-        // TRANSPARENCE DANS TOUS LES SENS : randomiser la direction
-        val transparencyDirection = if (Math.random() > 0.5) 1f else -1f
-        
-        // Visibilité (pétales arrière/avant selon direction aléatoire)
-        val visibilityFactor = if (depthFactor * transparencyDirection < 0) {
-            0.25f + (abs(depthFactor) * 0.75f) // Pétales "arrière" plus transparents
+        // Visibilité (les pétales arrière sont moins visibles en perspective) - VERSION SIMPLE
+        val visibilityFactor = if (depthFactor < 0) {
+            0.3f + (depthFactor + 1f) * 0.7f // Pétales arrière plus transparents
         } else {
-            1f // Pétales "avant" complètement visibles
+            1f // Pétales avant complètement visibles
         }
         
         // Facteur de largeur (compression perspective)
