@@ -290,21 +290,6 @@ class OrganicLineView @JvmOverloads constructor(
     // AJOUT - Fonction pour dessiner les fleurs
     private fun drawFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
         val stem = plantStem ?: return
-        
-        // Debug : afficher un cercle rouge simple si les fleurs existent
-        if (flowers.isNotEmpty()) {
-            val debugPaint = Paint().apply {
-                color = Color.RED
-                style = Paint.Style.FILL
-            }
-            
-            for (flower in flowers) {
-                // Dessiner un cercle rouge simple pour debug
-                canvas.drawCircle(flower.x, flower.y, 20f, debugPaint)
-            }
-        }
-        
-        // Appeler aussi le renderer normal
         stem.getFlowerManager().drawFlowers(canvas, flowerPaint, flowerCenterPaint)
     }
     
