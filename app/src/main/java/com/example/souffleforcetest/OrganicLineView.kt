@@ -50,6 +50,20 @@ class OrganicLineView @JvmOverloads constructor(
         color = Color.rgb(34, 139, 34)
     }
     
+    // AJOUT - Paint pour les fleurs
+    private val flowerPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        color = Color.WHITE
+    }
+    
+    private val flowerCenterPaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+        color = Color.rgb(255, 200, 50)
+    }
+    
     // ==================== ÉTATS DU SYSTÈME ====================
     
     private var showResetButton = false
@@ -102,6 +116,11 @@ class OrganicLineView @JvmOverloads constructor(
             plantStem?.processLeavesGrowth(force)
         }
         
+        // AJOUT - Croissance des fleurs pendant GREEN_FLOWER
+        if (lightState == LightState.GREEN_FLOWER) {
+            plantStem?.processFlowerGrowth(force)
+        }
+        
         if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
             showResetButton = true
         }
@@ -127,13 +146,13 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.GREEN_LEAVES -> {
-                if (elapsedTime >= 3000) {
+                if (elapsedTime >= 4000) { // MODIFIÉ: 4 secondes au lieu de 3000
                     lightState = LightState.GREEN_FLOWER
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_FLOWER -> {
-                if (elapsedTime >= 3000) {
+                if (elapsedTime >= 4000) { // MODIFIÉ: 4 secondes au lieu de 3000
                     lightState = LightState.RED
                     stateStartTime = currentTime
                 }
@@ -172,6 +191,12 @@ class OrganicLineView @JvmOverloads constructor(
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
             drawLeaves(canvas, stem.getLeaves())
+        }
+        
+        // AJOUT - Dessiner les fleurs pendant GREEN_FLOWER et après
+        if (lightState == LightState.GREEN_FLOWER || 
+            lightState == LightState.RED) {
+            drawFlowers(canvas, stem.getFlowers())
         }
     }
     
@@ -235,24 +260,52 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // AJOUT - Fonction pour dessiner les feuilles
+    // AJOUT - Fonction pour dessiner les feuilles réalistes
     private fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>) {
-        leafPaint.color = Color.rgb(34, 139, 34)
+        val stem = plantStem ?: return
         
         for (leaf in leaves) {
             if (leaf.currentSize > 0) {
-                val adjustedX = leaf.x + leaf.oscillation
-                val leafSize = leaf.currentSize
+                // Couleur unique pour chaque feuille
+                leafPaint.color = stem.getLeavesManager().getLeafColor(leaf)
                 
-                // Dessiner feuille simple (ovale)
-                val left = adjustedX - leafSize * 0.5f
-                val top = leaf.y - leafSize * 0.3f
-                val right = adjustedX + leafSize * 0.5f
-                val bottom = leaf.y + leafSize * 0.3f
+                // Créer le path de la feuille avec forme réaliste
+                val leafPath = stem.getLeavesManager().createLeafPath(leaf)
                 
-                canvas.drawOval(left, top, right, bottom, leafPaint)
+                // Dessiner la feuille
+                canvas.drawPath(leafPath, leafPaint)
+                
+                // Optionnel : contour plus foncé pour définition
+                if (leaf.currentSize > leaf.maxSize * 0.7f) {
+                    leafPaint.style = Paint.Style.STROKE
+                    leafPaint.strokeWidth = 1.5f
+                    leafPaint.color = Color.rgb(20, 80, 20)
+                    canvas.drawPath(leafPath, leafPaint)
+                    leafPaint.style = Paint.Style.FILL
+                }
             }
         }
+    }
+    
+    // AJOUT - Fonction pour dessiner les fleurs
+    private fun drawFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
+        val stem = plantStem ?: return
+        
+        // Debug : afficher un cercle rouge simple si les fleurs existent
+        if (flowers.isNotEmpty()) {
+            val debugPaint = Paint().apply {
+                color = Color.RED
+                style = Paint.Style.FILL
+            }
+            
+            for (flower in flowers) {
+                // Dessiner un cercle rouge simple pour debug
+                canvas.drawCircle(flower.x, flower.y, 20f, debugPaint)
+            }
+        }
+        
+        // Appeler aussi le renderer normal
+        stem.getFlowerManager().drawFlowers(canvas, flowerPaint, flowerCenterPaint)
     }
     
     private fun drawTrafficLight(canvas: Canvas) {
@@ -288,8 +341,8 @@ class OrganicLineView @JvmOverloads constructor(
         val timeRemaining = when (lightState) {
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
             LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))  // CORRIGÉ: 5 secondes au lieu de 4
-            LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000))
-            LightState.GREEN_FLOWER -> max(0, 3 - (elapsedTime / 1000))
+            LightState.GREEN_LEAVES -> max(0, 4 - (elapsedTime / 1000)) // MODIFIÉ: 4 secondes
+            LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000)) // MODIFIÉ: 4 secondes
             LightState.RED -> 0
         }
         
