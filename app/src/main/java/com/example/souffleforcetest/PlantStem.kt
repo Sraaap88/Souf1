@@ -43,6 +43,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var emergenceStartTime = 0L
     private var branchSide = true
     private var branchCount = 0
+    private var branchCreationOrder = mutableListOf<Int>() // AJOUT : ordre aléatoire de création
     
     // Instance du gestionnaire de croissance - initialisation tardive
     private lateinit var growthManager: PlantGrowthManager
@@ -70,6 +71,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         growthManager = PlantGrowthManager(this) // Initialisation après la création de l'objet
         leavesManager = PlantLeavesManager(this) // AJOUT
         flowerManager = FlowerManager(this) // AJOUT
+        initializeBranchOrder() // AJOUT : initialiser ordre aléatoire
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
@@ -110,7 +112,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 
                 // Détection ramification (souffle saccadé) - SEUIL AUGMENTÉ pour moins de branches
                 if (abs(force - lastForce) > 0.25f && stemHeight > 30f && branchCount < maxBranches) {
-                    createBranch()
+                    createBranchInOrder() // MODIFIÉ : créer dans l'ordre aléatoire
                 }
             }
         }
@@ -138,6 +140,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         isEmerging = false
         branchSide = true
         branchCount = 0
+        branchCreationOrder.clear() // AJOUT : reset ordre
+        initializeBranchOrder() // AJOUT : créer nouvel ordre aléatoire
         leavesManager.resetLeaves() // AJOUT
         flowerManager.resetFlowers() // AJOUT
     }
@@ -196,6 +200,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     private fun createBranch() {
+    private fun createBranch(branchNumber: Int) {
         branchCount++
         
         // ESPACEMENT PROGRESSIF : Même distance entre chaque tige
@@ -207,7 +212,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         val heightRange: Pair<Float, Float>
         val thickness: Float
         
-        when (branchCount) {
+        when (branchNumber) {
             1 -> {
                 isLeft = false
                 position = baseSpacing                    // +50px (droite)
@@ -252,9 +257,17 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             }
         }
         
+        // MODIFICATION : Une des branches peut être plus haute que la principale
+        val adjustedHeightRange = if (branches.isEmpty() && Math.random() < 0.7f) {
+            // Première branche créée a 70% de chance d'être plus haute
+            Pair(0.85f, 0.95f) // Plus haute que la principale (0.8f)
+        } else {
+            heightRange
+        }
+        
         val forcedOffset = position + (Math.random().toFloat() * 10f - 5f) // ±5px de variation
         val forcedAngle = if (isLeft) -12f else +12f
-        val baseHeightRatio = (heightRange.first + Math.random().toFloat() * (heightRange.second - heightRange.first))
+        val baseHeightRatio = (adjustedHeightRange.first + Math.random().toFloat() * (adjustedHeightRange.second - adjustedHeightRange.first))
         val branchMaxHeight = maxPossibleHeight * baseHeightRatio
         val thicknessVar = thickness
         
@@ -295,7 +308,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        println("Tige ${branchCount}: ${if (isLeft) "GAUCHE" else "DROITE"} créée")
+        println("Tige ${branchNumber} (${branchCount}ème créée): ${if (isLeft) "GAUCHE" else "DROITE"} - Hauteur max: ${(baseHeightRatio * 100).toInt()}%")
     }
     
     // ==================== UTILITAIRES ====================
@@ -303,4 +316,4 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private fun lerp(start: Float, end: Float, fraction: Float): Float {
         return start + fraction * (end - start)
     }
-}
+    }
