@@ -216,8 +216,8 @@ class FlowerManager(private val plantStem: PlantStem) {
                 
                 flower.currentSize = (flower.currentSize + adjustedGrowth).coerceAtMost(flower.maxSize)
                 
-                // CENTRE GRANDIT PROPORTIONNELLEMENT : toujours 75% de la taille actuelle (2.5 x 30%)
-                val targetCenterSize = flower.currentSize * 0.75f
+                // CENTRE GRANDIT PROPORTIONNELLEMENT : 67.5% de la taille actuelle (75% - 10%)
+                val targetCenterSize = flower.currentSize * 0.675f
                 flower.centerSize = targetCenterSize
                 
                 // Faire grandir les pétales
