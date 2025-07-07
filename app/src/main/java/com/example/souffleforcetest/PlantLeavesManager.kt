@@ -47,8 +47,8 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
-    private val baseLeafSize = 50f  // +20% encore (42f → 50f)
-    private val maxLeafSize = 108f  // +20% encore (90f → 108f)
+    private val baseLeafSize = 50f  
+    private val maxLeafSize = 108f  
     private val basalLeafSize = 65f // Feuilles basales plus longues
     private val maxBasalLeafSize = 125f
     private var basalLeavesCreated = false
@@ -129,37 +129,29 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
         val baseX = plantStem.getStemBaseX()
         val baseY = plantStem.getStemBaseY()
         
-        // Créer 8-10 feuilles basales en rosette naturelle (moins dense)
-        val leafCount = 8 + (Math.random() * 3).toInt()
+        // Créer 12-15 feuilles basales en rosette dense
+        val leafCount = 12 + (Math.random() * 4).toInt()
         
         for (i in 0 until leafCount) {
-            // Distribution moins géométrique avec clusters naturels
-            val baseAngle = (i * 360f / leafCount)
-            val clusterVariation = (Math.random() * 40f - 20f).toFloat() // ±20° pour clusters
-            val angle = baseAngle + clusterVariation
+            val angle = (i * 360f / leafCount) + (Math.random() * 20f - 10f).toFloat()
+            val distance = 25f + (Math.random() * 15f).toFloat() // Plus près de la base
             
-            // Distance variable pour aspect naturel
-            val distance = 20f + (Math.random() * 25f).toFloat() // 20-45px
-            
-            // Position avec variation en hauteur (rosette 3D)
             val leafX = baseX + cos(Math.toRadians(angle.toDouble())).toFloat() * distance
-            val heightVariation = (Math.random() * 8f - 4f).toFloat() // ±4px en hauteur
-            val leafY = baseY + sin(Math.toRadians(angle.toDouble())).toFloat() * distance * 0.2f + heightVariation
+            val leafY = baseY + sin(Math.toRadians(angle.toDouble())).toFloat() * distance * 0.3f
             
-            // Tailles très variées pour naturel
-            val sizeVariation = 0.6f + (Math.random() * 0.8f).toFloat() // 60% à 140% de variation
-            val size = (basalLeafSize + (Math.random() * (maxBasalLeafSize - basalLeafSize)).toFloat()) * sizeVariation
+            // Feuilles basales plus longues
+            val size = basalLeafSize + (Math.random() * (maxBasalLeafSize - basalLeafSize)).toFloat()
             val personality = leafRenderer.generateLeafPersonality()
             
             val basalLeaf = Leaf(
                 x = leafX,
                 y = leafY,
                 size = size,
-                angle = angle + (Math.random() * 30f - 15f).toFloat(), // ±15° de variation d'orientation
+                angle = (Math.random() * 360f).toFloat(), // Angles aléatoires dans toutes les directions
                 stemIndex = -2, // Code pour feuilles basales
                 pointIndex = -1,
                 maxSize = size,
-                side = angle > 180f,
+                side = angle > 180f, // Basé sur l'angle réel
                 leafType = LeafType.BASAL,
                 personality = personality
             )
@@ -194,16 +186,16 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 
                 // Probabilité naturelle : plus de chances vers le bas
                 val naturalProbability = when {
-                    heightRatio < 0.3f -> 0.9f    // 90% de chance en bas
-                    heightRatio < 0.6f -> 0.6f    // 60% de chance au milieu
-                    else -> 0.3f                  // 30% de chance en haut
+                    heightRatio < 0.3f -> 0.8f    // 80% de chance en bas
+                    heightRatio < 0.6f -> 0.5f    // 50% de chance au milieu
+                    else -> 0.2f                  // 20% de chance en haut
                 }
                 
                 // Espacement naturel avec variation aléatoire
                 val lastLeafDistance = leaves.filter { it.stemIndex == -1 }
                     .minByOrNull { abs(it.pointIndex - i) }?.let { abs(it.pointIndex - i) } ?: 10
                 
-                val minDistance = 2 + (Math.random() * 2).toInt() // 2-4 points minimum (plus dense)
+                val minDistance = 3 + (Math.random() * 2).toInt() // 3-5 points minimum
                 
                 if (lastLeafDistance >= minDistance && Math.random() < naturalProbability) {
                     availablePoints.add(i)
@@ -215,25 +207,11 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val pointIndex = availablePoints.random()
             val point = mainStem[pointIndex]
             
-            // Répartition 360° VRAIMENT autour de la tige (côtés inclus)
+            // Alternance naturelle avec variation 360°
             val existingLeaves = leaves.filter { it.stemIndex == -1 }
-            val spiralAngle = (existingLeaves.size * 137.5f) % 360f // Spirale d'or
-            
-            // Variation pour naturel + priorité aux côtés
-            val sideBonus = when {
-                spiralAngle in 45f..135f -> 20f      // Favoriser côté droit
-                spiralAngle in 225f..315f -> -20f    // Favoriser côté gauche
-                else -> 0f
-            }
-            val naturalAngle = spiralAngle + sideBonus + (Math.random() * 40f - 20f).toFloat()
-            val normalizedAngle = ((naturalAngle % 360f) + 360f) % 360f
-            
-            // Position latérale autour de la tige
-            val radius = 8f + (Math.random() * 4f).toFloat() // 8-12px du centre de la tige
-            val lateralX = point.x + cos(Math.toRadians(normalizedAngle.toDouble())).toFloat() * radius
-            val lateralY = point.y + sin(Math.toRadians(normalizedAngle.toDouble())).toFloat() * radius * 0.3f
-            
-            val naturalSide = normalizedAngle > 180f
+            val baseAngle = (existingLeaves.size * 137.5f) % 360f // Angle d'or pour répartition naturelle
+            val naturalAngle = baseAngle + (Math.random() * 60f - 30f).toFloat() // ±30° de variation
+            val naturalSide = naturalAngle > 180f
             
             // Taille selon la hauteur : feuilles basses plus grandes
             val heightRatio = (plantStem.getStemBaseY() - point.y) / plantStem.getMaxPossibleHeight()
@@ -243,10 +221,10 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val personality = leafRenderer.generateLeafPersonality()
             
             val newLeaf = Leaf(
-                x = lateralX, // Position latérale autour de la tige
-                y = lateralY,
+                x = point.x,
+                y = point.y,
                 size = size,
-                angle = normalizedAngle, // Angle de sortie latéral
+                angle = naturalAngle, // Angle calculé pour répartition 360°
                 stemIndex = -1,
                 pointIndex = pointIndex,
                 maxSize = size,
@@ -274,9 +252,9 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 
                 // Plus de feuilles vers la base des branches
                 val naturalProbability = when {
-                    branchHeightRatio < 0.4f -> 0.8f    // 80% de chance vers la base
-                    branchHeightRatio < 0.7f -> 0.5f    // 50% de chance au milieu
-                    else -> 0.2f                        // 20% de chance vers le bout
+                    branchHeightRatio < 0.4f -> 0.6f    // 60% de chance vers la base
+                    branchHeightRatio < 0.7f -> 0.3f    // 30% de chance au milieu
+                    else -> 0.1f                        // 10% de chance vers le bout
                 }
                 
                 val lastLeafDistance = leaves.filter { it.stemIndex == branchIndex }
@@ -294,20 +272,11 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val pointIndex = availablePoints.random()
             val point = branch.points[pointIndex]
             
-            // Répartition 360° autour des branches aussi
+            // Alternance naturelle sur la branche avec répartition 360°
             val existingBranchLeaves = leaves.filter { it.stemIndex == branchIndex }
-            val spiralAngle = (existingBranchLeaves.size * 137.5f) % 360f
-            
-            // Variation plus importante sur les branches
-            val branchAngle = spiralAngle + (Math.random() * 60f - 30f).toFloat()
-            val normalizedBranchAngle = ((branchAngle % 360f) + 360f) % 360f
-            
-            // Position latérale autour de la branche
-            val radius = 6f + (Math.random() * 3f).toFloat() // 6-9px du centre (plus petit que tige principale)
-            val lateralX = point.x + cos(Math.toRadians(normalizedBranchAngle.toDouble())).toFloat() * radius
-            val lateralY = point.y + sin(Math.toRadians(normalizedBranchAngle.toDouble())).toFloat() * radius * 0.2f
-            
-            val naturalSide = normalizedBranchAngle > 180f
+            val baseAngle = (existingBranchLeaves.size * 137.5f) % 360f // Angle d'or
+            val branchAngle = baseAngle + (Math.random() * 90f - 45f).toFloat() // Plus de variation sur branches
+            val naturalSide = branchAngle > 180f
             
             // Taille selon la hauteur sur la branche
             val heightRatio = (plantStem.getStemBaseY() - point.y) / plantStem.getMaxPossibleHeight()
@@ -317,10 +286,10 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
             val personality = leafRenderer.generateLeafPersonality()
             
             val newLeaf = Leaf(
-                x = lateralX, // Position latérale autour de la branche
-                y = lateralY,
+                x = point.x,
+                y = point.y,
                 size = size,
-                angle = normalizedBranchAngle, // Angle de sortie latéral
+                angle = branchAngle, // Angle calculé pour répartition
                 stemIndex = branchIndex,
                 pointIndex = pointIndex,
                 maxSize = size,
