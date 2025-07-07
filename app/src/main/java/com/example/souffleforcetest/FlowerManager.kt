@@ -18,10 +18,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         val perspective: FlowerPerspective,
         var centerSize: Float = 0f,
         val petals: MutableList<Petal> = mutableListOf(),
-        var isFullyGrown: Boolean = false,
-        var isBud: Boolean = false,              // NOUVEAU : Est-ce un bouton ?
-        var budStage: BudStage = BudStage.TIGHT, // NOUVEAU : Stade du bouton
-        var budSize: Float = 0f                  // NOUVEAU : Taille du bouton
+        var isFullyGrown: Boolean = false
     )
     
     data class Petal(
@@ -35,16 +32,8 @@ class FlowerManager(private val plantStem: PlantStem) {
     data class FlowerPerspective(
         val viewAngle: Float,        // Angle de vue (0° = face, 45° = angle, 90° = profil)
         val tiltAngle: Float,        // Inclinaison (haut/bas)
-        val rotationAngle: Float,    // Rotation autour de l'axe
-        val viewType: FlowerViewType // NOUVEAU : Type de vue
+        val rotationAngle: Float     // Rotation autour de l'axe
     )
-    
-    // NOUVEAU : Types de vue pour les marguerites
-    enum class FlowerViewType {
-        TOP_VIEW,    // Vue de dessus (comme actuellement)
-        SIDE_VIEW,   // Vue de côté (profil complet)
-        ANGLE_VIEW   // Vue en angle (3/4)
-    }
     
     data class PetalPerspective(
         val depthFactor: Float,      // Facteur de profondeur (0-1)
@@ -52,19 +41,10 @@ class FlowerManager(private val plantStem: PlantStem) {
         val widthFactor: Float       // Facteur de largeur selon perspective
     )
     
-    // NOUVEAU : Stades de développement des boutons
-    enum class BudStage {
-        TIGHT,      // Bouton très fermé (début)
-        SWELLING,   // Bouton qui gonfle
-        OPENING,    // Bouton qui commence à s'ouvrir (pétales visibles)
-        STUCK       // Bouton bloqué (ne s'ouvrira plus)
-    }
-    
     // ==================== VARIABLES PRINCIPALES ====================
     
     val flowers = mutableListOf<Flower>()
     private var lastForce = 0f
-    private val forceHistory = mutableListOf<Float>() // NOUVEAU : Historique pour stabilité
     
     // ==================== PARAMÈTRES ====================
     
@@ -77,16 +57,13 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processFlowerGrowth(force: Float) {
-        // Mettre à jour l'historique des forces pour analyser la stabilité
-        updateForceHistory(force)
-        
         // Créer des fleurs sur chaque tige qui n'en a pas encore (au début de la phase)
         if (flowers.isEmpty()) {
-            createFlowersOnStems(force)
+            createFlowersOnStems()
         }
         
-        // Faire grandir les fleurs et boutons existants
-        growExistingFlowersAndBuds(force)
+        // Faire grandir les fleurs existantes
+        growExistingFlowers(force)
         
         lastForce = force
     }
@@ -94,15 +71,11 @@ class FlowerManager(private val plantStem: PlantStem) {
     fun resetFlowers() {
         flowers.clear()
         lastForce = 0f
-        forceHistory.clear() // NOUVEAU : Reset de l'historique
     }
     
     fun drawFlowers(canvas: Canvas, flowerPaint: Paint, centerPaint: Paint) {
-        // Dessiner d'abord les boutons, puis les fleurs
         for (flower in flowers) {
-            if (flower.isBud && flower.budSize > 0) {
-                drawFlowerBud(canvas, flower, flowerPaint, centerPaint)
-            } else if (!flower.isBud && flower.currentSize > 0) {
+            if (flower.currentSize > 0) {
                 drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
             }
         }
@@ -110,93 +83,40 @@ class FlowerManager(private val plantStem: PlantStem) {
     
     fun drawSpecificFlowers(canvas: Canvas, specificFlowers: List<Flower>, flowerPaint: Paint, centerPaint: Paint) {
         for (flower in specificFlowers) {
-            if (flower.isBud && flower.budSize > 0) {
-                drawFlowerBud(canvas, flower, flowerPaint, centerPaint)
-            } else if (!flower.isBud && flower.currentSize > 0) {
+            if (flower.currentSize > 0) {
                 drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
             }
         }
     }
     
-    // ==================== NOUVEAU SYSTÈME DE BOUTONS ====================
-    
-    private fun updateForceHistory(force: Float) {
-        forceHistory.add(force)
-        if (forceHistory.size > 20) { // Garder 20 valeurs pour analyse
-            forceHistory.removeAt(0)
-        }
-    }
-    
-    private fun calculateForceStability(): Float {
-        if (forceHistory.size < 10) return 1f
-        
-        val recent = forceHistory.takeLast(10)
-        val avgForce = recent.average().toFloat()
-        val maxVariation = recent.maxOf { abs(it - avgForce) }
-        
-        return (1f - (maxVariation / 0.5f)).coerceIn(0f, 1f)
-    }
-    
-    private fun shouldCreateBud(stemIndex: Int, force: Float, forceStability: Float): Boolean {
-        // 1. Probabilité de base (20% pour le réalisme)
-        val baseBudChance = 0.2f
-        
-        // 2. Force insuffisante augmente les chances
-        val forceEffect = if (force < 0.4f) {
-            (0.4f - force) * 1.5f // +60% de chance si force = 0
-        } else 0f
-        
-        // 3. Instabilité augmente les chances
-        val stabilityEffect = if (forceStability < 0.7f) {
-            (0.7f - forceStability) * 0.8f // +24% si très instable
-        } else 0f
-        
-        // 4. Tiges secondaires tardives ont plus de boutons
-        val stemEffect = when (stemIndex) {
-            -1 -> 0f        // Tige principale : pas d'effet
-            0, 1 -> 0.1f    // Premières branches : +10%
-            2, 3 -> 0.2f    // Branches moyennes : +20%
-            else -> 0.3f    // Dernières branches : +30%
-        }
-        
-        val totalBudChance = (baseBudChance + forceEffect + stabilityEffect + stemEffect).coerceIn(0f, 0.8f)
-        return Math.random() < totalBudChance
-    }
-    
     // ==================== FONCTIONS PRIVÉES ====================
     
-    private fun createFlowersOnStems(force: Float) {
-        val forceStability = calculateForceStability()
-        
-        // Créer fleur/bouton sur tige principale si elle a une taille suffisante
+    private fun createFlowersOnStems() {
+        // Créer fleur sur tige principale si elle a une taille suffisante
         if (!flowers.any { it.stemIndex == -1 } && plantStem.mainStem.size > 5) {
-            createFlowerOrBudOnMainStem(force, forceStability)
+            createFlowerOnMainStem()
         }
         
-        // Créer fleurs/boutons sur chaque branche qui a une taille suffisante
+        // Créer fleurs sur chaque branche qui a une taille suffisante
         for (branchIndex in plantStem.branches.indices) {
             val branch = plantStem.branches[branchIndex]
             if (!flowers.any { it.stemIndex == branchIndex } && branch.points.size > 3) {
-                createFlowerOrBudOnBranch(branchIndex, force, forceStability)
+                createFlowerOnBranch(branchIndex)
             }
         }
     }
     
-    private fun createFlowerOrBudOnMainStem(force: Float, forceStability: Float) {
+    private fun createFlowerOnMainStem() {
         val mainStem = plantStem.mainStem
         if (mainStem.size < 5) return
         
         val topPoint = mainStem.last()
         val size = baseFlowerSize + (Math.random() * (maxFlowerSize - baseFlowerSize)).toFloat()
         
-        // GARANTIR au moins une vue de dessus sur la tige principale
-        val viewType = FlowerViewType.TOP_VIEW
-        
         val perspective = FlowerPerspective(
             viewAngle = 0f + (Math.random() * 10f - 5f).toFloat(),
             tiltAngle = (Math.random() * 15f - 7.5f).toFloat(),
-            rotationAngle = (Math.random() * 360f).toFloat(),
-            viewType = viewType
+            rotationAngle = (Math.random() * 360f).toFloat()
         )
         
         val flower = Flower(
@@ -204,66 +124,35 @@ class FlowerManager(private val plantStem: PlantStem) {
             y = topPoint.y - 20f,
             stemIndex = -1,
             maxSize = size,
-            perspective = perspective,
-            isBud = shouldCreateBud(-1, force, forceStability)
+            perspective = perspective
         )
         
-        if (!flower.isBud) {
-            createPetalsForFlower(flower)
-        }
-        
+        createPetalsForFlower(flower)
         flowers.add(flower)
     }
     
-    private fun createFlowerOrBudOnBranch(branchIndex: Int, force: Float, forceStability: Float) {
+    private fun createFlowerOnBranch(branchIndex: Int) {
         val branch = plantStem.branches[branchIndex]
         if (branch.points.size < 3) return
         
         val topPoint = branch.points.last()
         val size = (baseFlowerSize * 0.8f) + (Math.random() * (maxFlowerSize * 0.8f - baseFlowerSize * 0.8f)).toFloat()
         
-        // NOUVEAU : Répartition des vues sur les branches
-        val viewType = when (Math.random()) {
-            in 0.0..0.4 -> FlowerViewType.SIDE_VIEW    // 40% vue de côté
-            in 0.4..0.7 -> FlowerViewType.ANGLE_VIEW   // 30% vue en angle  
-            else -> FlowerViewType.TOP_VIEW            // 30% vue de dessus
-        }
-        
-        val branchAngle = branch.angle
-        val perspective = when (viewType) {
-            FlowerViewType.TOP_VIEW -> FlowerPerspective(
-                viewAngle = 0f + (Math.random() * 15f - 7.5f).toFloat(),
-                tiltAngle = (Math.random() * 20f - 10f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat(),
-                viewType = viewType
-            )
-            FlowerViewType.ANGLE_VIEW -> FlowerPerspective(
-                viewAngle = 45f + (Math.random() * 20f - 10f).toFloat(),
-                tiltAngle = branchAngle * 0.5f + (Math.random() * 25f - 12.5f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat(),
-                viewType = viewType
-            )
-            FlowerViewType.SIDE_VIEW -> FlowerPerspective(
-                viewAngle = 85f + (Math.random() * 10f - 5f).toFloat(),
-                tiltAngle = branchAngle * 0.8f + (Math.random() * 30f - 15f).toFloat(),
-                rotationAngle = (Math.random() * 360f).toFloat(),
-                viewType = viewType
-            )
-        }
+        val perspective = FlowerPerspective(
+            viewAngle = 0f + (Math.random() * 15f - 7.5f).toFloat(),
+            tiltAngle = (Math.random() * 20f - 10f).toFloat(),
+            rotationAngle = (Math.random() * 360f).toFloat()
+        )
         
         val flower = Flower(
             x = topPoint.x,
             y = topPoint.y - 15f,
             stemIndex = branchIndex,
             maxSize = size,
-            perspective = perspective,
-            isBud = shouldCreateBud(branchIndex, force, forceStability)
+            perspective = perspective
         )
         
-        if (!flower.isBud) {
-            createPetalsForFlower(flower)
-        }
-        
+        createPetalsForFlower(flower)
         flowers.add(flower)
     }
     
@@ -312,72 +201,33 @@ class FlowerManager(private val plantStem: PlantStem) {
         )
     }
     
-    private fun growExistingFlowersAndBuds(force: Float) {
-        val forceStability = calculateForceStability()
-        
+    private fun growExistingFlowers(force: Float) {
         for (flower in flowers) {
-            if (flower.isBud) {
-                growBud(flower, force, forceStability)
-            } else {
-                growNormalFlower(flower, force, forceStability)
-            }
-        }
-    }
-    
-    private fun growBud(flower: Flower, force: Float, forceStability: Float) {
-        val targetBudSize = flower.maxSize * 0.3f // Les boutons font 30% de la taille d'une fleur
-        
-        if (flower.budSize < targetBudSize) {
-            val budGrowthRate = 200f // Plus lent que les fleurs normales
-            val qualityMultiplier = 0.5f + forceStability * 0.5f
-            val adjustedGrowth = force * qualityMultiplier * budGrowthRate * 0.008f
-            flower.budSize = (flower.budSize + adjustedGrowth).coerceAtMost(targetBudSize)
-            
-            // Évolution des stades selon la taille
-            flower.budStage = when {
-                flower.budSize < targetBudSize * 0.3f -> BudStage.TIGHT
-                flower.budSize < targetBudSize * 0.7f -> BudStage.SWELLING  
-                flower.budSize < targetBudSize * 0.9f -> BudStage.OPENING
-                else -> BudStage.STUCK
-            }
-            
-            // RARE : Un bouton peut parfois éclore en vraie fleur avec un souffle parfait
-            if (flower.budStage == BudStage.OPENING && 
-                force > 0.6f && 
-                forceStability > 0.9f && 
-                Math.random() < 0.15f) { // 15% de chance
+            if (flower.currentSize < flower.maxSize && force > forceThreshold) {
+                val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
+                val qualityMultiplier = 0.5f + forceStability * 0.5f
                 
-                flower.isBud = false
-                flower.currentSize = flower.budSize * 2f // Explosion de croissance
-                createPetalsForFlower(flower) // Créer les pétales
-            }
-        }
-    }
-    
-    private fun growNormalFlower(flower: Flower, force: Float, forceStability: Float) {
-        if (flower.currentSize < flower.maxSize && force > forceThreshold) {
-            val qualityMultiplier = 0.5f + forceStability * 0.5f
-            
-            val growthProgress = flower.currentSize / flower.maxSize
-            val progressCurve = 1f - growthProgress * growthProgress
-            val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f
-            
-            flower.currentSize = (flower.currentSize + adjustedGrowth).coerceAtMost(flower.maxSize)
-            
-            // CENTRE GRANDIT PROPORTIONNELLEMENT : 67.5% de la taille actuelle
-            val targetCenterSize = flower.currentSize * 0.675f
-            flower.centerSize = targetCenterSize
-            
-            // Faire grandir les pétales
-            for (petal in flower.petals) {
-                if (petal.currentLength < petal.length) {
-                    petal.currentLength = (petal.currentLength + adjustedGrowth * 0.8f).coerceAtMost(petal.length)
+                val growthProgress = flower.currentSize / flower.maxSize
+                val progressCurve = 1f - growthProgress * growthProgress
+                val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f
+                
+                flower.currentSize = (flower.currentSize + adjustedGrowth).coerceAtMost(flower.maxSize)
+                
+                // CENTRE GRANDIT PROPORTIONNELLEMENT : 67.5% de la taille actuelle
+                val targetCenterSize = flower.currentSize * 0.675f
+                flower.centerSize = targetCenterSize
+                
+                // Faire grandir les pétales
+                for (petal in flower.petals) {
+                    if (petal.currentLength < petal.length) {
+                        petal.currentLength = (petal.currentLength + adjustedGrowth * 0.8f).coerceAtMost(petal.length)
+                    }
                 }
-            }
-            
-            // Marquer comme complètement développée
-            if (flower.currentSize >= flower.maxSize * 0.95f) {
-                flower.isFullyGrown = true
+                
+                // Marquer comme complètement développée
+                if (flower.currentSize >= flower.maxSize * 0.95f) {
+                    flower.isFullyGrown = true
+                }
             }
         }
     }
@@ -385,19 +235,10 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS DE RENDU ====================
     
     private fun drawSingleFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
-        when (flower.perspective.viewType) {
-            FlowerViewType.TOP_VIEW -> drawTopViewFlower(canvas, flower, flowerPaint, centerPaint)
-            FlowerViewType.ANGLE_VIEW -> drawAngleViewFlower(canvas, flower, flowerPaint, centerPaint)
-            FlowerViewType.SIDE_VIEW -> drawSideViewFlower(canvas, flower, flowerPaint, centerPaint)
-        }
-    }
-    
-    // Vue de dessus (fleur actuelle - gardée intacte)
-    private fun drawTopViewFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
         val currentX = flower.x
         val currentY = flower.y
         
-        // Dessiner les pétales (d'abord les arrière, puis les avant)
+        // Dessiner les pétales - STATIQUES une fois développés
         val sortedPetals = flower.petals.sortedBy { it.perspective.depthFactor }
         
         for (petal in sortedPetals) {
@@ -406,109 +247,10 @@ class FlowerManager(private val plantStem: PlantStem) {
             }
         }
         
-        // Dessiner le centre par-dessus
+        // Dessiner le centre par-dessus - STATIQUE
         if (flower.centerSize > 0) {
             drawFlowerCenter(canvas, currentX, currentY, flower, centerPaint)
         }
-    }
-    
-    // NOUVEAU : Vue en angle (3/4)
-    private fun drawAngleViewFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
-        val currentX = flower.x
-        val currentY = flower.y
-        val size = flower.currentSize
-        
-        if (size <= 0) return
-        
-        // Centre visible mais écrasé en perspective
-        val centerRadius = flower.centerSize * 0.3f
-        centerPaint.color = Color.rgb(255, 200, 50)
-        
-        canvas.save()
-        canvas.translate(currentX, currentY)
-        canvas.scale(1f, 0.6f) // Perspective écrasée
-        canvas.drawCircle(0f, -centerRadius * 0.3f, centerRadius, centerPaint)
-        canvas.restore()
-        
-        // Pétales visibles (environ 60% des pétales)
-        val visiblePetalCount = (flower.petals.size * 0.6f).toInt()
-        flowerPaint.color = Color.WHITE
-        flowerPaint.style = Paint.Style.STROKE
-        flowerPaint.strokeCap = Paint.Cap.ROUND
-        
-        for (i in 0 until visiblePetalCount) {
-            val petal = flower.petals[i]
-            val angle = petal.angle + flower.perspective.rotationAngle
-            val length = petal.currentLength * 0.8f // Légèrement raccourcis
-            val width = petal.width * 0.7f
-            
-            val rad = Math.toRadians(angle.toDouble())
-            val startX = currentX + cos(rad).toFloat() * centerRadius
-            val startY = currentY + sin(rad).toFloat() * centerRadius * 0.6f - centerRadius * 0.3f
-            val endX = currentX + cos(rad).toFloat() * length
-            val endY = currentY + sin(rad).toFloat() * length * 0.6f - centerRadius * 0.3f
-            
-            flowerPaint.strokeWidth = width
-            canvas.drawLine(startX, startY, endX, endY, flowerPaint)
-        }
-    }
-    
-    // NOUVEAU : Vue de côté (profil)
-    private fun drawSideViewFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
-        val currentX = flower.x
-        val currentY = flower.y
-        val size = flower.currentSize
-        
-        if (size <= 0) return
-        
-        // Centre de profil (petit trait vertical jaune)
-        val centerHeight = flower.centerSize * 0.6f
-        centerPaint.color = Color.rgb(255, 200, 50)
-        centerPaint.style = Paint.Style.STROKE
-        centerPaint.strokeWidth = centerHeight * 0.8f
-        centerPaint.strokeCap = Paint.Cap.ROUND
-        canvas.drawLine(currentX, currentY - centerHeight * 0.3f, currentX, currentY + centerHeight * 0.3f, centerPaint)
-        
-        // Pétales de profil (forme d'ellipse aplatie)
-        flowerPaint.color = Color.WHITE
-        flowerPaint.style = Paint.Style.STROKE
-        flowerPaint.strokeCap = Paint.Cap.ROUND
-        
-        // Quelques pétales visibles en profil
-        val visiblePetals = listOf(-45f, -25f, -5f, 5f, 25f, 45f) // Angles de pétales visibles
-        
-        for (angle in visiblePetals) {
-            val length = size * 0.35f + (Math.random() * size * 0.1f).toFloat()
-            val width = size * 0.04f + (Math.random() * size * 0.02f).toFloat()
-            
-            val rad = Math.toRadians(angle.toDouble())
-            val startX = currentX
-            val startY = currentY
-            val endX = currentX + cos(rad).toFloat() * length * 0.3f // Très aplati
-            val endY = currentY + sin(rad).toFloat() * length
-            
-            flowerPaint.strokeWidth = width
-            canvas.drawLine(startX, startY, endX, endY, flowerPaint)
-        }
-        
-        // Contour externe de profil (forme d'ellipse)
-        flowerPaint.style = Paint.Style.STROKE
-        flowerPaint.strokeWidth = 2f
-        flowerPaint.color = Color.rgb(240, 240, 240)
-        
-        val ellipseWidth = size * 0.3f
-        val ellipseHeight = size * 0.7f
-        
-        canvas.save()
-        canvas.translate(currentX, currentY)
-        canvas.scale(1f, 1f)
-        
-        // Dessiner ellipse comme contour
-        val path = android.graphics.Path()
-        path.addOval(-ellipseWidth/2, -ellipseHeight/2, ellipseWidth/2, ellipseHeight/2, android.graphics.Path.Direction.CW)
-        canvas.drawPath(path, flowerPaint)
-        
-        canvas.restore()
     }
     
     private fun drawPetal(canvas: Canvas, centerX: Float, centerY: Float, petal: Petal, flower: Flower, paint: Paint) {
@@ -545,204 +287,30 @@ class FlowerManager(private val plantStem: PlantStem) {
     
     private fun drawFlowerCenter(canvas: Canvas, centerX: Float, centerY: Float, flower: Flower, paint: Paint) {
         val centerRadius = flower.centerSize * 0.4f
-        val perspective = flower.perspective
         
-        val perspectiveFactor = cos(Math.toRadians(perspective.viewAngle.toDouble())).toFloat()
-        val radiusX = centerRadius * perspectiveFactor
-        val radiusY = centerRadius
-        
+        // Dégradé jaune-orange pour le centre - STATIQUE
         paint.color = Color.rgb(255, 200, 50)
         
-        canvas.save()
-        canvas.translate(centerX, centerY)
-        canvas.scale(1f, perspectiveFactor)
-        canvas.drawCircle(0f, 0f, radiusY, paint)
-        canvas.restore()
+        // Dessiner le centre comme un cercle simple
+        canvas.drawCircle(centerX, centerY, centerRadius, paint)
         
+        // Ajouter texture granuleuse avec petits points - STATIQUES
         paint.color = Color.rgb(200, 150, 30)
         val pointCount = (centerRadius * 0.5f).toInt()
         
+        // SUPPRESSION de l'animation Math.random() → valeurs fixes basées sur la position
+        val seed = (centerX + centerY).toInt()
         for (i in 0 until pointCount) {
-            val angle = Math.random() * 2 * PI
-            val distance = Math.random() * radiusY * 0.8f
-            val pointX = centerX + cos(angle).toFloat() * distance.toFloat() * perspectiveFactor
-            val pointY = centerY + sin(angle).toFloat() * distance.toFloat()
+            // Utiliser la position de la fleur comme seed pour des points fixes
+            val angleSeed = (seed + i * 137) % 360 // Angle déterministe
+            val distanceSeed = ((seed + i * 97) % 100) / 100f // Distance déterministe
+            
+            val angle = angleSeed * PI / 180.0
+            val distance = distanceSeed * centerRadius * 0.8f
+            val pointX = centerX + cos(angle).toFloat() * distance
+            val pointY = centerY + sin(angle).toFloat() * distance
             
             canvas.drawCircle(pointX, pointY, 1.5f, paint)
-        }
-    }
-    
-    // ==================== RENDU DES BOUTONS ====================
-    
-    private fun drawFlowerBud(canvas: Canvas, flower: Flower, budPaint: Paint, sepalsP: Paint) {
-        val x = flower.x
-        val y = flower.y
-        val size = flower.budSize
-        
-        if (size <= 0) return
-        
-        when (flower.budStage) {
-            BudStage.TIGHT -> drawTightBud(canvas, x, y, size, budPaint, sepalsP)
-            BudStage.SWELLING -> drawSwellingBud(canvas, x, y, size, budPaint, sepalsP)
-            BudStage.OPENING -> drawOpeningBud(canvas, x, y, size, budPaint, sepalsP, flower)
-            BudStage.STUCK -> drawStuckBud(canvas, x, y, size, budPaint, sepalsP)
-        }
-    }
-    
-    private fun drawTightBud(canvas: Canvas, x: Float, y: Float, size: Float, budPaint: Paint, sepalsP: Paint) {
-        // Corps du bouton - ovale vert
-        budPaint.color = Color.rgb(60, 120, 60)
-        budPaint.style = Paint.Style.FILL
-        
-        val width = size * 0.4f
-        val height = size * 0.8f
-        
-        canvas.save()
-        canvas.translate(x, y)
-        canvas.scale(1f, 1.2f)
-        canvas.drawCircle(0f, 0f, width, budPaint)
-        canvas.restore()
-        
-        // Sépales (petites feuilles vertes à la base)
-        sepalsP.color = Color.rgb(40, 100, 40)
-        sepalsP.style = Paint.Style.STROKE
-        sepalsP.strokeCap = Paint.Cap.ROUND
-        
-        for (i in 0..4) {
-            val angle = i * 72f + Math.random() * 15f - 7.5f
-            val sepaleLength = size * 0.25f
-            val sepaleWidth = size * 0.08f
-            
-            val rad = Math.toRadians(angle.toDouble())
-            val endX = x + cos(rad).toFloat() * sepaleLength
-            val endY = y + sin(rad).toFloat() * sepaleLength
-            
-            sepalsP.strokeWidth = sepaleWidth
-            canvas.drawLine(x, y + height * 0.3f, endX, endY, sepalsP)
-        }
-    }
-    
-    private fun drawSwellingBud(canvas: Canvas, x: Float, y: Float, size: Float, budPaint: Paint, sepalsP: Paint) {
-        // Corps plus rond et plus gros
-        budPaint.color = Color.rgb(70, 130, 70)
-        budPaint.style = Paint.Style.FILL
-        
-        val radius = size * 0.5f
-        canvas.drawCircle(x, y, radius, budPaint)
-        
-        // Sépales qui s'écartent
-        sepalsP.color = Color.rgb(50, 110, 50)
-        sepalsP.style = Paint.Style.STROKE
-        sepalsP.strokeCap = Paint.Cap.ROUND
-        
-        for (i in 0..4) {
-            val angle = i * 72f + 20f
-            val sepaleLength = size * 0.35f
-            val sepaleWidth = size * 0.1f
-            
-            val rad = Math.toRadians(angle.toDouble())
-            val startDistance = radius * 0.7f
-            val startX = x + cos(rad).toFloat() * startDistance
-            val startY = y + sin(rad).toFloat() * startDistance
-            val endX = x + cos(rad).toFloat() * sepaleLength
-            val endY = y + sin(rad).toFloat() * sepaleLength
-            
-            sepalsP.strokeWidth = sepaleWidth
-            canvas.drawLine(startX, startY, endX, endY, sepalsP)
-        }
-    }
-    
-    private fun drawOpeningBud(canvas: Canvas, x: Float, y: Float, size: Float, budPaint: Paint, sepalsP: Paint, flower: Flower) {
-        // Base verte plus petite
-        budPaint.color = Color.rgb(60, 120, 60)
-        budPaint.style = Paint.Style.FILL
-        val baseRadius = size * 0.3f
-        canvas.drawCircle(x, y, baseRadius, budPaint)
-        
-        // Pétales blancs qui pointent
-        budPaint.color = Color.rgb(245, 245, 245)
-        budPaint.style = Paint.Style.STROKE
-        budPaint.strokeWidth = size * 0.05f
-        budPaint.strokeCap = Paint.Cap.ROUND
-        
-        val petalCount = 8 + (Math.random() * 4).toInt()
-        for (i in 0 until petalCount) {
-            val angle = i * 360f / petalCount + Math.random() * 10f - 5f
-            val petalLength = size * (0.15f + Math.random() * 0.1f).toFloat()
-            
-            val rad = Math.toRadians(angle.toDouble())
-            val startX = x + cos(rad).toFloat() * baseRadius
-            val startY = y + sin(rad).toFloat() * baseRadius
-            val endX = x + cos(rad).toFloat() * (baseRadius + petalLength)
-            val endY = y + sin(rad).toFloat() * (baseRadius + petalLength)
-            
-            canvas.drawLine(startX, startY, endX, endY, budPaint)
-        }
-        
-        // Sépales recourbés vers l'arrière
-        sepalsP.color = Color.rgb(45, 95, 45)
-        sepalsP.style = Paint.Style.STROKE
-        sepalsP.strokeCap = Paint.Cap.ROUND
-        
-        for (i in 0..4) {
-            val angle = i * 72f + 45f
-            val rad = Math.toRadians(angle.toDouble())
-            val sepaleLength = size * 0.4f
-            val sepaleWidth = size * 0.08f
-            
-            val controlX = x + cos(rad).toFloat() * sepaleLength * 0.5f
-            val controlY = y + sin(rad).toFloat() * sepaleLength * 0.5f + size * 0.2f
-            val endX = x + cos(rad).toFloat() * sepaleLength
-            val endY = y + sin(rad).toFloat() * sepaleLength + size * 0.3f
-            
-            sepalsP.strokeWidth = sepaleWidth
-            canvas.drawLine(x, y, controlX, controlY, sepalsP)
-            canvas.drawLine(controlX, controlY, endX, endY, sepalsP)
-        }
-    }
-    
-    private fun drawStuckBud(canvas: Canvas, x: Float, y: Float, size: Float, budPaint: Paint, sepalsP: Paint) {
-        // Même forme que OPENING mais couleurs plus ternes
-        budPaint.color = Color.rgb(50, 100, 50)
-        budPaint.style = Paint.Style.FILL
-        val baseRadius = size * 0.35f
-        canvas.drawCircle(x, y, baseRadius, budPaint)
-        
-        // Pétales qui ne s'ouvrent plus - aspect fané
-        budPaint.color = Color.rgb(220, 220, 180)
-        budPaint.style = Paint.Style.STROKE
-        budPaint.strokeWidth = size * 0.04f
-        budPaint.strokeCap = Paint.Cap.ROUND
-        
-        val petalCount = 6
-        for (i in 0 until petalCount) {
-            val angle = i * 60f + Math.random() * 20f - 10f
-            val petalLength = size * (0.1f + Math.random() * 0.08f).toFloat()
-            
-            val rad = Math.toRadians(angle)
-            val startX = x + cos(rad).toFloat() * baseRadius
-            val startY = y + sin(rad).toFloat() * baseRadius
-            val endX = x + cos(rad).toFloat() * (baseRadius + petalLength)
-            val endY = y + sin(rad).toFloat() * (baseRadius + petalLength)
-            
-            canvas.drawLine(startX, startY, endX, endY, budPaint)
-        }
-        
-        // Sépales fanés
-        sepalsP.color = Color.rgb(40, 80, 40)
-        sepalsP.style = Paint.Style.STROKE
-        sepalsP.strokeWidth = size * 0.06f
-        sepalsP.strokeCap = Paint.Cap.ROUND
-        
-        for (i in 0..4) {
-            val angle = i * 72f + 30f
-            val rad = Math.toRadians(angle.toDouble())
-            val sepaleLength = size * 0.3f
-            
-            val endX = x + cos(rad).toFloat() * sepaleLength
-            val endY = y + sin(rad).toFloat() * sepaleLength + size * 0.15f
-            
-            canvas.drawLine(x, y, endX, endY, sepalsP)
         }
     }
 }
