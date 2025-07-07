@@ -135,7 +135,6 @@ class FlowerManager(private val plantStem: PlantStem) {
     }
     
     private fun createFlowerOnMainStem(isDominant: Boolean, needsSideView: Boolean) {
-    private fun createFlowerOnMainStem(isDominant: Boolean, needsSideView: Boolean) {
         val mainStem = plantStem.mainStem
         if (mainStem.size < 5) return
         
@@ -404,4 +403,4 @@ class FlowerManager(private val plantStem: PlantStem) {
             canvas.drawCircle(pointX, pointY, 1.5f, paint)
         }
     }
-    }
+}
