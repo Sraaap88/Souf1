@@ -2,7 +2,7 @@ package com.example.souffleforcetest
 
 import android.graphics.Path
 import kotlin.math.*
-
+  
 class PlantLeavesManager(private val plantStem: PlantStem) {
     
     // ==================== DATA CLASSES ====================
@@ -47,8 +47,8 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
-    private val baseLeafSize = 50f  
-    private val maxLeafSize = 108f  
+    private val baseLeafSize = 50f  // +20% encore (42f → 50f)
+    private val maxLeafSize = 108f  // +20% encore (90f → 108f)
     private val basalLeafSize = 65f // Feuilles basales plus longues
     private val maxBasalLeafSize = 125f
     private var basalLeavesCreated = false
@@ -147,7 +147,7 @@ class PlantLeavesManager(private val plantStem: PlantStem) {
                 x = leafX,
                 y = leafY,
                 size = size,
-                angle = (Math.random() * 360f).toFloat(), // Angles aléatoires dans toutes les directions
+                angle = (Math.random() * 360f).toFloat(), // CORRIGÉ : Angles aléatoires dans toutes les directions
                 stemIndex = -2, // Code pour feuilles basales
                 pointIndex = -1,
                 maxSize = size,
