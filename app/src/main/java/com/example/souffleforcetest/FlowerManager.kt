@@ -57,8 +57,10 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processFlowerGrowth(force: Float) {
-        // Créer des fleurs sur chaque tige qui n'en a pas encore
-        createFlowersOnStems()
+        // Créer des fleurs sur chaque tige qui n'en a pas encore (au début de la phase)
+        if (flowers.isEmpty()) {
+            createFlowersOnStems()
+        }
         
         // Faire grandir les fleurs existantes
         growExistingFlowers(force)
@@ -82,14 +84,15 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createFlowersOnStems() {
-        // Créer fleur sur tige principale si elle n'existe pas
-        if (!flowers.any { it.stemIndex == -1 }) {
+        // Créer fleur sur tige principale si elle n'existe pas ET si la tige a une taille suffisante
+        if (!flowers.any { it.stemIndex == -1 } && plantStem.mainStem.size > 5) {
             createFlowerOnMainStem()
         }
         
-        // Créer fleurs sur chaque branche
+        // Créer fleurs sur chaque branche qui a une taille suffisante
         for (branchIndex in plantStem.branches.indices) {
-            if (!flowers.any { it.stemIndex == branchIndex }) {
+            val branch = plantStem.branches[branchIndex]
+            if (!flowers.any { it.stemIndex == branchIndex } && branch.points.size > 3) {
                 createFlowerOnBranch(branchIndex)
             }
         }
@@ -97,7 +100,7 @@ class FlowerManager(private val plantStem: PlantStem) {
     
     private fun createFlowerOnMainStem() {
         val mainStem = plantStem.mainStem
-        if (mainStem.size < 3) return
+        if (mainStem.size < 5) return
         
         // Prendre le DERNIER point (sommet de la tige)
         val topPoint = mainStem.last()
@@ -111,8 +114,8 @@ class FlowerManager(private val plantStem: PlantStem) {
         )
         
         val flower = Flower(
-            x = topPoint.x + topPoint.oscillation + topPoint.permanentWave, // Position exacte du sommet
-            y = topPoint.y - 15f, // Légèrement au-dessus pour être visible
+            x = topPoint.x, // Position exacte du sommet
+            y = topPoint.y - 20f, // Au-dessus pour être visible
             stemIndex = -1,
             maxSize = size,
             perspective = perspective
@@ -125,11 +128,11 @@ class FlowerManager(private val plantStem: PlantStem) {
     
     private fun createFlowerOnBranch(branchIndex: Int) {
         val branch = plantStem.branches[branchIndex]
-        if (branch.points.size < 2) return
+        if (branch.points.size < 3) return
         
         // Prendre le DERNIER point (bout de la branche)
         val topPoint = branch.points.last()
-        val size = (baseFlowerSize * 0.8f) + (Math.random() * (maxFlowerSize * 0.8f - baseFlowerSize * 0.8f)).toFloat()
+        val size = (baseFlowerSize * 0.7f) + (Math.random() * (maxFlowerSize * 0.7f - baseFlowerSize * 0.7f)).toFloat()
         
         // Branches = perspectives variées selon leur angle
         val branchAngle = branch.angle
@@ -141,7 +144,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         
         val flower = Flower(
             x = topPoint.x, // Position exacte du bout de branche
-            y = topPoint.y - 12f, // Légèrement au-dessus pour être visible
+            y = topPoint.y - 15f, // Au-dessus pour être visible
             stemIndex = branchIndex,
             maxSize = size,
             perspective = perspective
