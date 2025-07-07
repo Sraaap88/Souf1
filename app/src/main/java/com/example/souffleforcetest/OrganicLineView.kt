@@ -180,6 +180,12 @@ class OrganicLineView @JvmOverloads constructor(
     private fun drawPlantStem(canvas: Canvas) {
         val stem = plantStem ?: return
         
+        // AJOUT - Dessiner les fleurs de profil/arrière DERRIÈRE les tiges
+        if (lightState == LightState.GREEN_FLOWER || 
+            lightState == LightState.RED) {
+            drawBackgroundFlowers(canvas, stem.getFlowers())
+        }
+        
         // Dessiner la tige principale
         drawMainStem(canvas, stem.mainStem)
         
@@ -193,10 +199,10 @@ class OrganicLineView @JvmOverloads constructor(
             drawLeaves(canvas, stem.getLeaves())
         }
         
-        // AJOUT - Dessiner les fleurs pendant GREEN_FLOWER et après
+        // AJOUT - Dessiner les fleurs de face/3-4 PAR-DESSUS les tiges
         if (lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
-            drawFlowers(canvas, stem.getFlowers())
+            drawForegroundFlowers(canvas, stem.getFlowers())
         }
     }
     
@@ -287,10 +293,28 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // AJOUT - Fonction pour dessiner les fleurs
-    private fun drawFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
+    // AJOUT - Fonction pour dessiner les fleurs derrière les tiges
+    private fun drawBackgroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
         val stem = plantStem ?: return
-        stem.getFlowerManager().drawFlowers(canvas, flowerPaint, flowerCenterPaint)
+        
+        // Filtrer les fleurs qui doivent être derrière (angle de vue > 60°)
+        val backgroundFlowers = flowers.filter { it.perspective.viewAngle > 60f }
+        
+        if (backgroundFlowers.isNotEmpty()) {
+            stem.getFlowerManager().drawSpecificFlowers(canvas, backgroundFlowers, flowerPaint, flowerCenterPaint)
+        }
+    }
+    
+    // AJOUT - Fonction pour dessiner les fleurs devant les tiges
+    private fun drawForegroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
+        val stem = plantStem ?: return
+        
+        // Filtrer les fleurs qui doivent être devant (angle de vue <= 60°)
+        val foregroundFlowers = flowers.filter { it.perspective.viewAngle <= 60f }
+        
+        if (foregroundFlowers.isNotEmpty()) {
+            stem.getFlowerManager().drawSpecificFlowers(canvas, foregroundFlowers, flowerPaint, flowerCenterPaint)
+        }
     }
     
     private fun drawTrafficLight(canvas: Canvas) {
