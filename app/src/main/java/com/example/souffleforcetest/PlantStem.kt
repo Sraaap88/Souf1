@@ -206,15 +206,14 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 // Tige principale (déjà créée)
                 println("Saccade $saccadeCount: Tige PRINCIPALE activée")
             } else {
-                // Créer la branche si elle n'existe pas
-                ensureBranchExists(stemTypeToActivate)
-                println("Saccade $saccadeCount: Branche $stemTypeToActivate activée")
+                // NE PAS créer la branche immédiatement, juste l'activer
+                println("Saccade $saccadeCount: Branche $stemTypeToActivate sera créée quand elle poussera")
             }
         }
     }
     
     private fun ensureBranchExists(branchNumber: Int) {
-        // S'assurer que cette branche existe
+        // S'assurer que cette branche existe SEULEMENT si on souffle assez fort
         while (branches.size < branchNumber) {
             createBranchWithRandomCurvature(branches.size + 1)
         }
@@ -230,11 +229,16 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             growthManager.growMainStem(force)
             applyRandomCurvatureToMainStem(force)
         } else {
-            // Faire pousser SEULEMENT cette branche spécifique
-            val branchIndex = activeStemType - 1
-            if (branchIndex < branches.size) {
-                growSpecificBranch(branchIndex, force)
-                applyRandomCurvatureToBranch(branchIndex, force)
+            // Créer la branche à la demande si elle n'existe pas ET qu'on souffle
+            if (force > forceThreshold * 1.5f) {
+                ensureBranchExists(activeStemType)
+                
+                // Faire pousser SEULEMENT cette branche spécifique
+                val branchIndex = activeStemType - 1
+                if (branchIndex < branches.size) {
+                    growSpecificBranch(branchIndex, force)
+                    applyRandomCurvatureToBranch(branchIndex, force)
+                }
             }
         }
     }
