@@ -46,7 +46,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var branchCreationOrder = mutableListOf<Int>()
     
     // Instance du gestionnaire de croissance - initialisation tardive
-    private lateinit var growthManager: PlantGrowthManager
+    private lateinit var growthManagerInstance: PlantGrowthManager
     
     // Instance du gestionnaire de feuilles
     private lateinit var leavesManager: PlantLeavesManager
@@ -71,7 +71,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
-        growthManager = PlantGrowthManager(this)
+        growthManagerInstance = PlantGrowthManager(this)
         leavesManager = PlantLeavesManager(this)
         flowerManager = FlowerManager(this)
         
@@ -131,7 +131,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         }
         
         // Mise à jour des oscillations (système existant préservé)
-        growthManager.updateOscillations()
+        growthManagerInstance.updateOscillations()
         lastForce = force
     }
     
@@ -171,7 +171,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     // NOUVEAU : Exposer le gestionnaire de croissance pour StemController
     val growthManager: PlantGrowthManager
-        get() = if (::growthManager.isInitialized) growthManager else throw IllegalStateException("PlantGrowthManager not initialized")
+        get() = if (::growthManagerInstance.isInitialized) growthManagerInstance else throw IllegalStateException("PlantGrowthManager not initialized")
     
     // NOUVEAU : Getters pour les nouveaux systèmes
     fun getStemController(): StemController = stemController
