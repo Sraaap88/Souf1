@@ -169,6 +169,9 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     fun getFlowers(): List<FlowerManager.Flower> = flowerManager.flowers
     fun getFlowerManager(): FlowerManager = flowerManager
     
+    // EXPOSER GROWTHMANAGER POUR STEMCONTROLLER
+    fun getGrowthManager(): PlantGrowthManager = growthManager
+    
     // ==================== NOUVEAU SYSTÈME SACCADES ====================
     
     private fun detectSaccades(force: Float, currentTime: Long) {
