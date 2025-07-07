@@ -155,13 +155,15 @@ class FlowerManager(private val plantStem: PlantStem) {
     }
     
     private fun createPetalsForFlower(flower: Flower) {
-        val petalCount = 18 + (Math.random() * 8).toInt() // 18-26 pétales par fleur
+        val basePetalCount = 18 + (Math.random() * 8).toInt() // 18-26 pétales de base
+        val petalCount = (basePetalCount * 1.2f).toInt() // +20% de pétales (22-31)
         
         for (i in 0 until petalCount) {
             val angle = (i * 360f / petalCount) + (Math.random() * 10f - 5f).toFloat()
             val baseLength = flower.maxSize * 0.4f
             val length = baseLength + (Math.random() * baseLength * 0.3f).toFloat()
-            val width = length * 0.25f + (Math.random() * length * 0.1f).toFloat()
+            val baseWidth = length * 0.25f + (Math.random() * length * 0.1f).toFloat()
+            val width = baseWidth * 1.2f // +20% plus larges
             
             // Calculer la perspective du pétale (version simple)
             val petalPerspective = calculatePetalPerspective(angle, flower.perspective)
@@ -214,8 +216,8 @@ class FlowerManager(private val plantStem: PlantStem) {
                 
                 flower.currentSize = (flower.currentSize + adjustedGrowth).coerceAtMost(flower.maxSize)
                 
-                // CENTRE GRANDIT PROPORTIONNELLEMENT : toujours 30% de la taille actuelle
-                val targetCenterSize = flower.currentSize * 0.3f
+                // CENTRE GRANDIT PROPORTIONNELLEMENT : toujours 75% de la taille actuelle (2.5 x 30%)
+                val targetCenterSize = flower.currentSize * 0.75f
                 flower.centerSize = targetCenterSize
                 
                 // Faire grandir les pétales
