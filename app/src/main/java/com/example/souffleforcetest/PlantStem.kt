@@ -51,30 +51,30 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private val forceHistory = mutableListOf<Float>()
     private val maxHistorySize = 30 // 1 seconde d'historique à 30 FPS
     
-    // Seuils progressifs pour chaque niveau de tiges
+    // Seuils progressifs pour chaque niveau de tiges - PLUS FACILES
     private val breathControlLevels = mapOf(
         1 to BreathControlLevel(
-            minStabilityTime = 500L,        // 0.5 seconde stable
-            maxForceVariation = 0.4f,       // Variation permise assez large
-            minForce = 0.2f,                // Force minimum faible
+            minStabilityTime = 300L,        // 0.3 seconde stable (était 0.5s)
+            maxForceVariation = 0.5f,       // Variation permise très large (était 0.4f)
+            minForce = 0.15f,               // Force minimum très faible (était 0.2f)
             description = "Souffle doux et régulier"
         ),
         3 to BreathControlLevel(
-            minStabilityTime = 1000L,       // 1 seconde stable
-            maxForceVariation = 0.25f,      // Variation plus stricte
-            minForce = 0.3f,                // Force minimum plus élevée
+            minStabilityTime = 600L,        // 0.6 seconde stable (était 1s)
+            maxForceVariation = 0.4f,       // Variation plus permissive (était 0.25f)
+            minForce = 0.2f,                // Force minimum plus faible (était 0.3f)
             description = "Souffle modéré et contrôlé"
         ),
         5 to BreathControlLevel(
-            minStabilityTime = 1500L,       // 1.5 seconde stable
-            maxForceVariation = 0.15f,      // Variation stricte
-            minForce = 0.4f,                // Force minimum élevée
+            minStabilityTime = 900L,        // 0.9 seconde stable (était 1.5s)
+            maxForceVariation = 0.3f,       // Variation plus permissive (était 0.15f)
+            minForce = 0.25f,               // Force minimum plus faible (était 0.4f)
             description = "Souffle fort et précis"
         ),
         7 to BreathControlLevel(
-            minStabilityTime = 2000L,       // 2 secondes stable
-            maxForceVariation = 0.1f,       // Variation très stricte
-            minForce = 0.5f,                // Force minimum très élevée
+            minStabilityTime = 1200L,       // 1.2 secondes stable (était 2s)
+            maxForceVariation = 0.2f,       // Variation plus permissive (était 0.1f)
+            minForce = 0.3f,                // Force minimum plus faible (était 0.5f)
             description = "Maîtrise parfaite du souffle"
         )
     )
@@ -286,24 +286,24 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             force >= level.minForce) {
             
             // Conditions supplémentaires selon le niveau
-            val shouldCreateBranch = when (targetBranchCount) {
+            val             shouldCreateBranch = when (targetBranchCount) {
                 1 -> true // Toujours facile pour la première
                 3 -> {
-                    // Pour 3 tiges : stabilité simple
-                    val avgForce = forceHistory.takeLast(15).average().toFloat()
-                    abs(force - avgForce) < 0.2f
+                    // Pour 3 tiges : stabilité TRÈS permissive
+                    val avgForce = forceHistory.takeLast(10).average().toFloat()
+                    abs(force - avgForce) < 0.35f // Était 0.2f
                 }
                 5 -> {
-                    // Pour 5 tiges : stabilité + force précise
-                    val avgForce = forceHistory.takeLast(20).average().toFloat()
-                    abs(force - avgForce) < 0.15f && force in 0.4f..0.7f
+                    // Pour 5 tiges : stabilité permissive + force moins précise
+                    val avgForce = forceHistory.takeLast(15).average().toFloat()
+                    abs(force - avgForce) < 0.25f && force in 0.25f..0.8f // Était 0.15f et 0.4f-0.7f
                 }
                 7 -> {
-                    // Pour 7 tiges : maîtrise parfaite
-                    val avgForce = forceHistory.takeLast(25).average().toFloat()
-                    abs(force - avgForce) < 0.1f && 
-                    force in 0.5f..0.65f &&
-                    stabilityDuration >= 2500L // Encore plus de stabilité
+                    // Pour 7 tiges : contrôle amélioré mais accessible
+                    val avgForce = forceHistory.takeLast(20).average().toFloat()
+                    abs(force - avgForce) < 0.18f && 
+                    force in 0.35f..0.75f &&  // Était 0.5f-0.65f
+                    stabilityDuration >= 1500L // Était 2500L
                 }
                 else -> false
             }
