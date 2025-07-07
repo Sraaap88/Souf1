@@ -55,14 +55,14 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private val breathStartThreshold = 0.3f
     private val breathEndThreshold = 0.2f
     
-    // Mapping saccades → nombre total de tiges
-    private val saccadeToStemMapping = mapOf(
-        0 to 1,  // Pas de saccade détectée = 1 tige
-        1 to 1,  // 1 saccade = 1 tige
-        2 to 3,  // 2 saccades = 3 tiges
-        3 to 5,  // 3 saccades = 5 tiges
-        4 to 7   // 4+ saccades = 7 tiges (maximum)
-    )
+    // NOUVEAU : Système de tiges individuelles aléatoires
+    private var stemPool = mutableListOf<Int>() // Pool des 7 tiges possibles (-1 à 5)
+    private var currentActiveStem = -1 // Tige actuellement active (-1 = aucune)
+    private val maxTotalStems = 7 // 1 principale + 6 branches
+    
+    // NOUVEAU : Courbures aléatoires pour chaque tige
+    private val stemCurvatures = mutableMapOf<Int, Float>() // Courbure de base pour chaque tige
+    private val stemDirections = mutableMapOf<Int, Float>() // Direction préférée pour chaque tige
     
     // Instance du gestionnaire de croissance - initialisation tardive
     private lateinit var growthManager: PlantGrowthManager
@@ -90,6 +90,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         leavesManager = PlantLeavesManager(this)
         flowerManager = FlowerManager(this)
         initializeBranchOrder()
+        initializeRandomStemSystem()
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
@@ -121,11 +122,10 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         // NOUVEAU : Détection des saccades pendant toute la phase de croissance
         detectSaccades(force, System.currentTimeMillis())
         
-        // Phase de croissance normale avec saccades
-        if (force > forceThreshold && mainStem.isNotEmpty()) {
+        // Phase de croissance avec UNE SEULE tige active à la fois
+        if (force > forceThreshold && mainStem.isNotEmpty() && currentActiveStem != -1) {
             if (force > forceThreshold * 1.5f) {
-                growthManager.growMainStem(force)
-                growthManager.growAllBranches(force)
+                growActiveStemOnly(force)
             }
         }
         
@@ -154,11 +154,16 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         leavesManager.resetLeaves()
         flowerManager.resetFlowers()
         
-        // NOUVEAU : Reset du système de saccades
+        // NOUVEAU : Reset du système de saccades et tiges aléatoires
         saccadeCount = 0
         isCurrentlyBreathing = false
         lastSaccadeTime = 0L
         lastForceState = 0f
+        currentActiveStem = -1
+        stemPool.clear()
+        stemCurvatures.clear()
+        stemDirections.clear()
+        initializeRandomStemSystem()
     }
     
     fun getStemHeight(): Float = stemHeight
@@ -174,6 +179,30 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     // ==================== NOUVEAU SYSTÈME SACCADES ====================
     
+    private fun initializeRandomStemSystem() {
+        // Créer le pool aléatoire des 7 tiges possibles
+        stemPool = mutableListOf(-1, 0, 1, 2, 3, 4, 5) // -1 = principale, 0-5 = branches
+        stemPool.shuffle() // Ordre aléatoire à chaque reset
+        
+        // Générer des courbures aléatoires naturelles pour chaque tige
+        for (stemIndex in stemPool) {
+            // Courbure de base aléatoire mais naturelle
+            val baseCurvature = (Math.random().toFloat() - 0.5f) * 0.6f // -0.3 à +0.3
+            stemCurvatures[stemIndex] = baseCurvature
+            
+            // Direction préférée avec évitement des superpositions
+            val baseDirection = when (stemIndex) {
+                -1 -> 0f // Principale au centre
+                0, 2, 4 -> 0.3f + Math.random().toFloat() * 0.4f // Branches droites
+                1, 3, 5 -> -0.3f - Math.random().toFloat() * 0.4f // Branches gauches
+                else -> (Math.random().toFloat() - 0.5f) * 0.8f
+            }
+            stemDirections[stemIndex] = baseDirection
+        }
+        
+        println("Pool de tiges aléatoire: ${stemPool.map { if (it == -1) "P" else (it+1).toString() }}")
+    }
+    
     private fun detectSaccades(force: Float, currentTime: Long) {
         val wasBreathing = isCurrentlyBreathing
         val isNowBreathing = force > breathStartThreshold
@@ -186,42 +215,97 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
                 lastSaccadeTime = currentTime
                 isCurrentlyBreathing = true
                 
-                println("Saccade $saccadeCount détectée ! Force: %.2f".format(force))
+                // Activer la prochaine tige du pool aléatoire
+                activateNextRandomStem()
                 
-                // Créer les tiges selon le mapping
-                createStemsFromSaccades()
+                println("Saccade $saccadeCount détectée ! Tige active: ${getStemName(currentActiveStem)}")
             }
         }
         
         // Détection fin de souffle
         if (wasBreathing && force < breathEndThreshold) {
             isCurrentlyBreathing = false
+            // La tige reste active jusqu'à la prochaine saccade
         }
         
         lastForceState = force
     }
     
-    private fun createStemsFromSaccades() {
-        val targetStemCount = saccadeToStemMapping[saccadeCount.coerceAtMost(4)] ?: 1
-        val currentStemCount = 1 + branchCount // 1 principale + branches
-        
-        // Créer les tiges manquantes
-        if (targetStemCount > currentStemCount) {
-            val stemsToCreate = targetStemCount - currentStemCount
+    private fun activateNextRandomStem() {
+        if (saccadeCount <= stemPool.size) {
+            val stemIndex = stemPool[saccadeCount - 1] // -1 car saccadeCount commence à 1
+            currentActiveStem = stemIndex
             
-            for (i in 1..stemsToCreate) {
-                if (branchCount < maxBranches) {
-                    createBranchInOrder()
-                    println("Tige créée ! Total: ${branchCount + 1}/${targetStemCount}")
+            // Créer la tige si elle n'existe pas encore
+            if (stemIndex == -1) {
+                // Tige principale déjà créée
+            } else {
+                // Créer la branche si nécessaire
+                if (branches.size <= stemIndex) {
+                    createSpecificBranch(stemIndex + 1) // +1 car createBranch attend 1-6
                 }
             }
         }
     }
     
+    private fun growActiveStemOnly(force: Float) {
+        when (currentActiveStem) {
+            -1 -> {
+                // Faire pousser la tige principale avec courbure aléatoire
+                growthManager.growMainStem(force)
+                applyRandomCurvature(-1, force)
+            }
+            else -> {
+                // Faire pousser seulement la branche active avec courbure aléatoire
+                if (currentActiveStem < branches.size && branches[currentActiveStem].isActive) {
+                    growthManager.growAllBranches(force) // Seules les actives poussent
+                    applyRandomCurvature(currentActiveStem, force)
+                }
+            }
+        }
+    }
+    
+    private fun applyRandomCurvature(stemIndex: Int, force: Float) {
+        val baseCurvature = stemCurvatures[stemIndex] ?: 0f
+        val direction = stemDirections[stemIndex] ?: 0f
+        
+        // Appliquer une courbure naturelle mais aléatoire
+        val curvatureStrength = baseCurvature * force * 0.5f
+        val directionInfluence = direction * force * 0.3f
+        
+        // Éviter les superpositions en ajustant dynamiquement
+        val adjustedCurvature = avoidStemOverlap(stemIndex, curvatureStrength + directionInfluence)
+        
+        // Appliquer la courbure aux points de la tige (simplifié pour l'instant)
+        // TODO: Implémenter l'application réelle aux StemPoints
+    }
+    
+    private fun avoidStemOverlap(stemIndex: Int, proposedCurvature: Float): Float {
+        // Logique simple d'évitement des superpositions
+        // Pour l'instant, on garde la courbure proposée
+        // TODO: Analyser les positions des autres tiges et ajuster si nécessaire
+        return proposedCurvature.coerceIn(-0.8f, 0.8f)
+    }
+    
+    private fun getStemName(stemIndex: Int): String {
+        return if (stemIndex == -1) "Principale" else "Branche ${stemIndex + 1}"
+    }
+    
+    private fun createSpecificBranch(branchNumber: Int) {
+        // Utiliser la fonction existante mais pour une branche spécifique
+        val currentBranchCount = branchCount
+        createBranch(branchNumber)
+        
+        // Marquer cette branche comme active
+        if (branches.size > currentBranchCount) {
+            branches.last().isActive = true
+        }
+    }
+    
     fun getSaccadeInfo(): String {
-        val targetStems = saccadeToStemMapping[saccadeCount.coerceAtMost(4)] ?: 1
-        val currentStems = 1 + branchCount
-        return "Saccades: $saccadeCount → Cible: $targetStems tiges, Actuel: $currentStems tiges"
+        val activeStem = getStemName(currentActiveStem)
+        val remaining = maxOf(0, stemPool.size - saccadeCount)
+        return "Saccades: $saccadeCount, Active: $activeStem, Restantes: $remaining tiges"
     }
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
