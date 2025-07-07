@@ -140,19 +140,19 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.GREEN_GROW -> {
-                if (elapsedTime >= 5000) {  // CORRIGÉ: 5 secondes au lieu de 4000
+                if (elapsedTime >= 5000) {  // 5 secondes
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_LEAVES -> {
-                if (elapsedTime >= 4000) { // MODIFIÉ: 4 secondes au lieu de 3000
+                if (elapsedTime >= 4000) { // 4 secondes
                     lightState = LightState.GREEN_FLOWER
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_FLOWER -> {
-                if (elapsedTime >= 4000) { // MODIFIÉ: 4 secondes au lieu de 3000
+                if (elapsedTime >= 5000) { // MODIFIÉ: 5 secondes au lieu de 4 (+1 seconde)
                     lightState = LightState.RED
                     stateStartTime = currentTime
                 }
@@ -349,9 +349,9 @@ class OrganicLineView @JvmOverloads constructor(
         // Texte et timer
         val timeRemaining = when (lightState) {
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))  // CORRIGÉ: 5 secondes au lieu de 4
-            LightState.GREEN_LEAVES -> max(0, 4 - (elapsedTime / 1000)) // MODIFIÉ: 4 secondes
-            LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000)) // MODIFIÉ: 4 secondes
+            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))
+            LightState.GREEN_LEAVES -> max(0, 4 - (elapsedTime / 1000))
+            LightState.GREEN_FLOWER -> max(0, 5 - (elapsedTime / 1000)) // MODIFIÉ: 5 secondes au lieu de 4
             LightState.RED -> 0
         }
         
