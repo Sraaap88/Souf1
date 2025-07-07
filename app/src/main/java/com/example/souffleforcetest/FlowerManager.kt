@@ -214,18 +214,14 @@ class FlowerManager(private val plantStem: PlantStem) {
                 
                 flower.currentSize = (flower.currentSize + adjustedGrowth).coerceAtMost(flower.maxSize)
                 
-                // Faire grandir le centre d'abord (30% de la croissance totale)
-                val centerGrowthTarget = flower.maxSize * 0.3f
-                if (flower.centerSize < centerGrowthTarget) {
-                    flower.centerSize = (flower.centerSize + adjustedGrowth * 1.5f).coerceAtMost(centerGrowthTarget)
-                }
+                // CENTRE GRANDIT PROPORTIONNELLEMENT : toujours 30% de la taille actuelle
+                val targetCenterSize = flower.currentSize * 0.3f
+                flower.centerSize = targetCenterSize
                 
-                // Ensuite faire grandir les pétales
-                if (flower.centerSize >= centerGrowthTarget * 0.8f) {
-                    for (petal in flower.petals) {
-                        if (petal.currentLength < petal.length) {
-                            petal.currentLength = (petal.currentLength + adjustedGrowth * 0.8f).coerceAtMost(petal.length)
-                        }
+                // Faire grandir les pétales
+                for (petal in flower.petals) {
+                    if (petal.currentLength < petal.length) {
+                        petal.currentLength = (petal.currentLength + adjustedGrowth * 0.8f).coerceAtMost(petal.length)
                     }
                 }
                 
