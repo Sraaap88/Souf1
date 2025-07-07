@@ -33,10 +33,18 @@ class FlowerManager(private val plantStem: PlantStem) {
     )
     
     data class FlowerPerspective(
-        val viewAngle: Float,        // Angle de vue (0° = face, 90° = profil)
+        val viewAngle: Float,        // Angle de vue (0° = face, 45° = angle, 90° = profil)
         val tiltAngle: Float,        // Inclinaison (haut/bas)
-        val rotationAngle: Float     // Rotation autour de l'axe
+        val rotationAngle: Float,    // Rotation autour de l'axe
+        val viewType: FlowerViewType // NOUVEAU : Type de vue
     )
+    
+    // NOUVEAU : Types de vue pour les marguerites
+    enum class FlowerViewType {
+        TOP_VIEW,    // Vue de dessus (comme actuellement)
+        SIDE_VIEW,   // Vue de côté (profil complet)
+        ANGLE_VIEW   // Vue en angle (3/4)
+    }
     
     data class PetalPerspective(
         val depthFactor: Float,      // Facteur de profondeur (0-1)
@@ -181,10 +189,14 @@ class FlowerManager(private val plantStem: PlantStem) {
         val topPoint = mainStem.last()
         val size = baseFlowerSize + (Math.random() * (maxFlowerSize - baseFlowerSize)).toFloat()
         
+        // GARANTIR au moins une vue de dessus sur la tige principale
+        val viewType = FlowerViewType.TOP_VIEW
+        
         val perspective = FlowerPerspective(
             viewAngle = 0f + (Math.random() * 10f - 5f).toFloat(),
             tiltAngle = (Math.random() * 15f - 7.5f).toFloat(),
-            rotationAngle = (Math.random() * 360f).toFloat()
+            rotationAngle = (Math.random() * 360f).toFloat(),
+            viewType = viewType
         )
         
         val flower = Flower(
@@ -210,12 +222,34 @@ class FlowerManager(private val plantStem: PlantStem) {
         val topPoint = branch.points.last()
         val size = (baseFlowerSize * 0.8f) + (Math.random() * (maxFlowerSize * 0.8f - baseFlowerSize * 0.8f)).toFloat()
         
+        // NOUVEAU : Répartition des vues sur les branches
+        val viewType = when (Math.random()) {
+            in 0.0..0.4 -> FlowerViewType.SIDE_VIEW    // 40% vue de côté
+            in 0.4..0.7 -> FlowerViewType.ANGLE_VIEW   // 30% vue en angle  
+            else -> FlowerViewType.TOP_VIEW            // 30% vue de dessus
+        }
+        
         val branchAngle = branch.angle
-        val perspective = FlowerPerspective(
-            viewAngle = 30f + abs(branchAngle) * 0.5f + (Math.random() * 20f - 10f).toFloat(),
-            tiltAngle = branchAngle * 0.3f + (Math.random() * 20f - 10f).toFloat(),
-            rotationAngle = (Math.random() * 360f).toFloat()
-        )
+        val perspective = when (viewType) {
+            FlowerViewType.TOP_VIEW -> FlowerPerspective(
+                viewAngle = 0f + (Math.random() * 15f - 7.5f).toFloat(),
+                tiltAngle = (Math.random() * 20f - 10f).toFloat(),
+                rotationAngle = (Math.random() * 360f).toFloat(),
+                viewType = viewType
+            )
+            FlowerViewType.ANGLE_VIEW -> FlowerPerspective(
+                viewAngle = 45f + (Math.random() * 20f - 10f).toFloat(),
+                tiltAngle = branchAngle * 0.5f + (Math.random() * 25f - 12.5f).toFloat(),
+                rotationAngle = (Math.random() * 360f).toFloat(),
+                viewType = viewType
+            )
+            FlowerViewType.SIDE_VIEW -> FlowerPerspective(
+                viewAngle = 85f + (Math.random() * 10f - 5f).toFloat(),
+                tiltAngle = branchAngle * 0.8f + (Math.random() * 30f - 15f).toFloat(),
+                rotationAngle = (Math.random() * 360f).toFloat(),
+                viewType = viewType
+            )
+        }
         
         val flower = Flower(
             x = topPoint.x,
@@ -351,6 +385,15 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS DE RENDU ====================
     
     private fun drawSingleFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
+        when (flower.perspective.viewType) {
+            FlowerViewType.TOP_VIEW -> drawTopViewFlower(canvas, flower, flowerPaint, centerPaint)
+            FlowerViewType.ANGLE_VIEW -> drawAngleViewFlower(canvas, flower, flowerPaint, centerPaint)
+            FlowerViewType.SIDE_VIEW -> drawSideViewFlower(canvas, flower, flowerPaint, centerPaint)
+        }
+    }
+    
+    // Vue de dessus (fleur actuelle - gardée intacte)
+    private fun drawTopViewFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
         val currentX = flower.x
         val currentY = flower.y
         
@@ -367,6 +410,105 @@ class FlowerManager(private val plantStem: PlantStem) {
         if (flower.centerSize > 0) {
             drawFlowerCenter(canvas, currentX, currentY, flower, centerPaint)
         }
+    }
+    
+    // NOUVEAU : Vue en angle (3/4)
+    private fun drawAngleViewFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
+        val currentX = flower.x
+        val currentY = flower.y
+        val size = flower.currentSize
+        
+        if (size <= 0) return
+        
+        // Centre visible mais écrasé en perspective
+        val centerRadius = flower.centerSize * 0.3f
+        centerPaint.color = Color.rgb(255, 200, 50)
+        
+        canvas.save()
+        canvas.translate(currentX, currentY)
+        canvas.scale(1f, 0.6f) // Perspective écrasée
+        canvas.drawCircle(0f, -centerRadius * 0.3f, centerRadius, centerPaint)
+        canvas.restore()
+        
+        // Pétales visibles (environ 60% des pétales)
+        val visiblePetalCount = (flower.petals.size * 0.6f).toInt()
+        flowerPaint.color = Color.WHITE
+        flowerPaint.style = Paint.Style.STROKE
+        flowerPaint.strokeCap = Paint.Cap.ROUND
+        
+        for (i in 0 until visiblePetalCount) {
+            val petal = flower.petals[i]
+            val angle = petal.angle + flower.perspective.rotationAngle
+            val length = petal.currentLength * 0.8f // Légèrement raccourcis
+            val width = petal.width * 0.7f
+            
+            val rad = Math.toRadians(angle.toDouble())
+            val startX = currentX + cos(rad).toFloat() * centerRadius
+            val startY = currentY + sin(rad).toFloat() * centerRadius * 0.6f - centerRadius * 0.3f
+            val endX = currentX + cos(rad).toFloat() * length
+            val endY = currentY + sin(rad).toFloat() * length * 0.6f - centerRadius * 0.3f
+            
+            flowerPaint.strokeWidth = width
+            canvas.drawLine(startX, startY, endX, endY, flowerPaint)
+        }
+    }
+    
+    // NOUVEAU : Vue de côté (profil)
+    private fun drawSideViewFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
+        val currentX = flower.x
+        val currentY = flower.y
+        val size = flower.currentSize
+        
+        if (size <= 0) return
+        
+        // Centre de profil (petit trait vertical jaune)
+        val centerHeight = flower.centerSize * 0.6f
+        centerPaint.color = Color.rgb(255, 200, 50)
+        centerPaint.style = Paint.Style.STROKE
+        centerPaint.strokeWidth = centerHeight * 0.8f
+        centerPaint.strokeCap = Paint.Cap.ROUND
+        canvas.drawLine(currentX, currentY - centerHeight * 0.3f, currentX, currentY + centerHeight * 0.3f, centerPaint)
+        
+        // Pétales de profil (forme d'ellipse aplatie)
+        flowerPaint.color = Color.WHITE
+        flowerPaint.style = Paint.Style.STROKE
+        flowerPaint.strokeCap = Paint.Cap.ROUND
+        
+        // Quelques pétales visibles en profil
+        val visiblePetals = listOf(-45f, -25f, -5f, 5f, 25f, 45f) // Angles de pétales visibles
+        
+        for (angle in visiblePetals) {
+            val length = size * 0.35f + (Math.random() * size * 0.1f).toFloat()
+            val width = size * 0.04f + (Math.random() * size * 0.02f).toFloat()
+            
+            val rad = Math.toRadians(angle.toDouble())
+            val startX = currentX
+            val startY = currentY
+            val endX = currentX + cos(rad).toFloat() * length * 0.3f // Très aplati
+            val endY = currentY + sin(rad).toFloat() * length
+            
+            flowerPaint.strokeWidth = width
+            canvas.drawLine(startX, startY, endX, endY, flowerPaint)
+        }
+        
+        // Contour externe de profil (forme d'ellipse)
+        flowerPaint.style = Paint.Style.STROKE
+        flowerPaint.strokeWidth = 2f
+        flowerPaint.color = Color.rgb(240, 240, 240)
+        
+        val ellipseWidth = size * 0.3f
+        val ellipseHeight = size * 0.7f
+        
+        canvas.save()
+        canvas.translate(currentX, currentY)
+        canvas.scale(1f, 1f)
+        
+        // Dessiner ellipse comme contour
+        val path = android.graphics.Path()
+        path.addOval(-ellipseWidth/2, -ellipseHeight/2, ellipseWidth/2, ellipseHeight/2, android.graphics.Path.Direction.CW)
+        canvas.drawPath(path, flowerPaint)
+        
+        canvas.restore()
     }
     
     private fun drawPetal(canvas: Canvas, centerX: Float, centerY: Float, petal: Petal, flower: Flower, paint: Paint) {
