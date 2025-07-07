@@ -230,12 +230,12 @@ class StemController(private val plantStem: PlantStem) {
             when (stemIndex) {
                 -1 -> {
                     // Tige principale
-                    plantStem.growthManager?.growMainStem(adjustedForce)
+                    plantStem.getGrowthManager().growMainStem(adjustedForce)
                     hasGrowth = true
                 }
                 else -> {
                     // Branches - faire pousser toutes les branches actives
-                    plantStem.growthManager?.growAllBranches(adjustedForce)
+                    plantStem.getGrowthManager().growAllBranches(adjustedForce)
                     hasGrowth = true
                 }
             }
