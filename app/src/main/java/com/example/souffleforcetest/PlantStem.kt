@@ -45,18 +45,33 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private var branchCount = 0
     private var branchCreationOrder = mutableListOf<Int>()
     
+    // ==================== NOUVEAU SYSTÈME SACCADES SIMPLE ====================
+    
+    private var saccadeCount = 0
+    private var isCurrentlyBreathing = false
+    private var lastSaccadeTime = 0L
+    private var lastForceState = 0f
+    private val saccadeCooldown = 300L // 300ms minimum entre saccades
+    private val breathStartThreshold = 0.3f
+    private val breathEndThreshold = 0.2f
+    
+    // Mapping saccades → nombre total de tiges
+    private val saccadeToStemMapping = mapOf(
+        0 to 1,  // Pas de saccade détectée = 1 tige
+        1 to 1,  // 1 saccade = 1 tige
+        2 to 3,  // 2 saccades = 3 tiges
+        3 to 5,  // 3 saccades = 5 tiges
+        4 to 7   // 4+ saccades = 7 tiges (maximum)
+    )
+    
     // Instance du gestionnaire de croissance - initialisation tardive
-    private lateinit var growthManagerInstance: PlantGrowthManager
+    private lateinit var growthManager: PlantGrowthManager
     
     // Instance du gestionnaire de feuilles
     private lateinit var leavesManager: PlantLeavesManager
     
     // Instance du gestionnaire de fleurs
     private lateinit var flowerManager: FlowerManager
-    
-    // NOUVEAU : Systèmes de contrôle avancé
-    private lateinit var stemController: StemController
-    private lateinit var curvatureModifier: CurvatureModifier
     
     // ==================== PARAMÈTRES ====================
     
@@ -71,31 +86,20 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     init {
         maxPossibleHeight = screenHeight * maxStemHeight
-        growthManagerInstance = PlantGrowthManager(this)
+        growthManager = PlantGrowthManager(this)
         leavesManager = PlantLeavesManager(this)
         flowerManager = FlowerManager(this)
-        
-        // NOUVEAU : Initialiser les systèmes avancés
-        stemController = StemController(this)
-        curvatureModifier = CurvatureModifier(this)
-        
         initializeBranchOrder()
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processStemGrowth(force: Float, phaseTime: Long) {
-        // NOUVEAU SYSTÈME : Utiliser le StemController pour gérer la croissance
-        
         // INITIALISATION FORCÉE : créer le point de base dès le premier appel
         if (mainStem.isEmpty() && !isEmerging) {
             isEmerging = true
             emergenceStartTime = System.currentTimeMillis()
             mainStem.add(StemPoint(stemBaseX, stemBaseY, baseThickness))
-            
-            // Initialiser le contrôleur de tiges
-            stemController.startGrowthPhase(System.currentTimeMillis())
-            curvatureModifier.initializeStem(-1) // Tige principale
         }
         
         // Phase d'émergence (1 seconde)
@@ -114,24 +118,18 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             return
         }
         
-        // NOUVEAU : Phase de croissance contrôlée par StemController
+        // NOUVEAU : Détection des saccades pendant toute la phase de croissance
+        detectSaccades(force, System.currentTimeMillis())
+        
+        // Phase de croissance normale avec saccades
         if (force > forceThreshold && mainStem.isNotEmpty()) {
-            // Laisser le StemController gérer la création et croissance des tiges
-            stemController.processGrowth(force, System.currentTimeMillis())
-            
-            // Obtenir l'analyse du souffle pour les effets de courbure
-            val analysis = stemController.getBreathAnalysis()
-            
-            // Appliquer les modifications de courbure basées sur les fréquences
-            curvatureModifier.updateAllStems(
-                frequency = analysis.avgFrequency,
-                trend = analysis.frequencyTrend,
-                force = force
-            )
+            if (force > forceThreshold * 1.5f) {
+                growthManager.growMainStem(force)
+                growthManager.growAllBranches(force)
+            }
         }
         
-        // Mise à jour des oscillations (système existant préservé)
-        growthManagerInstance.updateOscillations()
+        growthManager.updateOscillations()
         lastForce = force
     }
     
@@ -156,9 +154,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         leavesManager.resetLeaves()
         flowerManager.resetFlowers()
         
-        // NOUVEAU : Reset des systèmes avancés
-        stemController = StemController(this)
-        curvatureModifier.reset()
+        // NOUVEAU : Reset du système de saccades
+        saccadeCount = 0
+        isCurrentlyBreathing = false
+        lastSaccadeTime = 0L
+        lastForceState = 0f
     }
     
     fun getStemHeight(): Float = stemHeight
@@ -169,21 +169,56 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     fun getFlowers(): List<FlowerManager.Flower> = flowerManager.flowers
     fun getFlowerManager(): FlowerManager = flowerManager
     
-    // NOUVEAU : Exposer le gestionnaire de croissance pour StemController
-    val growthManager: PlantGrowthManager
-        get() = if (::growthManagerInstance.isInitialized) growthManagerInstance else throw IllegalStateException("PlantGrowthManager not initialized")
+    // ==================== NOUVEAU SYSTÈME SACCADES ====================
     
-    // NOUVEAU : Getters pour les nouveaux systèmes
-    fun getStemController(): StemController = stemController
-    fun getCurvatureModifier(): CurvatureModifier = curvatureModifier
-    
-    // NOUVEAU : Info de debug pour les nouveaux systèmes
-    fun getAdvancedDebugInfo(): String {
-        return if (::stemController.isInitialized && ::curvatureModifier.isInitialized) {
-            "${stemController.debugInfo()} | ${curvatureModifier.debugInfo()}"
-        } else {
-            "Systèmes non initialisés"
+    private fun detectSaccades(force: Float, currentTime: Long) {
+        val wasBreathing = isCurrentlyBreathing
+        val isNowBreathing = force > breathStartThreshold
+        
+        // Détection début de souffle (saccade)
+        if (!wasBreathing && isNowBreathing) {
+            // Vérifier le cooldown pour éviter les faux positifs
+            if (currentTime - lastSaccadeTime > saccadeCooldown) {
+                saccadeCount++
+                lastSaccadeTime = currentTime
+                isCurrentlyBreathing = true
+                
+                println("Saccade $saccadeCount détectée ! Force: %.2f".format(force))
+                
+                // Créer les tiges selon le mapping
+                createStemsFromSaccades()
+            }
         }
+        
+        // Détection fin de souffle
+        if (wasBreathing && force < breathEndThreshold) {
+            isCurrentlyBreathing = false
+        }
+        
+        lastForceState = force
+    }
+    
+    private fun createStemsFromSaccades() {
+        val targetStemCount = saccadeToStemMapping[saccadeCount.coerceAtMost(4)] ?: 1
+        val currentStemCount = 1 + branchCount // 1 principale + branches
+        
+        // Créer les tiges manquantes
+        if (targetStemCount > currentStemCount) {
+            val stemsToCreate = targetStemCount - currentStemCount
+            
+            for (i in 1..stemsToCreate) {
+                if (branchCount < maxBranches) {
+                    createBranchInOrder()
+                    println("Tige créée ! Total: ${branchCount + 1}/${targetStemCount}")
+                }
+            }
+        }
+    }
+    
+    fun getSaccadeInfo(): String {
+        val targetStems = saccadeToStemMapping[saccadeCount.coerceAtMost(4)] ?: 1
+        val currentStems = 1 + branchCount
+        return "Saccades: $saccadeCount → Cible: $targetStems tiges, Actuel: $currentStems tiges"
     }
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
@@ -203,14 +238,39 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         stemHeight = height
     }
     
-    // ==================== FONCTIONS POUR COMPATIBILITÉ STEMCONTROLLER ====================
+    // ==================== FONCTIONS PRIVÉES EXISTANTES ====================
     
-    // Fonction accessible pour StemController
-    fun createBranch(branchNumber: Int) {
-        createBranchInternal(branchNumber)
+    private fun initializeBranchOrder() {
+        branchCreationOrder = (1..maxBranches).toMutableList()
+        branchCreationOrder.shuffle()
     }
     
-    private fun createBranchInternal(branchNumber: Int) {
+    private fun createBranchInOrder() {
+        if (branchCount >= maxBranches || branchCount >= branchCreationOrder.size) return
+        
+        val branchNumber = branchCreationOrder[branchCount]
+        createBranch(branchNumber)
+    }
+    
+    private fun createEmergenceStem(progress: Float) {
+        mainStem.clear()
+        val emergenceHeight = 30f * progress
+        
+        for (i in 0..5) {
+            val segmentProgress = i / 5f
+            val y = stemBaseY - emergenceHeight * segmentProgress
+            val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
+            val wiggle = sin(progress * PI * 3 + i * 0.5) * 0.5f * progress
+            
+            mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
+        }
+        
+        if (progress >= 1f) {
+            stemHeight = emergenceHeight
+        }
+    }
+    
+    private fun createBranch(branchNumber: Int) {
         branchCount++
         
         // ESPACEMENT AUGMENTÉ : Plus d'espace entre les tiges
@@ -313,41 +373,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         branches.add(newBranch)
         
-        // NOUVEAU : Initialiser la courbure pour cette nouvelle branche
-        curvatureModifier.initializeStem(branchCount - 1, forcedAngle / 12f)
-        
         println("Tige ${branchNumber} (${branchCount}ème créée): ${if (isLeft) "GAUCHE" else "DROITE"} - Hauteur max: ${(baseHeightRatio * 100).toInt()}% (Principal: 75%)")
     }
-    
-    // ==================== FONCTIONS PRIVÉES EXISTANTES ====================
-    
-    private fun initializeBranchOrder() {
-        branchCreationOrder = (1..maxBranches).toMutableList()
-        branchCreationOrder.shuffle()
-    }
-    
-    private fun createEmergenceStem(progress: Float) {
-        mainStem.clear()
-        val emergenceHeight = 30f * progress
-        
-        for (i in 0..5) {
-            val segmentProgress = i / 5f
-            val y = stemBaseY - emergenceHeight * segmentProgress
-            val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
-            val wiggle = sin(progress * PI * 3 + i * 0.5) * 0.5f * progress
-            
-            mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
-        }
-        
-        if (progress >= 1f) {
-            stemHeight = emergenceHeight
-        }
-    }
-    
-    // ==================== SUPPRESSION ANCIEN SYSTÈME ====================
-    
-    // L'ancien système de contrôle du souffle est remplacé par les nouveaux modules
-    // Ces fonctions sont conservées pour compatibilité mais ne sont plus utilisées
     
     // ==================== UTILITAIRES ====================
     
