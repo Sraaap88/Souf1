@@ -34,13 +34,11 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     val mainStem = mutableListOf<StemPoint>()
     val branches = mutableListOf<Branch>()
     
-    private var stemHeight = 0f
+    private var stemHeight = 30f  // MODIFIÉ : Commencer avec 30px
     private var maxPossibleHeight = 0f
     private val stemBaseX = screenWidth / 2f
     private val stemBaseY = screenHeight - 100f
     private var lastForce = 0f
-    private var isEmerging = false
-    private var emergenceStartTime = 0L
     private var branchCount = 0
     
     // ==================== SYSTÈME ORDRE ALÉATOIRE DE TIGES ====================
@@ -72,7 +70,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
-    private val emergenceDuration = 1000L
     private val maxBranches = 6
     
     init {
@@ -81,33 +78,13 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         leavesManager = PlantLeavesManager(this)
         flowerManager = FlowerManager(this)
         setupRandomStemOrder()
+        createInitialStem()  // NOUVEAU : Créer la tige de départ
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processStemGrowth(force: Float, phaseTime: Long) {
-        // INITIALISATION : créer le point de base
-        if (mainStem.isEmpty() && !isEmerging) {
-            isEmerging = true
-            emergenceStartTime = System.currentTimeMillis()
-            mainStem.add(StemPoint(stemBaseX, stemBaseY, baseThickness))
-        }
-        
-        // Phase d'émergence (1 seconde)
-        if (phaseTime < emergenceDuration) {
-            if (force > forceThreshold && !isEmerging) {
-                isEmerging = true
-                emergenceStartTime = System.currentTimeMillis()
-            }
-            
-            if (isEmerging) {
-                val emergenceProgress = (System.currentTimeMillis() - emergenceStartTime) / emergenceDuration.toFloat()
-                if (emergenceProgress <= 1f) {
-                    createEmergenceStem(emergenceProgress)
-                }
-            }
-            return
-        }
+        // MODIFIÉ : Plus d'émergence, directement la logique de croissance
         
         // Détection des saccades et activation des tiges
         detectSaccadesAndActivateStems(force, System.currentTimeMillis())
@@ -133,9 +110,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     fun resetStem() {
         mainStem.clear()
         branches.clear()
-        stemHeight = 0f
+        stemHeight = 30f  // MODIFIÉ : Reset à 30px
         lastForce = 0f
-        isEmerging = false
         branchCount = 0
         leavesManager.resetLeaves()
         flowerManager.resetFlowers()
@@ -147,6 +123,25 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         currentActiveStemIndex = -1
         stemRandomCurvatures.clear()
         setupRandomStemOrder()
+        
+        // NOUVEAU : Recréer la tige de départ
+        createInitialStem()
+    }
+    
+    // NOUVEAU : Créer la tige de départ (identique à la fin d'émergence)
+    private fun createInitialStem() {
+        mainStem.clear()
+        val emergenceHeight = 30f
+        
+        // Créer 6 segments identiques à l'émergence
+        for (i in 0..5) {
+            val segmentProgress = i / 5f
+            val y = stemBaseY - emergenceHeight * segmentProgress
+            val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
+            val wiggle = sin(segmentProgress * PI * 3 + i * 0.5) * 0.5f
+            
+            mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
+        }
     }
     
     fun getStemHeight(): Float = stemHeight
@@ -440,26 +435,6 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         branches.add(newBranch)
         
         println("Branche $branchNumber créée avec hauteur initiale 25px et courbure ${randomCurvature}")
-    }
-    
-    // ==================== FONCTIONS PRIVÉES EXISTANTES ====================
-    
-    private fun createEmergenceStem(progress: Float) {
-        mainStem.clear()
-        val emergenceHeight = 30f * progress
-        
-        for (i in 0..5) {
-            val segmentProgress = i / 5f
-            val y = stemBaseY - emergenceHeight * segmentProgress
-            val thickness = lerp(baseThickness, tipThickness, segmentProgress * 0.3f)
-            val wiggle = sin(progress * PI * 3 + i * 0.5) * 0.5f * progress
-            
-            mainStem.add(StemPoint(stemBaseX + wiggle.toFloat(), y, thickness))
-        }
-        
-        if (progress >= 1f) {
-            stemHeight = emergenceHeight
-        }
     }
     
     // ==================== GETTERS POUR GROWTHMANAGER ====================
