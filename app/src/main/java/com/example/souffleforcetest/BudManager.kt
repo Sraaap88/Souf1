@@ -198,36 +198,35 @@ class BudManager(private val plantStem: PlantStem) {
         budPaint.style = Paint.Style.FILL
         canvas.drawCircle(centerX, centerY, centerRadius, budPaint)
         
-        // Dessiner les pointes blanches vers le haut avec variations
+        // MODIFICATION : Dessiner les pointes qui se rejoignent en cône vers le haut
         petalPaint.color = Color.rgb(240, 240, 240)
         petalPaint.style = Paint.Style.STROKE
         petalPaint.strokeWidth = size * 0.04f // Plus fine pour les gros boutons
         petalPaint.strokeCap = Paint.Cap.ROUND
         
-        // Répartir les pointes vers le haut (entre -60° et +60°)
-        val angleSpread = 120f // 60° de chaque côté
+        // Point de convergence au-dessus du centre
+        val coneHeight = size * 0.3f // Hauteur du cône
+        val convergeX = centerX
+        val convergeY = centerY - coneHeight
+        
+        // Répartir les points de départ sur le bord du cercle
         val petalCount = bud.petalCount
         
         for (i in 0 until petalCount) {
-            // Répartir uniformément dans l'arc supérieur
-            val baseAngle = if (petalCount == 1) {
-                0f // Une seule pointe au centre
-            } else {
-                -angleSpread/2f + (i * angleSpread / (petalCount - 1))
-            }
+            // Répartir uniformément autour du cercle (360°)
+            val angle = (i * 360f / petalCount) + (Math.random() * 15f - 7.5f).toFloat() // Petite variation
             
-            // Longueur avec variation unique pour cette pointe
-            val baseLength = size * 0.25f
-            val petalVariation = bud.petalVariations.getOrElse(i) { 1f }
-            val petalLength = baseLength * petalVariation
-            
-            val rad = Math.toRadians(baseAngle.toDouble() - 90.0) // -90° pour orienter vers le haut
+            // Point de départ sur le bord du cercle vert
+            val rad = Math.toRadians(angle.toDouble())
             val startX = centerX + cos(rad).toFloat() * centerRadius
             val startY = centerY + sin(rad).toFloat() * centerRadius
-            val endX = centerX + cos(rad).toFloat() * (centerRadius + petalLength)
-            val endY = centerY + sin(rad).toFloat() * (centerRadius + petalLength)
             
-            canvas.drawLine(startX, startY, endX, endY, petalPaint)
+            // Variation de hauteur pour chaque pointe (pour effet naturel)
+            val petalVariation = bud.petalVariations.getOrElse(i) { 1f }
+            val finalConvergeY = convergeY + (coneHeight * (1f - petalVariation) * 0.2f) // Légère variation de hauteur
+            
+            // Dessiner la ligne du bord vers le point de convergence
+            canvas.drawLine(startX, startY, convergeX, finalConvergeY, petalPaint)
         }
         
         // Contour du rond vert
