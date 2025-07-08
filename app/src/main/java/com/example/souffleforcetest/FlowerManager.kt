@@ -92,22 +92,36 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createFlowersOnStems() {
-        // Créer fleur sur tige principale si elle a une taille suffisante
+        // Créer fleur sur tige principale SEULEMENT si assez haute
         if (!flowers.any { it.stemIndex == -1 } && plantStem.mainStem.size > 5) {
-            createFlowerOnMainStem()
+            val mainStemHeight = if (plantStem.mainStem.isNotEmpty()) {
+                plantStem.getStemBaseY() - plantStem.mainStem.last().y
+            } else 0f
+            
+            if (mainStemHeight >= 80f) { // Au moins 80px de hauteur absolue
+                createFlowerOnMainStem()
+            }
         }
         
-        // Créer fleurs SEULEMENT sur branches qui ont atteint au moins 15% de leur hauteur max
+        // Créer fleurs sur branches avec DOUBLE vérification
         for (branchIndex in plantStem.branches.indices) {
             val branch = plantStem.branches[branchIndex]
             
-            // SOLUTION PARFAITE: Vérifier le pourcentage de croissance
+            // DOUBLE SÉCURITÉ: Pourcentage ET hauteur absolue
             val growthPercentage = if (branch.maxHeight > 0) {
                 branch.currentHeight / branch.maxHeight
             } else 0f
             
+            val absoluteHeight = branch.currentHeight
+            val topPointY = if (branch.points.isNotEmpty()) branch.points.last().y else plantStem.getStemBaseY()
+            val distanceFromGround = plantStem.getStemBaseY() - topPointY
+            
+            println("Branche $branchIndex: ${(growthPercentage * 100).toInt()}%, hauteur: ${absoluteHeight}px, distance sol: ${distanceFromGround}px")
+            
             if (!flowers.any { it.stemIndex == branchIndex } && 
-                growthPercentage >= 0.15f) {  // Au moins 15% de croissance
+                growthPercentage >= 0.15f &&           // Au moins 15% de croissance
+                absoluteHeight >= 60f &&               // ET au moins 60px absolus
+                distanceFromGround >= 60f) {            // ET au moins 60px du sol
                 createFlowerOnBranch(branchIndex)
             }
         }
