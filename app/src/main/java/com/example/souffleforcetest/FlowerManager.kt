@@ -46,6 +46,9 @@ class FlowerManager(private val plantStem: PlantStem) {
     val flowers = mutableListOf<Flower>()
     private var lastForce = 0f
     
+    // NOUVEAU : Gestionnaire de boutons
+    private val budManager = BudManager(plantStem)
+    
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
@@ -57,7 +60,10 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun processFlowerGrowth(force: Float) {
-        // Créer des fleurs sur chaque tige qui n'en a pas encore (au début de la phase)
+        // Créer des boutons sur tiges éligibles (5-30% croissance)
+        budManager.processBudGrowth(force)
+        
+        // Créer des fleurs sur tiges suffisamment développées (30%+)
         if (flowers.isEmpty()) {
             createFlowersOnStems()
         }
@@ -70,10 +76,15 @@ class FlowerManager(private val plantStem: PlantStem) {
     
     fun resetFlowers() {
         flowers.clear()
+        budManager.resetBuds()
         lastForce = 0f
     }
     
     fun drawFlowers(canvas: Canvas, flowerPaint: Paint, centerPaint: Paint) {
+        // Dessiner d'abord les boutons
+        budManager.drawBuds(canvas, flowerPaint, centerPaint)
+        
+        // Puis dessiner les fleurs
         for (flower in flowers) {
             if (flower.currentSize > 0) {
                 drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
@@ -82,6 +93,10 @@ class FlowerManager(private val plantStem: PlantStem) {
     }
     
     fun drawSpecificFlowers(canvas: Canvas, specificFlowers: List<Flower>, flowerPaint: Paint, centerPaint: Paint) {
+        // Dessiner les boutons pour toutes les tiges
+        budManager.drawBuds(canvas, flowerPaint, centerPaint)
+        
+        // Puis dessiner les fleurs spécifiques
         for (flower in specificFlowers) {
             if (flower.currentSize > 0) {
                 drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
@@ -92,22 +107,22 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createFlowersOnStems() {
-        // Créer fleur sur tige principale SEULEMENT si assez haute
+        // Créer fleur sur tige principale SEULEMENT si 30%+ ET assez haute
         if (!flowers.any { it.stemIndex == -1 } && plantStem.mainStem.size > 5) {
             val mainStemHeight = if (plantStem.mainStem.isNotEmpty()) {
                 plantStem.getStemBaseY() - plantStem.mainStem.last().y
             } else 0f
             
-            if (mainStemHeight >= 80f) { // Au moins 80px de hauteur absolue
+            if (mainStemHeight >= 80f) { // 30%+ de croissance
                 createFlowerOnMainStem()
             }
         }
         
-        // Créer fleurs sur branches avec DOUBLE vérification
+        // Créer fleurs sur branches avec critère 30%+
         for (branchIndex in plantStem.branches.indices) {
             val branch = plantStem.branches[branchIndex]
             
-            // DOUBLE SÉCURITÉ: Pourcentage ET hauteur absolue
+            // Calculer le pourcentage de croissance
             val growthPercentage = if (branch.maxHeight > 0) {
                 branch.currentHeight / branch.maxHeight
             } else 0f
@@ -119,7 +134,7 @@ class FlowerManager(private val plantStem: PlantStem) {
             println("Branche $branchIndex: ${(growthPercentage * 100).toInt()}%, hauteur: ${absoluteHeight}px, distance sol: ${distanceFromGround}px")
             
             if (!flowers.any { it.stemIndex == branchIndex } && 
-                growthPercentage >= 0.15f &&           // Au moins 15% de croissance
+                growthPercentage >= 0.30f &&           // MODIFIÉ: 30% minimum au lieu de 15%
                 absoluteHeight >= 60f &&               // ET au moins 60px absolus
                 distanceFromGround >= 60f) {            // ET au moins 60px du sol
                 createFlowerOnBranch(branchIndex)
