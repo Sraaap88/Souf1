@@ -81,10 +81,19 @@ class FlowerManager(private val plantStem: PlantStem) {
     }
     
     fun drawFlowers(canvas: Canvas, flowerPaint: Paint, centerPaint: Paint) {
-        // Dessiner d'abord les boutons
-        budManager.drawBuds(canvas, flowerPaint, centerPaint)
+        // Dessiner d'abord les boutons avec leurs propres Paint
+        val budPaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+        }
+        val budPetalPaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+        }
+        budManager.drawBuds(canvas, budPaint, budPetalPaint)
         
-        // Puis dessiner les fleurs
+        // Puis dessiner les fleurs avec LEUR centre jaune
         for (flower in flowers) {
             if (flower.currentSize > 0) {
                 drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
@@ -93,10 +102,19 @@ class FlowerManager(private val plantStem: PlantStem) {
     }
     
     fun drawSpecificFlowers(canvas: Canvas, specificFlowers: List<Flower>, flowerPaint: Paint, centerPaint: Paint) {
-        // Dessiner les boutons pour toutes les tiges
-        budManager.drawBuds(canvas, flowerPaint, centerPaint)
+        // Dessiner les boutons avec leurs propres Paint
+        val budPaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+        }
+        val budPetalPaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+        }
+        budManager.drawBuds(canvas, budPaint, budPetalPaint)
         
-        // Puis dessiner les fleurs spécifiques
+        // Puis dessiner les fleurs spécifiques avec LEUR centre jaune
         for (flower in specificFlowers) {
             if (flower.currentSize > 0) {
                 drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
