@@ -71,7 +71,7 @@ class OrganicLineView @JvmOverloads constructor(
     private var resetButtonY = 0f
     private val resetButtonRadius = 175f
     
-    private var lightState = LightState.YELLOW
+    private var lightState = LightState.START  // MODIFIÉ : Nouvel état initial
     private var stateStartTime = 0L
     
     // ==================== LOGIQUE DE PLANTE ====================
@@ -79,7 +79,12 @@ class OrganicLineView @JvmOverloads constructor(
     private var plantStem: PlantStem? = null
     
     enum class LightState {
-        YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
+        START,          // NOUVEAU : État initial avec bouton vert DÉMARRER
+        YELLOW,         // Bouton jaune INSPIREZ (2s)
+        GREEN_GROW,     // Croissance des tiges (5s)
+        GREEN_LEAVES,   // Croissance des feuilles (4s)
+        GREEN_FLOWER,   // Croissance des fleurs (5s)
+        RED             // Reset
     }
     
     // ==================== GESTION DE L'ÉCRAN ====================
@@ -96,7 +101,7 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== CONTRÔLE DU CYCLE ====================
     
     fun startCycle() {
-        lightState = LightState.YELLOW
+        lightState = LightState.START  // MODIFIÉ : Commencer par l'état START
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
         plantStem?.resetStem()
@@ -104,25 +109,28 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     fun updateForce(force: Float) {
-        updateLightState()
-        
-        if (lightState == LightState.GREEN_GROW) {
-            val phaseTime = System.currentTimeMillis() - stateStartTime
-            plantStem?.processStemGrowth(force, phaseTime)
-        }
-        
-        // AJOUT - Croissance des feuilles pendant GREEN_LEAVES
-        if (lightState == LightState.GREEN_LEAVES) {
-            plantStem?.processLeavesGrowth(force)
-        }
-        
-        // AJOUT - Croissance des fleurs pendant GREEN_FLOWER
-        if (lightState == LightState.GREEN_FLOWER) {
-            plantStem?.processFlowerGrowth(force)
-        }
-        
-        if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
-            showResetButton = true
+        // MODIFIÉ : Mettre à jour les états seulement si on n'est pas dans START
+        if (lightState != LightState.START) {
+            updateLightState()
+            
+            if (lightState == LightState.GREEN_GROW) {
+                val phaseTime = System.currentTimeMillis() - stateStartTime
+                plantStem?.processStemGrowth(force, phaseTime)
+            }
+            
+            // AJOUT - Croissance des feuilles pendant GREEN_LEAVES
+            if (lightState == LightState.GREEN_LEAVES) {
+                plantStem?.processLeavesGrowth(force)
+            }
+            
+            // AJOUT - Croissance des fleurs pendant GREEN_FLOWER
+            if (lightState == LightState.GREEN_FLOWER) {
+                plantStem?.processFlowerGrowth(force)
+            }
+            
+            if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
+                showResetButton = true
+            }
         }
         
         invalidate()
@@ -133,6 +141,9 @@ class OrganicLineView @JvmOverloads constructor(
         val elapsedTime = currentTime - stateStartTime
         
         when (lightState) {
+            LightState.START -> {
+                // Reste dans START jusqu'au clic sur DÉMARRER
+            }
             LightState.YELLOW -> {
                 if (elapsedTime >= 2000) {
                     lightState = LightState.GREEN_GROW
@@ -152,7 +163,7 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.GREEN_FLOWER -> {
-                if (elapsedTime >= 5000) { // MODIFIÉ: 5 secondes au lieu de 4 (+1 seconde)
+                if (elapsedTime >= 5000) { // 5 secondes
                     lightState = LightState.RED
                     stateStartTime = currentTime
                 }
@@ -166,8 +177,10 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        // Dessiner la tige dans toutes les phases après croissance
-        if (lightState == LightState.GREEN_GROW || 
+        // MODIFIÉ : Dessiner la tige de départ dans l'état START aussi
+        if (lightState == LightState.START ||
+            lightState == LightState.YELLOW ||
+            lightState == LightState.GREEN_GROW || 
             lightState == LightState.GREEN_LEAVES || 
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
@@ -321,17 +334,33 @@ class OrganicLineView @JvmOverloads constructor(
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
         
-        val lightRadius = if (lightState == LightState.YELLOW) width * 0.4f else resetButtonRadius
-        val lightX = if (lightState == LightState.YELLOW) width / 2f else resetButtonX
-        val lightY = if (lightState == LightState.YELLOW) height / 2f else resetButtonY
+        // MODIFIÉ : Taille et position selon l'état
+        val lightRadius = when (lightState) {
+            LightState.START -> resetButtonRadius    // Bouton vert normal
+            LightState.YELLOW -> width * 0.4f       // Grand bouton jaune central
+            else -> resetButtonRadius               // Bouton normal coin
+        }
+        
+        val lightX = when (lightState) {
+            LightState.START -> resetButtonX        // Position coin
+            LightState.YELLOW -> width / 2f         // Centre écran
+            else -> resetButtonX                    // Position coin
+        }
+        
+        val lightY = when (lightState) {
+            LightState.START -> resetButtonY        // Position coin
+            LightState.YELLOW -> height / 2f        // Centre écran
+            else -> resetButtonY                    // Position coin
+        }
         
         // Ombre
         resetButtonPaint.color = 0x40000000.toInt()
         canvas.drawCircle(lightX + 8f, lightY + 8f, lightRadius, resetButtonPaint)
         
-        // Couleur selon l'état
+        // MODIFIÉ : Couleur selon l'état
         resetButtonPaint.color = when (lightState) {
-            LightState.YELLOW -> 0xFFFFD700.toInt()
+            LightState.START -> 0xFF00AA00.toInt()      // Vert pour DÉMARRER
+            LightState.YELLOW -> 0xFFFFD700.toInt()     // Jaune pour INSPIREZ
             LightState.GREEN_GROW -> 0xFF2F4F2F.toInt()
             LightState.GREEN_LEAVES -> 0xFF00FF00.toInt()
             LightState.GREEN_FLOWER -> 0xFFFF69B4.toInt()
@@ -346,48 +375,58 @@ class OrganicLineView @JvmOverloads constructor(
         canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
         resetButtonPaint.style = Paint.Style.FILL
         
-        // Texte et timer
-        val timeRemaining = when (lightState) {
-            LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))
-            LightState.GREEN_LEAVES -> max(0, 4 - (elapsedTime / 1000))
-            LightState.GREEN_FLOWER -> max(0, 5 - (elapsedTime / 1000)) // MODIFIÉ: 5 secondes au lieu de 4
-            LightState.RED -> 0
-        }
-        
-        if (lightState == LightState.YELLOW) {
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 180f
-            resetTextPaint.color = 0xFF000000.toInt()
-            canvas.drawText("INSPIREZ", lightX, lightY, resetTextPaint)
-            
-            if (timeRemaining > 0) {
-                resetTextPaint.textSize = 108f
-                canvas.drawText(timeRemaining.toString(), lightX, lightY + 144f, resetTextPaint)
+        // MODIFIÉ : Texte et timer selon l'état
+        when (lightState) {
+            LightState.START -> {
+                resetTextPaint.textAlign = Paint.Align.CENTER
+                resetTextPaint.textSize = 120f
+                resetTextPaint.color = 0xFFFFFFFF.toInt()
+                canvas.drawText("DÉMARRER", lightX, lightY, resetTextPaint)
             }
-        } else if (lightState == LightState.RED) {
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 120f
-            resetTextPaint.color = 0xFF000000.toInt()
-            canvas.drawText("↻", lightX, lightY, resetTextPaint)
-        } else {
-            // Texte pour les phases vertes
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 60f
-            resetTextPaint.color = 0xFF000000.toInt()
-            
-            val phaseText = when (lightState) {
-                LightState.GREEN_GROW -> "TIGE"
-                LightState.GREEN_LEAVES -> "FEUILLES"
-                LightState.GREEN_FLOWER -> "FLEUR"
-                else -> ""
+            LightState.YELLOW -> {
+                resetTextPaint.textAlign = Paint.Align.CENTER
+                resetTextPaint.textSize = 180f
+                resetTextPaint.color = 0xFF000000.toInt()
+                canvas.drawText("INSPIREZ", lightX, lightY, resetTextPaint)
+                
+                val timeRemaining = max(0, 2 - (elapsedTime / 1000))
+                if (timeRemaining > 0) {
+                    resetTextPaint.textSize = 108f
+                    canvas.drawText(timeRemaining.toString(), lightX, lightY + 144f, resetTextPaint)
+                }
             }
-            
-            canvas.drawText(phaseText, lightX, lightY, resetTextPaint)
-            
-            if (timeRemaining > 0) {
-                resetTextPaint.textSize = 40f
-                canvas.drawText(timeRemaining.toString(), lightX, lightY + 50f, resetTextPaint)
+            LightState.RED -> {
+                resetTextPaint.textAlign = Paint.Align.CENTER
+                resetTextPaint.textSize = 120f
+                resetTextPaint.color = 0xFF000000.toInt()
+                canvas.drawText("↻", lightX, lightY, resetTextPaint)
+            }
+            else -> {
+                // Texte pour les phases vertes
+                resetTextPaint.textAlign = Paint.Align.CENTER
+                resetTextPaint.textSize = 60f
+                resetTextPaint.color = 0xFF000000.toInt()
+                
+                val phaseText = when (lightState) {
+                    LightState.GREEN_GROW -> "TIGE"
+                    LightState.GREEN_LEAVES -> "FEUILLES"
+                    LightState.GREEN_FLOWER -> "FLEUR"
+                    else -> ""
+                }
+                
+                canvas.drawText(phaseText, lightX, lightY, resetTextPaint)
+                
+                val timeRemaining = when (lightState) {
+                    LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))
+                    LightState.GREEN_LEAVES -> max(0, 4 - (elapsedTime / 1000))
+                    LightState.GREEN_FLOWER -> max(0, 5 - (elapsedTime / 1000))
+                    else -> 0
+                }
+                
+                if (timeRemaining > 0) {
+                    resetTextPaint.textSize = 40f
+                    canvas.drawText(timeRemaining.toString(), lightX, lightY + 50f, resetTextPaint)
+                }
             }
         }
     }
@@ -395,14 +434,31 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== GESTION DES ÉVÉNEMENTS ====================
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN && lightState == LightState.RED) {
+        if (event.action == MotionEvent.ACTION_DOWN) {
             val dx = event.x - resetButtonX
             val dy = event.y - resetButtonY
             val distance = sqrt(dx * dx + dy * dy)
             
-            if (distance <= resetButtonRadius) {
-                startCycle()
-                return true
+            // MODIFIÉ : Gérer les clics selon l'état
+            when (lightState) {
+                LightState.START -> {
+                    // Clic sur DÉMARRER
+                    if (distance <= resetButtonRadius) {
+                        lightState = LightState.YELLOW
+                        stateStartTime = System.currentTimeMillis()
+                        return true
+                    }
+                }
+                LightState.RED -> {
+                    // Clic sur RESET
+                    if (distance <= resetButtonRadius) {
+                        startCycle()
+                        return true
+                    }
+                }
+                else -> {
+                    // Pas de clic possible pendant les autres phases
+                }
             }
         }
         return super.onTouchEvent(event)
