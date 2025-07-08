@@ -263,7 +263,15 @@ class FlowerManager(private val plantStem: PlantStem) {
                 
                 val growthProgress = flower.currentSize / flower.maxSize
                 val progressCurve = 1f - growthProgress * growthProgress
-                val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f
+                
+                // NOUVEAU : Ralentissement entre 30-50% de croissance
+                val slowdownMultiplier = if (growthProgress >= 0.3f && growthProgress <= 0.5f) {
+                    0.4f // 60% plus lent dans cette tranche
+                } else {
+                    1f // Vitesse normale
+                }
+                
+                val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f * slowdownMultiplier
                 
                 flower.currentSize = (flower.currentSize + adjustedGrowth).coerceAtMost(flower.maxSize)
                 
@@ -271,7 +279,7 @@ class FlowerManager(private val plantStem: PlantStem) {
                 val targetCenterSize = flower.currentSize * 0.675f
                 flower.centerSize = targetCenterSize
                 
-                // Faire grandir les pétales
+                // Faire grandir les pétales avec le même ralentissement
                 for (petal in flower.petals) {
                     if (petal.currentLength < petal.length) {
                         petal.currentLength = (petal.currentLength + adjustedGrowth * 0.8f).coerceAtMost(petal.length)
