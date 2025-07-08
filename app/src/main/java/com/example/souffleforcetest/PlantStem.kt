@@ -229,8 +229,8 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             growthManager.growMainStem(force)
             applyRandomCurvatureToMainStem(force)
         } else {
-            // Créer la branche à la demande si elle n'existe pas ET qu'on souffle
-            if (force > forceThreshold * 1.5f) {
+            // Créer la branche SEULEMENT si force très forte ET soutenue
+            if (force > forceThreshold * 3f) { // AUGMENTÉ: 3x au lieu de 1.5x
                 ensureBranchExists(activeStemType)
                 
                 // Faire pousser SEULEMENT cette branche spécifique
@@ -413,7 +413,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             startHeight = 0f,
             baseOffset = forcedOffset,
             isMainStem = false,
-            currentHeight = 0f,
+            currentHeight = 25f, // NOUVEAU: Commencer avec une hauteur minimum de 25px
             maxHeight = branchMaxHeight,
             personalityFactor = personalityFactor,
             trembleFrequency = trembleFreq,
@@ -427,17 +427,19 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
         
         val divergenceForce = position + (Math.random().toFloat() * 30f - 15f)
         
-        val initialHeight = 12f
-        val initialX = startX + divergenceForce
-        val initialY = stemBaseY - initialHeight
-        val initialThickness = startThickness * 0.95f
-        
-        newBranch.points.add(StemPoint(initialX, initialY, initialThickness))
-        newBranch.currentHeight = initialHeight
+        // NOUVEAU: Créer plusieurs points initiaux pour avoir une hauteur minimum
+        for (i in 1..3) {
+            val segmentHeight = 8f * i
+            val segmentX = startX + (divergenceForce * i / 3f)
+            val segmentY = stemBaseY - segmentHeight
+            val segmentThickness = startThickness * (1f - i * 0.05f)
+            
+            newBranch.points.add(StemPoint(segmentX, segmentY, segmentThickness))
+        }
         
         branches.add(newBranch)
         
-        println("Branche $branchNumber créée avec courbure ${randomCurvature}")
+        println("Branche $branchNumber créée avec hauteur initiale 25px et courbure ${randomCurvature}")
     }
     
     // ==================== FONCTIONS PRIVÉES EXISTANTES ====================
