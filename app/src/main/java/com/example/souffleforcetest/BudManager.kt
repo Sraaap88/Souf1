@@ -161,23 +161,25 @@ class BudManager(private val plantStem: PlantStem) {
         
         if (size <= 0) return
         
-        // Dessiner le centre vert du bouton
-        val centerRadius = size * 0.3f
+        // Dessiner le centre vert du bouton (rond vert)
+        val centerRadius = size * 0.4f
         budPaint.color = Color.rgb(60, 120, 60)
         budPaint.style = Paint.Style.FILL
         canvas.drawCircle(centerX, centerY, centerRadius, budPaint)
         
-        // Dessiner les petites pétales qui pointent
+        // Dessiner SEULEMENT 3-4 petites pointes blanches vers le HAUT
         petalPaint.color = Color.rgb(240, 240, 240)
         petalPaint.style = Paint.Style.STROKE
-        petalPaint.strokeWidth = size * 0.08f
+        petalPaint.strokeWidth = size * 0.06f
         petalPaint.strokeCap = Paint.Cap.ROUND
         
-        for (i in 0 until petalCount) {
-            val angle = (i * 360f / petalCount) + (Math.random() * 8f - 4f).toFloat()
-            val petalLength = size * (0.4f + Math.random() * 0.2f).toFloat()
+        // Seulement 3 pointes vers le haut (angles entre -45° et +45°)
+        val topAngles = listOf(-30f, 0f, 30f) // 3 pointes vers le haut
+        
+        for (angle in topAngles) {
+            val petalLength = size * 0.3f // Petites pointes courtes
             
-            val rad = Math.toRadians(angle.toDouble())
+            val rad = Math.toRadians(angle.toDouble() - 90.0) // -90° pour orienter vers le haut
             val startX = centerX + cos(rad).toFloat() * centerRadius
             val startY = centerY + sin(rad).toFloat() * centerRadius
             val endX = centerX + cos(rad).toFloat() * (centerRadius + petalLength)
@@ -186,10 +188,10 @@ class BudManager(private val plantStem: PlantStem) {
             canvas.drawLine(startX, startY, endX, endY, petalPaint)
         }
         
-        // Optionnel: petit contour pour le centre
+        // Contour du rond vert
         budPaint.color = Color.rgb(40, 90, 40)
         budPaint.style = Paint.Style.STROKE
-        budPaint.strokeWidth = 1f
+        budPaint.strokeWidth = 1.5f
         canvas.drawCircle(centerX, centerY, centerRadius, budPaint)
     }
     
