@@ -287,36 +287,27 @@ class FlowerManager(private val plantStem: PlantStem) {
     
     private fun drawFlowerCenter(canvas: Canvas, centerX: Float, centerY: Float, flower: Flower, paint: Paint) {
         val centerRadius = flower.centerSize * 0.4f
-        val perspective = flower.perspective
         
-        // Appliquer la perspective au centre - RESTAURÉ
-        val perspectiveFactor = cos(Math.toRadians(perspective.viewAngle.toDouble())).toFloat()
-        val radiusX = centerRadius * perspectiveFactor
-        val radiusY = centerRadius
-        
-        // Dégradé jaune-orange pour le centre
+        // Dégradé jaune-orange pour le centre - STATIQUE
         paint.color = Color.rgb(255, 200, 50)
         
-        // Dessiner le centre comme une ellipse selon la perspective - RESTAURÉ
-        canvas.save()
-        canvas.translate(centerX, centerY)
-        canvas.scale(1f, perspectiveFactor)
-        canvas.drawCircle(0f, 0f, radiusY, paint)
-        canvas.restore()
+        // Dessiner le centre comme un cercle simple
+        canvas.drawCircle(centerX, centerY, centerRadius, paint)
         
         // Ajouter texture granuleuse avec petits points - STATIQUES
         paint.color = Color.rgb(200, 150, 30)
         val pointCount = (centerRadius * 0.5f).toInt()
         
-        // Points fixes basés sur la position mais avec perspective
+        // SUPPRESSION de l'animation Math.random() → valeurs fixes basées sur la position
         val seed = (centerX + centerY).toInt()
         for (i in 0 until pointCount) {
-            val angleSeed = (seed + i * 137) % 360
-            val distanceSeed = ((seed + i * 97) % 100) / 100f
+            // Utiliser la position de la fleur comme seed pour des points fixes
+            val angleSeed = (seed + i * 137) % 360 // Angle déterministe
+            val distanceSeed = ((seed + i * 97) % 100) / 100f // Distance déterministe
             
             val angle = angleSeed * PI / 180.0
-            val distance = distanceSeed * radiusY * 0.8f
-            val pointX = centerX + cos(angle).toFloat() * distance * perspectiveFactor
+            val distance = distanceSeed * centerRadius * 0.8f
+            val pointX = centerX + cos(angle).toFloat() * distance
             val pointY = centerY + sin(angle).toFloat() * distance
             
             canvas.drawCircle(pointX, pointY, 1.5f, paint)
