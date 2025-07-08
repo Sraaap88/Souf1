@@ -16,7 +16,9 @@ class BudManager(private val plantStem: PlantStem) {
         var currentSize: Float = 0f,
         val maxSize: Float,
         val creationTime: Long,
-        var isFullyGrown: Boolean = false
+        var isFullyGrown: Boolean = false,
+        val petalCount: Int,             // NOUVEAU : Nombre de pointes unique pour ce bouton
+        val petalVariations: List<Float> // NOUVEAU : Variations de longueur pour chaque pointe
     )
     
     // ==================== VARIABLES ====================
@@ -27,10 +29,11 @@ class BudManager(private val plantStem: PlantStem) {
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
-    private val baseBudSize = 20f           // Taille de base du bouton
-    private val maxBudSize = 35f            // Taille maximum du bouton
+    private val baseBudSize = 140f          // 7x plus gros (20f × 7)
+    private val maxBudSize = 245f           // 7x plus gros (35f × 7)
     private val growthRate = 300f           // Vitesse de croissance
-    private val petalCount = 6              // Nombre de petites pétales
+    private val minPetalCount = 4           // Minimum 4 pointes
+    private val maxPetalCount = 7           // Maximum 7 pointes
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -101,37 +104,65 @@ class BudManager(private val plantStem: PlantStem) {
     
     private fun createBudOnMainStem() {
         val topPoint = plantStem.mainStem.last()
-        val size = baseBudSize + (Math.random() * (maxBudSize - baseBudSize)).toFloat()
+        
+        // Taille aléatoire dans la plage
+        val sizeVariation = Math.random().toFloat()
+        val size = baseBudSize + (sizeVariation * (maxBudSize - baseBudSize))
+        
+        // Nombre de pointes aléatoire
+        val petalCount = minPetalCount + (Math.random() * (maxPetalCount - minPetalCount + 1)).toInt()
+        
+        // Variations de longueur pour chaque pointe (fixes, pas d'animation)
+        val petalVariations = (0 until petalCount).map { 
+            0.8f + (Math.random().toFloat() * 0.4f) // Variations entre 0.8 et 1.2
+        }
         
         val bud = Bud(
             x = topPoint.x,
             y = topPoint.y - 10f,
             stemIndex = -1,
             maxSize = size,
-            creationTime = System.currentTimeMillis()
+            creationTime = System.currentTimeMillis(),
+            petalCount = petalCount,
+            petalVariations = petalVariations
         )
         
         buds.add(bud)
-        println("Bouton créé sur tige principale")
+        println("Bouton créé sur tige principale: ${petalCount} pointes, taille max: ${size.toInt()}px")
     }
     
     private fun createBudOnBranch(branchIndex: Int) {
         val branch = plantStem.branches[branchIndex]
         val topPoint = branch.points.last()
-        val size = (baseBudSize * 0.8f) + (Math.random() * (maxBudSize * 0.8f - baseBudSize * 0.8f)).toFloat()
+        
+        // Taille aléatoire légèrement plus petite pour les branches
+        val baseSizeForBranch = baseBudSize * 0.8f
+        val maxSizeForBranch = maxBudSize * 0.8f
+        val sizeVariation = Math.random().toFloat()
+        val size = baseSizeForBranch + (sizeVariation * (maxSizeForBranch - baseSizeForBranch))
+        
+        // Nombre de pointes aléatoire (parfois moins sur les branches)
+        val petalCount = (minPetalCount - 1) + (Math.random() * (maxPetalCount - minPetalCount + 2)).toInt()
+        
+        // Variations de longueur pour chaque pointe
+        val petalVariations = (0 until petalCount).map { 
+            0.7f + (Math.random().toFloat() * 0.5f) // Variations entre 0.7 et 1.2
+        }
         
         val bud = Bud(
             x = topPoint.x,
             y = topPoint.y - 8f,
             stemIndex = branchIndex,
             maxSize = size,
-            creationTime = System.currentTimeMillis()
+            creationTime = System.currentTimeMillis(),
+            petalCount = petalCount,
+            petalVariations = petalVariations
         )
         
         buds.add(bud)
         
         val growthPercentage = (branch.currentHeight / branch.maxHeight * 100).toInt()
-        println("Bouton créé sur branche $branchIndex (croissance: ${growthPercentage}%)")
+        println("Bouton créé sur branche $branchIndex: ${petalCount} pointes, taille: ${size.toInt()}px (croissance: ${growthPercentage}%)")
     }
     
     private fun growExistingBuds(force: Float) {
@@ -167,19 +198,30 @@ class BudManager(private val plantStem: PlantStem) {
         budPaint.style = Paint.Style.FILL
         canvas.drawCircle(centerX, centerY, centerRadius, budPaint)
         
-        // Dessiner SEULEMENT 3-4 petites pointes blanches vers le HAUT
+        // Dessiner les pointes blanches vers le haut avec variations
         petalPaint.color = Color.rgb(240, 240, 240)
         petalPaint.style = Paint.Style.STROKE
-        petalPaint.strokeWidth = size * 0.06f
+        petalPaint.strokeWidth = size * 0.04f // Plus fine pour les gros boutons
         petalPaint.strokeCap = Paint.Cap.ROUND
         
-        // Seulement 3 pointes vers le haut (angles entre -45° et +45°)
-        val topAngles = listOf(-30f, 0f, 30f) // 3 pointes vers le haut
+        // Répartir les pointes vers le haut (entre -60° et +60°)
+        val angleSpread = 120f // 60° de chaque côté
+        val petalCount = bud.petalCount
         
-        for (angle in topAngles) {
-            val petalLength = size * 0.3f // Petites pointes courtes
+        for (i in 0 until petalCount) {
+            // Répartir uniformément dans l'arc supérieur
+            val baseAngle = if (petalCount == 1) {
+                0f // Une seule pointe au centre
+            } else {
+                -angleSpread/2f + (i * angleSpread / (petalCount - 1))
+            }
             
-            val rad = Math.toRadians(angle.toDouble() - 90.0) // -90° pour orienter vers le haut
+            // Longueur avec variation unique pour cette pointe
+            val baseLength = size * 0.25f
+            val petalVariation = bud.petalVariations.getOrElse(i) { 1f }
+            val petalLength = baseLength * petalVariation
+            
+            val rad = Math.toRadians(baseAngle.toDouble() - 90.0) // -90° pour orienter vers le haut
             val startX = centerX + cos(rad).toFloat() * centerRadius
             val startY = centerY + sin(rad).toFloat() * centerRadius
             val endX = centerX + cos(rad).toFloat() * (centerRadius + petalLength)
@@ -191,7 +233,7 @@ class BudManager(private val plantStem: PlantStem) {
         // Contour du rond vert
         budPaint.color = Color.rgb(40, 90, 40)
         budPaint.style = Paint.Style.STROKE
-        budPaint.strokeWidth = 1.5f
+        budPaint.strokeWidth = 2f
         canvas.drawCircle(centerX, centerY, centerRadius, budPaint)
     }
     
