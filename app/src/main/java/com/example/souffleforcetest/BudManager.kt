@@ -192,48 +192,61 @@ class BudManager(private val plantStem: PlantStem) {
         
         if (size <= 0) return
         
-        // Dessiner le centre vert du bouton (rond vert)
-        val centerRadius = size * 0.4f
+        // VUE DE PROFIL : Dessiner un ovale comme base (tige attachée en bas)
+        val baseWidth = size * 0.6f
+        val baseHeight = size * 0.4f
+        
+        // Base ovale verte (partie attachée à la tige)
         budPaint.color = Color.rgb(60, 120, 60)
         budPaint.style = Paint.Style.FILL
-        canvas.drawCircle(centerX, centerY, centerRadius, budPaint)
+        canvas.drawOval(
+            centerX - baseWidth/2, 
+            centerY - baseHeight/2, 
+            centerX + baseWidth/2, 
+            centerY + baseHeight/2, 
+            budPaint
+        )
         
-        // MODIFICATION : Dessiner les pointes qui se rejoignent en cône vers le haut
+        // VUE DE PROFIL : Les pointes/sépales partent du haut de l'ovale vers le haut
         petalPaint.color = Color.rgb(240, 240, 240)
         petalPaint.style = Paint.Style.STROKE
-        petalPaint.strokeWidth = size * 0.04f // Plus fine pour les gros boutons
+        petalPaint.strokeWidth = size * 0.04f
         petalPaint.strokeCap = Paint.Cap.ROUND
         
-        // Point de convergence au-dessus du centre
-        val coneHeight = size * 0.3f // Hauteur du cône
-        val convergeX = centerX
-        val convergeY = centerY - coneHeight
-        
-        // Répartir les points de départ sur le bord du cercle
         val petalCount = bud.petalCount
+        val petalBaseY = centerY - baseHeight/2  // Haut de l'ovale
+        val petalHeight = size * 0.5f            // Hauteur des pointes
         
+        // Répartir les pointes sur la largeur du haut de l'ovale
         for (i in 0 until petalCount) {
-            // Répartir uniformément autour du cercle (360°)
-            val angle = (i * 360f / petalCount) + (Math.random() * 15f - 7.5f).toFloat() // Petite variation
+            // Position X le long du haut de l'ovale
+            val progress = i.toFloat() / (petalCount - 1).coerceAtLeast(1)
+            val petalStartX = centerX - baseWidth/3 + (progress * baseWidth * 2/3)
             
-            // Point de départ sur le bord du cercle vert
-            val rad = Math.toRadians(angle.toDouble())
-            val startX = centerX + cos(rad).toFloat() * centerRadius
-            val startY = centerY + sin(rad).toFloat() * centerRadius
-            
-            // Variation de hauteur pour chaque pointe (pour effet naturel)
+            // Variation de hauteur pour chaque pointe
             val petalVariation = bud.petalVariations.getOrElse(i) { 1f }
-            val finalConvergeY = convergeY + (coneHeight * (1f - petalVariation) * 0.2f) // Légère variation de hauteur
+            val finalPetalHeight = petalHeight * petalVariation
             
-            // Dessiner la ligne du bord vers le point de convergence
-            canvas.drawLine(startX, startY, convergeX, finalConvergeY, petalPaint)
+            // Légère courbure vers l'extérieur pour les pointes latérales
+            val curveOffset = (progress - 0.5f) * size * 0.1f
+            val petalEndX = petalStartX + curveOffset
+            val petalEndY = petalBaseY - finalPetalHeight
+            
+            // Dessiner la pointe/sépale
+            canvas.drawLine(petalStartX, petalBaseY, petalEndX, petalEndY, petalPaint)
         }
         
-        // Contour du rond vert
+        // Contour de l'ovale vert
         budPaint.color = Color.rgb(40, 90, 40)
         budPaint.style = Paint.Style.STROKE
         budPaint.strokeWidth = 2f
-        canvas.drawCircle(centerX, centerY, centerRadius, budPaint)
+        canvas.drawOval(
+            centerX - baseWidth/2, 
+            centerY - baseHeight/2, 
+            centerX + baseWidth/2, 
+            centerY + baseHeight/2, 
+            budPaint
+        )
     }
     
     // ==================== FONCTIONS UTILITAIRES ====================
