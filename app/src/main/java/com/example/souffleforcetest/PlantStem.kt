@@ -72,7 +72,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
-    private val emergenceDuration = 0L  // MODIFIÉ: 0L au lieu de 1000L
+    private val emergenceDuration = 1000L
     private val maxBranches = 6
     
     init {
@@ -93,7 +93,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
             mainStem.add(StemPoint(stemBaseX, stemBaseY, baseThickness))
         }
         
-        // Phase d'émergence (0 seconde maintenant)
+        // Phase d'émergence (1 seconde)
         if (phaseTime < emergenceDuration) {
             if (force > forceThreshold && !isEmerging) {
                 isEmerging = true
