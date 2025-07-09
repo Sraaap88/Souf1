@@ -71,7 +71,7 @@ class OrganicLineView @JvmOverloads constructor(
     private var resetButtonY = 0f
     private val resetButtonRadius = 175f
     
-    private var lightState = LightState.YELLOW
+    private var lightState = LightState.START
     private var stateStartTime = 0L
     
     // ==================== LOGIQUE DE PLANTE ====================
@@ -79,7 +79,7 @@ class OrganicLineView @JvmOverloads constructor(
     private var plantStem: PlantStem? = null
     
     enum class LightState {
-        YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
+        START, YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
     }
     
     // ==================== GESTION DE L'ÉCRAN ====================
@@ -96,7 +96,7 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== CONTRÔLE DU CYCLE ====================
     
     fun startCycle() {
-        lightState = LightState.YELLOW
+        lightState = LightState.START
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
         plantStem?.resetStem()
@@ -133,26 +133,29 @@ class OrganicLineView @JvmOverloads constructor(
         val elapsedTime = currentTime - stateStartTime
         
         when (lightState) {
+            LightState.START -> {
+                // Reste en START jusqu'à ce qu'on appuie sur le bouton
+            }
             LightState.YELLOW -> {
-                if (elapsedTime >= 2000) {
+                if (elapsedTime >= 2000) { 
                     lightState = LightState.GREEN_GROW
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_GROW -> {
-                if (elapsedTime >= 5000) {  // 5 secondes
+                if (elapsedTime >= 4000) { // 4 secondes au lieu de 5
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_LEAVES -> {
-                if (elapsedTime >= 4000) { // 4 secondes
+                if (elapsedTime >= 3000) { // 3 secondes au lieu de 4
                     lightState = LightState.GREEN_FLOWER
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_FLOWER -> {
-                if (elapsedTime >= 5000) { // MODIFIÉ: 5 secondes au lieu de 4 (+1 seconde)
+                if (elapsedTime >= 4000) { // 4 secondes au lieu de 5
                     lightState = LightState.RED
                     stateStartTime = currentTime
                 }
@@ -321,9 +324,9 @@ class OrganicLineView @JvmOverloads constructor(
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
         
-        val lightRadius = if (lightState == LightState.YELLOW) width * 0.4f else resetButtonRadius
-        val lightX = if (lightState == LightState.YELLOW) width / 2f else resetButtonX
-        val lightY = if (lightState == LightState.YELLOW) height / 2f else resetButtonY
+        val lightRadius = if (lightState == LightState.START || lightState == LightState.YELLOW) width * 0.4f else resetButtonRadius
+        val lightX = if (lightState == LightState.START || lightState == LightState.YELLOW) width / 2f else resetButtonX
+        val lightY = if (lightState == LightState.START || lightState == LightState.YELLOW) height / 2f else resetButtonY
         
         // Ombre
         resetButtonPaint.color = 0x40000000.toInt()
@@ -331,6 +334,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Couleur selon l'état
         resetButtonPaint.color = when (lightState) {
+            LightState.START -> 0xFF00AA00.toInt()       // Vert pour démarrer
             LightState.YELLOW -> 0xFFFFD700.toInt()
             LightState.GREEN_GROW -> 0xFF2F4F2F.toInt()
             LightState.GREEN_LEAVES -> 0xFF00FF00.toInt()
@@ -348,14 +352,20 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Texte et timer
         val timeRemaining = when (lightState) {
-            LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> max(0, 5 - (elapsedTime / 1000))
-            LightState.GREEN_LEAVES -> max(0, 4 - (elapsedTime / 1000))
-            LightState.GREEN_FLOWER -> max(0, 5 - (elapsedTime / 1000)) // MODIFIÉ: 5 secondes au lieu de 4
+            LightState.START -> 0
+            LightState.YELLOW -> max(0, 1 - (elapsedTime / 1000))      // 1 seconde
+            LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))  // 4 secondes
+            LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000)) // 3 secondes
+            LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000)) // 4 secondes
             LightState.RED -> 0
         }
         
-        if (lightState == LightState.YELLOW) {
+        if (lightState == LightState.START) {
+            resetTextPaint.textAlign = Paint.Align.CENTER
+            resetTextPaint.textSize = 150f
+            resetTextPaint.color = 0xFFFFFFFF.toInt()
+            canvas.drawText("DÉMARRER", lightX, lightY, resetTextPaint)
+        } else if (lightState == LightState.YELLOW) {
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 180f
             resetTextPaint.color = 0xFF000000.toInt()
@@ -395,14 +405,32 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== GESTION DES ÉVÉNEMENTS ====================
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN && lightState == LightState.RED) {
-            val dx = event.x - resetButtonX
-            val dy = event.y - resetButtonY
-            val distance = sqrt(dx * dx + dy * dy)
-            
-            if (distance <= resetButtonRadius) {
-                startCycle()
-                return true
+        if (event.action == MotionEvent.ACTION_DOWN) {
+            if (lightState == LightState.START) {
+                // Appui sur le bouton DÉMARRER
+                val centerX = width / 2f
+                val centerY = height / 2f
+                val radius = width * 0.4f
+                
+                val dx = event.x - centerX
+                val dy = event.y - centerY
+                val distance = sqrt(dx * dx + dy * dy)
+                
+                if (distance <= radius) {
+                    lightState = LightState.YELLOW
+                    stateStartTime = System.currentTimeMillis()
+                    return true
+                }
+            } else if (lightState == LightState.RED) {
+                // Appui sur le bouton RESET
+                val dx = event.x - resetButtonX
+                val dy = event.y - resetButtonY
+                val distance = sqrt(dx * dx + dy * dy)
+                
+                if (distance <= resetButtonRadius) {
+                    startCycle()
+                    return true
+                }
             }
         }
         return super.onTouchEvent(event)
