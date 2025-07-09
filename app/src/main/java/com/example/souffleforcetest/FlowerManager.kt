@@ -334,7 +334,7 @@ class FlowerManager(private val plantStem: PlantStem) {
     
     private fun drawSingleFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
         if (flower.isProfileView) {
-            drawProfileFlower(canvas, flower, flowerPaint, centerPaint)
+            drawSimpleProfileFlower(canvas, flower, flowerPaint, centerPaint)
         } else {
             drawFaceFlower(canvas, flower, flowerPaint, centerPaint)
         }
@@ -359,33 +359,72 @@ class FlowerManager(private val plantStem: PlantStem) {
         }
     }
     
-    private fun drawProfileFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
+    private fun drawSimpleProfileFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
         val currentX = flower.x
         val currentY = flower.y
+        val size = flower.currentSize
         
-        canvas.save()
+        if (size <= 0) return
         
-        // Transformation pour vue de profil : aplatir et incliner légèrement
-        canvas.translate(currentX, currentY)
-        canvas.scale(1f, 0.35f)  // Aplatir à 35% de la hauteur
-        canvas.rotate(15f + (Math.random() * 10f - 5f).toFloat()) // Légère inclinaison aléatoire
-        canvas.translate(-currentX, -currentY)
+        // Facteur de taille pour tous les éléments
+        val sizeFactor = size / flower.maxSize
         
-        // Dessiner les pétales dans la transformation
-        val sortedPetals = flower.petals.sortedBy { it.perspective.depthFactor }
+        // 1. Centre bombé (demi-cercle/ovale)
+        val centerWidth = 40f * sizeFactor
+        val centerHeight = 25f * sizeFactor
+        centerPaint.color = Color.rgb(255, 200, 50)
+        canvas.drawOval(
+            currentX - centerWidth/2, 
+            currentY - centerHeight/2, 
+            currentX + centerWidth/2, 
+            currentY + centerHeight/2, 
+            centerPaint
+        )
         
-        for (petal in sortedPetals) {
-            if (petal.currentLength > 0) {
-                drawPetal(canvas, currentX, currentY, petal, flower, flowerPaint)
-            }
-        }
+        // 2. Pétales du dessus (3-4 pétales)
+        flowerPaint.color = Color.rgb(255, 255, 255)
+        flowerPaint.strokeWidth = 8f * sizeFactor
+        flowerPaint.strokeCap = Paint.Cap.ROUND
         
-        // Dessiner le centre transformé
-        if (flower.centerSize > 0) {
-            drawFlowerCenter(canvas, currentX, currentY, flower, centerPaint)
-        }
+        val petalLength = 60f * sizeFactor
         
-        canvas.restore()
+        // Pétales supérieurs
+        val topY = currentY - centerHeight/2
+        canvas.drawLine(currentX - 15f * sizeFactor, topY, currentX - 25f * sizeFactor, topY - petalLength * 0.8f, flowerPaint)
+        canvas.drawLine(currentX - 5f * sizeFactor, topY, currentX - 8f * sizeFactor, topY - petalLength, flowerPaint)
+        canvas.drawLine(currentX + 5f * sizeFactor, topY, currentX + 8f * sizeFactor, topY - petalLength, flowerPaint)
+        canvas.drawLine(currentX + 15f * sizeFactor, topY, currentX + 25f * sizeFactor, topY - petalLength * 0.8f, flowerPaint)
+        
+        // 3. Pétales du dessous (2-3 pétales)
+        val bottomY = currentY + centerHeight/2
+        canvas.drawLine(currentX - 12f * sizeFactor, bottomY, currentX - 20f * sizeFactor, bottomY + petalLength * 0.6f, flowerPaint)
+        canvas.drawLine(currentX, bottomY, currentX - 2f * sizeFactor, bottomY + petalLength * 0.7f, flowerPaint)
+        canvas.drawLine(currentX + 12f * sizeFactor, bottomY, currentX + 20f * sizeFactor, bottomY + petalLength * 0.6f, flowerPaint)
+        
+        // 4. Pétales latéraux (visibles sur les côtés)
+        canvas.drawLine(currentX - centerWidth/2, currentY, currentX - centerWidth/2 - petalLength * 0.5f, currentY - 5f * sizeFactor, flowerPaint)
+        canvas.drawLine(currentX + centerWidth/2, currentY, currentX + centerWidth/2 + petalLength * 0.5f, currentY - 5f * sizeFactor, flowerPaint)
+        
+        // 5. Contour du centre pour définition
+        centerPaint.color = Color.rgb(200, 150, 30)
+        centerPaint.style = Paint.Style.STROKE
+        centerPaint.strokeWidth = 2f
+        canvas.drawOval(
+            currentX - centerWidth/2, 
+            currentY - centerHeight/2, 
+            currentX + centerWidth/2, 
+            currentY + centerHeight/2, 
+            centerPaint
+        )
+        centerPaint.style = Paint.Style.FILL
+        
+        // 6. Quelques points de texture sur le centre
+        centerPaint.color = Color.rgb(180, 130, 20)
+        val pointSize = 1.5f * sizeFactor
+        canvas.drawCircle(currentX - 8f * sizeFactor, currentY - 3f * sizeFactor, pointSize, centerPaint)
+        canvas.drawCircle(currentX + 6f * sizeFactor, currentY + 2f * sizeFactor, pointSize, centerPaint)
+        canvas.drawCircle(currentX - 2f * sizeFactor, currentY + 5f * sizeFactor, pointSize, centerPaint)
+        canvas.drawCircle(currentX + 10f * sizeFactor, currentY - 6f * sizeFactor, pointSize, centerPaint)
     }
     
     private fun drawPetal(canvas: Canvas, centerX: Float, centerY: Float, petal: Petal, flower: Flower, paint: Paint) {
