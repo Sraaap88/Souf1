@@ -353,7 +353,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Texte et timer
         val timeRemaining = when (lightState) {
             LightState.START -> 0
-            LightState.YELLOW -> max(0, 1 - (elapsedTime / 1000))      // 1 seconde
+            LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))      // 2 secondes
             LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))  // 4 secondes
             LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000)) // 3 secondes
             LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000)) // 4 secondes
