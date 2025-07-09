@@ -18,8 +18,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         val perspective: FlowerPerspective,
         var centerSize: Float = 0f,
         val petals: MutableList<Petal> = mutableListOf(),
-        var isFullyGrown: Boolean = false,
-        val isProfileView: Boolean = false  // NOUVEAU : indique si vue de profil
+        var isFullyGrown: Boolean = false
     )
     
     data class Petal(
@@ -57,7 +56,6 @@ class FlowerManager(private val plantStem: PlantStem) {
     private val maxFlowerSize = 468f   // +30% (360f × 1.3)
     private val growthRate = 400f
     private val petalCount = 18 + (Math.random() * 8).toInt() // 18-26 pétales
-    private val profileViewChance = 0.35f  // 35% de chance pour vue de profil
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -127,22 +125,22 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS PRIVÉES ====================
     
     private fun createFlowersOnStems() {
-        val potentialStems = mutableListOf<Int>()
-        
-        // Vérifier tige principale
+        // Créer fleur sur tige principale SEULEMENT si 30%+ ET assez haute
         if (!flowers.any { it.stemIndex == -1 } && plantStem.mainStem.size > 5) {
             val mainStemHeight = if (plantStem.mainStem.isNotEmpty()) {
                 plantStem.getStemBaseY() - plantStem.mainStem.last().y
             } else 0f
             
-            if (mainStemHeight >= 80f) {
-                potentialStems.add(-1)
+            if (mainStemHeight >= 80f) { // 30%+ de croissance
+                createFlowerOnMainStem()
             }
         }
         
-        // Vérifier branches éligibles
+        // Créer fleurs sur branches avec critère 30%+
         for (branchIndex in plantStem.branches.indices) {
             val branch = plantStem.branches[branchIndex]
+            
+            // Calculer le pourcentage de croissance
             val growthPercentage = if (branch.maxHeight > 0) {
                 branch.currentHeight / branch.maxHeight
             } else 0f
@@ -151,46 +149,18 @@ class FlowerManager(private val plantStem: PlantStem) {
             val topPointY = if (branch.points.isNotEmpty()) branch.points.last().y else plantStem.getStemBaseY()
             val distanceFromGround = plantStem.getStemBaseY() - topPointY
             
-            if (!flowers.any { it.stemIndex == branchIndex } && 
-                growthPercentage >= 0.30f &&
-                absoluteHeight >= 60f &&
-                distanceFromGround >= 60f) {
-                potentialStems.add(branchIndex)
-            }
-        }
-        
-        // Créer les fleurs avec logique de vue de profil
-        if (potentialStems.isNotEmpty()) {
-            var profileViewAssigned = false
+            println("Branche $branchIndex: ${(growthPercentage * 100).toInt()}%, hauteur: ${absoluteHeight}px, distance sol: ${distanceFromGround}px")
             
-            for (stemIndex in potentialStems) {
-                val shouldBeProfile = if (potentialStems.size == 1) {
-                    false // Pas de profil si une seule fleur
-                } else if (!profileViewAssigned) {
-                    // Forcer au moins une vue de profil si plusieurs fleurs
-                    if (potentialStems.indexOf(stemIndex) == potentialStems.size - 1) {
-                        true // Dernière fleur et pas encore de profil = forcer
-                    } else {
-                        Math.random() < profileViewChance
-                    }
-                } else {
-                    Math.random() < profileViewChance
-                }
-                
-                if (shouldBeProfile) {
-                    profileViewAssigned = true
-                }
-                
-                if (stemIndex == -1) {
-                    createFlowerOnMainStem(shouldBeProfile)
-                } else {
-                    createFlowerOnBranch(stemIndex, shouldBeProfile)
-                }
+            if (!flowers.any { it.stemIndex == branchIndex } && 
+                growthPercentage >= 0.30f &&           // MODIFIÉ: 30% minimum au lieu de 15%
+                absoluteHeight >= 60f &&               // ET au moins 60px absolus
+                distanceFromGround >= 60f) {            // ET au moins 60px du sol
+                createFlowerOnBranch(branchIndex)
             }
         }
     }
     
-    private fun createFlowerOnMainStem(isProfileView: Boolean) {
+    private fun createFlowerOnMainStem() {
         val mainStem = plantStem.mainStem
         if (mainStem.size < 5) return
         
@@ -198,7 +168,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         val size = baseFlowerSize + (Math.random() * (maxFlowerSize - baseFlowerSize)).toFloat()
         
         val perspective = FlowerPerspective(
-            viewAngle = if (isProfileView) 85f + (Math.random() * 10f - 5f).toFloat() else 0f + (Math.random() * 10f - 5f).toFloat(),
+            viewAngle = 0f + (Math.random() * 10f - 5f).toFloat(),
             tiltAngle = (Math.random() * 15f - 7.5f).toFloat(),
             rotationAngle = (Math.random() * 360f).toFloat()
         )
@@ -208,17 +178,14 @@ class FlowerManager(private val plantStem: PlantStem) {
             y = topPoint.y - 20f,
             stemIndex = -1,
             maxSize = size,
-            perspective = perspective,
-            isProfileView = isProfileView
+            perspective = perspective
         )
         
         createPetalsForFlower(flower)
         flowers.add(flower)
-        
-        println("Fleur créée sur tige principale - Vue: ${if (isProfileView) "PROFIL" else "FACE"}")
     }
     
-    private fun createFlowerOnBranch(branchIndex: Int, isProfileView: Boolean) {
+    private fun createFlowerOnBranch(branchIndex: Int) {
         val branch = plantStem.branches[branchIndex]
         if (branch.points.size < 3) return
         
@@ -226,7 +193,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         val size = (baseFlowerSize * 0.8f) + (Math.random() * (maxFlowerSize * 0.8f - baseFlowerSize * 0.8f)).toFloat()
         
         val perspective = FlowerPerspective(
-            viewAngle = if (isProfileView) 85f + (Math.random() * 10f - 5f).toFloat() else 0f + (Math.random() * 15f - 7.5f).toFloat(),
+            viewAngle = 0f + (Math.random() * 15f - 7.5f).toFloat(),
             tiltAngle = (Math.random() * 20f - 10f).toFloat(),
             rotationAngle = (Math.random() * 360f).toFloat()
         )
@@ -236,14 +203,11 @@ class FlowerManager(private val plantStem: PlantStem) {
             y = topPoint.y - 15f,
             stemIndex = branchIndex,
             maxSize = size,
-            perspective = perspective,
-            isProfileView = isProfileView
+            perspective = perspective
         )
         
         createPetalsForFlower(flower)
         flowers.add(flower)
-        
-        println("Fleur créée sur branche $branchIndex - Vue: ${if (isProfileView) "PROFIL" else "FACE"}")
     }
     
     private fun createPetalsForFlower(flower: Flower) {
@@ -333,14 +297,6 @@ class FlowerManager(private val plantStem: PlantStem) {
     // ==================== FONCTIONS DE RENDU ====================
     
     private fun drawSingleFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
-        if (flower.isProfileView) {
-            drawSimpleProfileFlower(canvas, flower, flowerPaint, centerPaint)
-        } else {
-            drawFaceFlower(canvas, flower, flowerPaint, centerPaint)
-        }
-    }
-    
-    private fun drawFaceFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
         val currentX = flower.x
         val currentY = flower.y
         
@@ -357,74 +313,6 @@ class FlowerManager(private val plantStem: PlantStem) {
         if (flower.centerSize > 0) {
             drawFlowerCenter(canvas, currentX, currentY, flower, centerPaint)
         }
-    }
-    
-    private fun drawSimpleProfileFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
-        val currentX = flower.x
-        val currentY = flower.y
-        val size = flower.currentSize
-        
-        if (size <= 0) return
-        
-        // Facteur de taille pour tous les éléments
-        val sizeFactor = size / flower.maxSize
-        
-        // 1. Centre bombé (demi-cercle/ovale)
-        val centerWidth = 40f * sizeFactor
-        val centerHeight = 25f * sizeFactor
-        centerPaint.color = Color.rgb(255, 200, 50)
-        canvas.drawOval(
-            currentX - centerWidth/2, 
-            currentY - centerHeight/2, 
-            currentX + centerWidth/2, 
-            currentY + centerHeight/2, 
-            centerPaint
-        )
-        
-        // 2. Pétales du dessus (3-4 pétales)
-        flowerPaint.color = Color.rgb(255, 255, 255)
-        flowerPaint.strokeWidth = 8f * sizeFactor
-        flowerPaint.strokeCap = Paint.Cap.ROUND
-        
-        val petalLength = 60f * sizeFactor
-        
-        // Pétales supérieurs
-        val topY = currentY - centerHeight/2
-        canvas.drawLine(currentX - 15f * sizeFactor, topY, currentX - 25f * sizeFactor, topY - petalLength * 0.8f, flowerPaint)
-        canvas.drawLine(currentX - 5f * sizeFactor, topY, currentX - 8f * sizeFactor, topY - petalLength, flowerPaint)
-        canvas.drawLine(currentX + 5f * sizeFactor, topY, currentX + 8f * sizeFactor, topY - petalLength, flowerPaint)
-        canvas.drawLine(currentX + 15f * sizeFactor, topY, currentX + 25f * sizeFactor, topY - petalLength * 0.8f, flowerPaint)
-        
-        // 3. Pétales du dessous (2-3 pétales)
-        val bottomY = currentY + centerHeight/2
-        canvas.drawLine(currentX - 12f * sizeFactor, bottomY, currentX - 20f * sizeFactor, bottomY + petalLength * 0.6f, flowerPaint)
-        canvas.drawLine(currentX, bottomY, currentX - 2f * sizeFactor, bottomY + petalLength * 0.7f, flowerPaint)
-        canvas.drawLine(currentX + 12f * sizeFactor, bottomY, currentX + 20f * sizeFactor, bottomY + petalLength * 0.6f, flowerPaint)
-        
-        // 4. Pétales latéraux (visibles sur les côtés)
-        canvas.drawLine(currentX - centerWidth/2, currentY, currentX - centerWidth/2 - petalLength * 0.5f, currentY - 5f * sizeFactor, flowerPaint)
-        canvas.drawLine(currentX + centerWidth/2, currentY, currentX + centerWidth/2 + petalLength * 0.5f, currentY - 5f * sizeFactor, flowerPaint)
-        
-        // 5. Contour du centre pour définition
-        centerPaint.color = Color.rgb(200, 150, 30)
-        centerPaint.style = Paint.Style.STROKE
-        centerPaint.strokeWidth = 2f
-        canvas.drawOval(
-            currentX - centerWidth/2, 
-            currentY - centerHeight/2, 
-            currentX + centerWidth/2, 
-            currentY + centerHeight/2, 
-            centerPaint
-        )
-        centerPaint.style = Paint.Style.FILL
-        
-        // 6. Quelques points de texture sur le centre
-        centerPaint.color = Color.rgb(180, 130, 20)
-        val pointSize = 1.5f * sizeFactor
-        canvas.drawCircle(currentX - 8f * sizeFactor, currentY - 3f * sizeFactor, pointSize, centerPaint)
-        canvas.drawCircle(currentX + 6f * sizeFactor, currentY + 2f * sizeFactor, pointSize, centerPaint)
-        canvas.drawCircle(currentX - 2f * sizeFactor, currentY + 5f * sizeFactor, pointSize, centerPaint)
-        canvas.drawCircle(currentX + 10f * sizeFactor, currentY - 6f * sizeFactor, pointSize, centerPaint)
     }
     
     private fun drawPetal(canvas: Canvas, centerX: Float, centerY: Float, petal: Petal, flower: Flower, paint: Paint) {
