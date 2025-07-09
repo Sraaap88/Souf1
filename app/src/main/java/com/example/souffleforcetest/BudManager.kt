@@ -185,7 +185,32 @@ class BudManager(private val plantStem: PlantStem) {
         }
     }
     
-
+    private fun drawSingleBud(canvas: Canvas, bud: Bud, budPaint: Paint, petalPaint: Paint) {
+        val centerX = bud.x
+        val centerY = bud.y
+        val size = bud.currentSize
+        
+        if (size <= 0) return
+        
+        // Dessiner le centre vert du bouton (rond vert)
+        val centerRadius = size * 0.4f
+        budPaint.color = Color.rgb(60, 120, 60)
+        budPaint.style = Paint.Style.FILL
+        canvas.drawCircle(centerX, centerY, centerRadius, budPaint)
+        
+        // MODIFICATION : Dessiner les pointes qui se rejoignent en cône vers le haut
+        petalPaint.color = Color.rgb(240, 240, 240)
+        petalPaint.style = Paint.Style.STROKE
+        petalPaint.strokeWidth = size * 0.04f // Plus fine pour les gros boutons
+        petalPaint.strokeCap = Paint.Cap.ROUND
+        
+        // Point de convergence au-dessus du centre
+        val coneHeight = size * 0.3f // Hauteur du cône
+        val convergeX = centerX
+        val convergeY = centerY - coneHeight
+        
+        // Répartir les points de départ sur le bord du cercle
+        val petalCount = bud.petalCount
         
         for (i in 0 until petalCount) {
             // Répartir uniformément autour du cercle (360°)
