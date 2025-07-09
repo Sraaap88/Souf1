@@ -72,7 +72,7 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     private val tipThickness = 8f
     private val growthRate = 2400f
     private val oscillationDecay = 0.98f
-    private val emergenceDuration = 1000L
+    private val emergenceDuration = 0L
     private val maxBranches = 6
     
     init {
@@ -87,26 +87,16 @@ class PlantStem(private val screenWidth: Int, private val screenHeight: Int) {
     
     fun processStemGrowth(force: Float, phaseTime: Long) {
         // INITIALISATION : créer le point de base
-        if (mainStem.isEmpty() && !isEmerging) {
-            isEmerging = true
-            emergenceStartTime = System.currentTimeMillis()
+        if (mainStem.isEmpty()) {
             mainStem.add(StemPoint(stemBaseX, stemBaseY, baseThickness))
-        }
-        
-        // Phase d'émergence (1 seconde)
-        if (phaseTime < emergenceDuration) {
-            if (force > forceThreshold && !isEmerging) {
-                isEmerging = true
-                emergenceStartTime = System.currentTimeMillis()
+            // Détecter immédiatement une première saccade si on souffle fort
+            if (force > forceThreshold) {
+                saccadeCount = 1
+                currentActiveStemIndex = 0
+                lastSaccadeTime = System.currentTimeMillis()
+                isCurrentlyBreathing = true
+                println("Saccade initiale détectée : Tige PRINCIPALE activée")
             }
-            
-            if (isEmerging) {
-                val emergenceProgress = (System.currentTimeMillis() - emergenceStartTime) / emergenceDuration.toFloat()
-                if (emergenceProgress <= 1f) {
-                    createEmergenceStem(emergenceProgress)
-                }
-            }
-            return
         }
         
         // Détection des saccades et activation des tiges
