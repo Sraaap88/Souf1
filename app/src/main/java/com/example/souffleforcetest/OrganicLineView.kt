@@ -45,6 +45,10 @@ class OrganicLineView @JvmOverloads constructor(
         
         plantStem = PlantStem(w, h)
         uiDrawing = UIDrawingManager(context, w, h)
+        
+        // NOUVEAU: Injecter le ChallengeManager dans le FlowerManager et mettre à jour les dimensions
+        challengeManager.updateScreenDimensions(w, h)
+        plantStem?.getFlowerManager()?.setChallengeManager(challengeManager)
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
