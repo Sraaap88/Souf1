@@ -13,14 +13,14 @@ class ChallengeManager {
         var isUnlocked: Boolean = true  // Pour l'instant tous débloqués
     )
     
-    // ==================== DÉFIS TEMPORAIRES (À REMPLACER) ====================
+    // ==================== DÉFIS MARGUERITE ====================
     
     private val margueriteChallenges = listOf(
         Challenge(
             id = 1,
-            title = "Défi 1: Contrôle",
-            description = "Défi temporaire - À définir ensemble",
-            briefText = "Défi 1: À définir"
+            title = "Défi 1: Zone Verte",
+            description = "Faire pousser au moins 2 fleurs dans la zone verte",
+            briefText = "Défi 1: 2 fleurs en zone verte"
         ),
         Challenge(
             id = 2,
@@ -42,7 +42,8 @@ class ChallengeManager {
     
     private var currentChallenge: Challenge? = null
     private var challengeStartTime = 0L
-    private var challengeData = mutableMapOf<String, Float>()  // Pour stocker données du défi
+    private var challengeData = mutableMapOf<String, Any>()  // Pour stocker données du défi
+    private var flowersInZone = mutableListOf<String>()  // Liste des fleurs dans la zone verte
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -52,6 +53,7 @@ class ChallengeManager {
         currentChallenge = margueriteChallenges.find { it.id == challengeId }
         challengeStartTime = System.currentTimeMillis()
         challengeData.clear()
+        flowersInZone.clear()  // Reset liste des fleurs
         println("Défi démarré: ${currentChallenge?.title}")
     }
     
@@ -62,20 +64,39 @@ class ChallengeManager {
     fun updateChallengeProgress(force: Float, plantState: String) {
         val challenge = currentChallenge ?: return
         
-        // LOGIQUE TEMPORAIRE - À REMPLACER PAR LES VRAIS DÉFIS
         when (challenge.id) {
-            1 -> updateChallenge1(force, plantState)
+            1 -> updateChallenge1_FlowersInZone(force, plantState)
             2 -> updateChallenge2(force, plantState) 
             3 -> updateChallenge3(force, plantState)
+        }
+    }
+    
+    // NOUVEAU: Fonction pour signaler qu'une fleur a été créée
+    fun notifyFlowerCreated(flowerX: Float, flowerY: Float, flowerId: String) {
+        val challenge = currentChallenge ?: return
+        
+        if (challenge.id == 1) {
+            // Vérifier si la fleur est dans la zone verte (utiliser UIDrawingManager)
+            // Pour l'instant, on simule la vérification - il faudra intégrer avec UIDrawingManager
+            val screenHeight = 2000f  // À remplacer par la vraie valeur
+            val zoneTop = screenHeight / 3f - 60f
+            val zoneBottom = screenHeight / 3f + 60f
+            
+            if (flowerY >= zoneTop && flowerY <= zoneBottom) {
+                if (!flowersInZone.contains(flowerId)) {
+                    flowersInZone.add(flowerId)
+                    challengeData["flowersInZoneCount"] = flowersInZone.size
+                    println("Fleur dans la zone! Total: ${flowersInZone.size}/2")
+                }
+            }
         }
     }
     
     fun checkChallengeCompletion(): ChallengeResult? {
         val challenge = currentChallenge ?: return null
         
-        // LOGIQUE TEMPORAIRE - À REMPLACER
         val isSuccessful = when (challenge.id) {
-            1 -> checkChallenge1Completion()
+            1 -> checkChallenge1_FlowersInZone()
             2 -> checkChallenge2Completion()
             3 -> checkChallenge3Completion()
             else -> false
@@ -84,7 +105,7 @@ class ChallengeManager {
         if (isSuccessful) {
             challenge.isCompleted = true
             unlockNextChallenge(challenge.id)
-            return ChallengeResult(challenge, true, "Défi réussi!")
+            return ChallengeResult(challenge, true, "Défi réussi! ${flowersInZone.size} fleurs dans la zone!")
         }
         
         return null  // Défi encore en cours
@@ -96,23 +117,36 @@ class ChallengeManager {
         val result = checkChallengeCompletion() ?: ChallengeResult(
             challenge, 
             false, 
-            "Défi échoué - Réessayez!"
+            "Défi échoué - Seulement ${flowersInZone.size}/2 fleurs en zone verte!"
         )
         
         currentChallenge = null
         return result
     }
     
-    // ==================== LOGIQUE TEMPORAIRE DES DÉFIS ====================
+    // ==================== LOGIQUE DU DÉFI 1: FLEURS EN ZONE VERTE ====================
+    
+    private fun updateChallenge1_FlowersInZone(force: Float, plantState: String) {
+        // Le suivi se fait via notifyFlowerCreated() quand une fleur est créée
+        challengeData["currentPhase"] = plantState
+        challengeData["totalFlowers"] = flowersInZone.size
+    }
+    
+    private fun checkChallenge1_FlowersInZone(): Boolean {
+        // Succès si au moins 2 fleurs dans la zone verte
+        return flowersInZone.size >= 2
+    }
+    
+    // ==================== LOGIQUE TEMPORAIRE DES AUTRES DÉFIS ====================
     
     private fun updateChallenge1(force: Float, plantState: String) {
-        // TEMPORAIRE - Exemple simple
-        challengeData["maxForce"] = maxOf(challengeData["maxForce"] ?: 0f, force)
+        // TEMPORAIRE - Exemple simple (ancien défi 1)
+        challengeData["maxForce"] = maxOf(challengeData["maxForce"] as? Float ?: 0f, force)
     }
     
     private fun updateChallenge2(force: Float, plantState: String) {
         // TEMPORAIRE - Exemple simple
-        challengeData["totalForce"] = (challengeData["totalForce"] ?: 0f) + force
+        challengeData["totalForce"] = (challengeData["totalForce"] as? Float ?: 0f) + force
     }
     
     private fun updateChallenge3(force: Float, plantState: String) {
@@ -123,13 +157,13 @@ class ChallengeManager {
     }
     
     private fun checkChallenge1Completion(): Boolean {
-        // TEMPORAIRE - Condition bidon
-        return (challengeData["maxForce"] ?: 0f) > 0.5f
+        // TEMPORAIRE - Ancien défi 1 (condition bidon)
+        return (challengeData["maxForce"] as? Float ?: 0f) > 0.5f
     }
     
     private fun checkChallenge2Completion(): Boolean {
         // TEMPORAIRE - Condition bidon  
-        return (challengeData["totalForce"] ?: 0f) > 10f
+        return (challengeData["totalForce"] as? Float ?: 0f) > 10f
     }
     
     private fun checkChallenge3Completion(): Boolean {
