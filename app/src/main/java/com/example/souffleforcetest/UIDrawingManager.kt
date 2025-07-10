@@ -58,6 +58,13 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         color = Color.rgb(255, 200, 50)
     }
     
+    // NOUVEAU - Paint pour la zone cible des défis
+    private val targetZonePaint = Paint().apply {
+        isAntiAlias = true
+        style = Paint.Style.FILL
+        color = 0x4000FF00.toInt()  // Vert lime transparent (40% opacité)
+    }
+    
     // ==================== IMAGE RESOURCES ====================
     
     private var daisyBitmap: Bitmap? = null
@@ -75,6 +82,12 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     
     fun drawCurrentState(canvas: Canvas, lightState: OrganicLineView.LightState, timeRemaining: Long, 
                         resetButtonX: Float, resetButtonY: Float, resetButtonRadius: Float, challengeManager: ChallengeManager) {
+        
+        // Dessiner la zone cible AVANT tout le reste si défi actif
+        if (challengeManager.getCurrentChallenge() != null && shouldShowTargetZone(lightState)) {
+            drawTargetZone(canvas)
+        }
+        
         when (lightState) {
             OrganicLineView.LightState.START -> {
                 drawStartButtons(canvas)
@@ -497,5 +510,47 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         // Statut de progression
         resetTextPaint.textSize = 60f
         canvas.drawText(challengeManager.getCompletionStatus(), screenWidth / 2f, screenHeight * 0.75f, resetTextPaint)
+    }
+    
+    // ==================== ZONE CIBLE POUR DÉFIS ====================
+    
+    private fun shouldShowTargetZone(lightState: OrganicLineView.LightState): Boolean {
+        // Afficher la zone pendant les phases de croissance seulement
+        return when (lightState) {
+            OrganicLineView.LightState.GREEN_GROW,
+            OrganicLineView.LightState.GREEN_LEAVES,
+            OrganicLineView.LightState.GREEN_FLOWER -> true
+            else -> false
+        }
+    }
+    
+    private fun drawTargetZone(canvas: Canvas) {
+        // Zone au 1/3 de l'écran (en haut), hauteur ~1 pouce (120px)
+        val zoneTop = screenHeight / 3f - 60f      // 1/3 de l'écran moins la moitié de la hauteur
+        val zoneBottom = screenHeight / 3f + 60f   // 1/3 de l'écran plus la moitié de la hauteur
+        val zoneLeft = 0f
+        val zoneRight = screenWidth.toFloat()
+        
+        // Dessiner le rectangle transparent vert lime
+        canvas.drawRect(zoneLeft, zoneTop, zoneRight, zoneBottom, targetZonePaint)
+        
+        // Optionnel: bordures pour mieux voir la zone
+        val borderPaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeWidth = 4f
+            color = 0x8000FF00.toInt()  // Vert lime plus opaque pour les bordures
+        }
+        canvas.drawRect(zoneLeft, zoneTop, zoneRight, zoneBottom, borderPaint)
+    }
+    
+    // Fonction utilitaire pour vérifier si un point est dans la zone cible
+    fun isPointInTargetZone(x: Float, y: Float): Boolean {
+        val zoneTop = screenHeight / 3f - 60f
+        val zoneBottom = screenHeight / 3f + 60f
+        val zoneLeft = 0f
+        val zoneRight = screenWidth.toFloat()
+        
+        return x >= zoneLeft && x <= zoneRight && y >= zoneTop && y <= zoneBottom
     }
 }
