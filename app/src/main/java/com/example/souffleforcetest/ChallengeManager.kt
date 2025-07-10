@@ -81,7 +81,7 @@ class ChallengeManager {
             // Vérifier si la fleur est dans la zone verte (1/3 de l'écran, hauteur étendue vers le bas)
             val screenHeight = challengeData["screenHeight"] as? Float ?: 2000f
             val zoneTop = screenHeight / 3f - 60f
-            val zoneBottom = screenHeight / 3f + 180f  // 3 fois plus large vers le bas (240px total)
+            val zoneBottom = screenHeight / 3f + 360f  // 2 fois plus large que la version précédente (420px total)
             
             if (flowerY >= zoneTop && flowerY <= zoneBottom) {
                 if (!flowersInZone.contains(flowerId)) {
