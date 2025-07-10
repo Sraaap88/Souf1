@@ -73,13 +73,14 @@ class OrganicLineView @JvmOverloads constructor(
     
     private var lightState = LightState.START
     private var stateStartTime = 0L
+    private var selectedMode = ""  // "ZEN" ou "DÉFI"
     
     // ==================== LOGIQUE DE PLANTE ====================
     
     private var plantStem: PlantStem? = null
     
     enum class LightState {
-        START, YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
+        START, FLOWER_CHOICE, YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
     }
     
     // ==================== GESTION DE L'ÉCRAN ====================
@@ -99,6 +100,7 @@ class OrganicLineView @JvmOverloads constructor(
         lightState = LightState.START
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
+        selectedMode = ""
         plantStem?.resetStem()
         invalidate()
     }
@@ -135,6 +137,9 @@ class OrganicLineView @JvmOverloads constructor(
         when (lightState) {
             LightState.START -> {
                 // Reste en START jusqu'à ce qu'on appuie sur le bouton
+            }
+            LightState.FLOWER_CHOICE -> {
+                // Reste en FLOWER_CHOICE jusqu'à ce qu'on choisisse une fleur
             }
             LightState.YELLOW -> {
                 if (elapsedTime >= 2000) { 
@@ -356,6 +361,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Timer pour tous les états
         val timeRemaining = when (lightState) {
             LightState.START -> 0
+            LightState.FLOWER_CHOICE -> 0
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))      // 2 secondes
             LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))  // 4 secondes
             LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000)) // 3 secondes
@@ -367,7 +373,7 @@ class OrganicLineView @JvmOverloads constructor(
             // Calculer positions des deux boutons
             val buttonRadius = width * 0.15f  // Réduit pour faire de la place aux deux
             val spacing = buttonRadius * 2.5f  // Espacement entre les boutons
-            val zenButtonX = width * 0.25f     // Premier bouton un peu plus vers la gauche
+            val zenButtonX = width * 0.4f     // Plus centré (était 0.25f)
             val defiButtonX = zenButtonX + spacing  // Deuxième bouton à côté
             val buttonY = height / 2f
             
@@ -376,6 +382,10 @@ class OrganicLineView @JvmOverloads constructor(
             
             // Dessiner bouton DÉFI (orange feu)
             drawSingleButton(canvas, defiButtonX, buttonY, buttonRadius, 0xFFFF4500.toInt(), "DÉFI")
+            
+        } else if (lightState == LightState.FLOWER_CHOICE) {
+            // Écran de choix de fleur (mode ZEN seulement)
+            drawFlowerChoice(canvas)
             
         } else if (lightState == LightState.YELLOW) {
             // Pas de cercle, juste le texte au centre en blanc
@@ -466,7 +476,7 @@ class OrganicLineView @JvmOverloads constructor(
                 // Calculer positions des boutons (même calcul que dans drawTrafficLight)
                 val buttonRadius = width * 0.15f
                 val spacing = buttonRadius * 2.5f
-                val zenButtonX = width * 0.25f
+                val zenButtonX = width * 0.4f     // Plus centré (était 0.25f)
                 val defiButtonX = zenButtonX + spacing
                 val buttonY = height / 2f
                 
@@ -481,12 +491,30 @@ class OrganicLineView @JvmOverloads constructor(
                 val defiDistance = sqrt(defiDx * defiDx + defiDy * defiDy)
                 
                 if (zenDistance <= buttonRadius) {
-                    // Mode ZEN sélectionné
-                    lightState = LightState.YELLOW
+                    // Mode ZEN sélectionné - aller à l'écran de choix de fleur
+                    selectedMode = "ZEN"
+                    lightState = LightState.FLOWER_CHOICE
                     stateStartTime = System.currentTimeMillis()
                     return true
                 } else if (defiDistance <= buttonRadius) {
-                    // Mode DÉFI sélectionné (même comportement pour l'instant)
+                    // Mode DÉFI sélectionné - aller directement à INSPIREZ
+                    selectedMode = "DÉFI"
+                    lightState = LightState.YELLOW
+                    stateStartTime = System.currentTimeMillis()
+                    return true
+                }
+            } else if (lightState == LightState.FLOWER_CHOICE) {
+                // Clic sur la marguerite
+                val flowerButtonX = width / 2f
+                val flowerButtonY = height / 2f
+                val flowerButtonRadius = width * 0.2f
+                
+                val dx = event.x - flowerButtonX
+                val dy = event.y - flowerButtonY
+                val distance = sqrt(dx * dx + dy * dy)
+                
+                if (distance <= flowerButtonRadius) {
+                    // Marguerite sélectionnée - aller à INSPIREZ
                     lightState = LightState.YELLOW
                     stateStartTime = System.currentTimeMillis()
                     return true
