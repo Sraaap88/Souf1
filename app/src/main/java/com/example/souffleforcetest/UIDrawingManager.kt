@@ -143,57 +143,50 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         resetTextPaint.textSize = 150f
         resetTextPaint.color = 0xFFFFFFFF.toInt()
         resetTextPaint.isFakeBoldText = true
-        canvas.drawText("CHOISIR FLEUR", screenWidth / 2f, screenHeight * 0.2f, resetTextPaint)
+        canvas.drawText("CHOISIR FLEUR", screenWidth / 2f, screenHeight * 0.25f, resetTextPaint)
         
-        // Position des boutons de fleurs
+        // Position des fleurs
         val flowerButtonRadius = screenWidth * 0.15f
-        val spacing = flowerButtonRadius * 2.8f
+        val spacing = flowerButtonRadius * 3f
         val centerX = screenWidth / 2f
         val buttonY = screenHeight / 2f
         
-        // Bouton Marguerite (toujours disponible)
+        // Marguerite (toujours disponible) - à gauche
         val margueriteX = centerX - spacing / 2f
-        drawSingleFlowerButton(canvas, margueriteX, buttonY, flowerButtonRadius, "MARGUERITE", true)
+        drawMiniDaisy(canvas, margueriteX, buttonY, flowerButtonRadius * 1.5f)
         
-        // Bouton Rose (si débloquée)
+        // Nom en dessous
+        resetTextPaint.textSize = 50f
+        resetTextPaint.color = 0xFFFFFFFF.toInt()
+        resetTextPaint.isFakeBoldText = false
+        canvas.drawText("MARGUERITE", margueriteX, buttonY + flowerButtonRadius + 80f, resetTextPaint)
+        
+        // Rose (si débloquée) - à droite
         val roseX = centerX + spacing / 2f
         val roseUnlocked = challengeManager.isFlowerUnlocked("ROSE")
-        drawSingleFlowerButton(canvas, roseX, buttonY, flowerButtonRadius, "ROSE", roseUnlocked)
         
-        // Message de déblocage pour la Rose si pas encore débloquée
-        if (!roseUnlocked) {
-            resetTextPaint.textSize = 40f
-            resetTextPaint.color = 0xAAFFFFFF.toInt()
-            resetTextPaint.isFakeBoldText = false
-            canvas.drawText("Complétez le Défi 3 Marguerite", screenWidth / 2f, screenHeight * 0.75f, resetTextPaint)
-            canvas.drawText("pour débloquer la Rose", screenWidth / 2f, screenHeight * 0.8f, resetTextPaint)
-        }
-    }
-    
-    private fun drawSingleFlowerButton(canvas: Canvas, x: Float, y: Float, radius: Float, flowerType: String, isUnlocked: Boolean) {
-        // Couleur selon l'état
-        val buttonColor = if (isUnlocked) 0xFF4169E1.toInt() else 0xFF666666.toInt()
-        val textColor = if (isUnlocked) 0xFFFFFFFF.toInt() else 0xAA888888.toInt()
-        
-        // Dessiner le bouton
-        drawSingleButton(canvas, x, y, radius, buttonColor, if (isUnlocked) flowerType else "🔒")
-        
-        // Nom de la fleur en dessous
-        resetTextPaint.textAlign = Paint.Align.CENTER
-        resetTextPaint.textSize = 50f
-        resetTextPaint.color = textColor
-        resetTextPaint.isFakeBoldText = false
-        val displayText = if (isUnlocked) flowerType else "VERROUILLÉ"
-        canvas.drawText(displayText, x, y + radius + 80f, resetTextPaint)
-        
-        // Icône spéciale pour la rose
-        if (flowerType == "ROSE" && isUnlocked) {
-            resetTextPaint.textSize = radius * 0.8f
+        if (roseUnlocked) {
+            // Rose débloquée - afficher l'émoji rose
+            resetTextPaint.textSize = flowerButtonRadius * 1.8f
             resetTextPaint.color = 0xFFFF69B4.toInt()  // Rose
-            canvas.drawText("🌹", x, y + 20f, resetTextPaint)
-        } else if (flowerType == "MARGUERITE" && isUnlocked) {
-            // Utiliser l'image existante ou fallback
-            drawMiniDaisy(canvas, x, y, radius * 1.2f)
+            canvas.drawText("🌹", roseX, buttonY + 20f, resetTextPaint)
+            
+            // Nom en dessous
+            resetTextPaint.textSize = 50f
+            resetTextPaint.color = 0xFFFFFFFF.toInt()
+            resetTextPaint.isFakeBoldText = false
+            canvas.drawText("ROSE", roseX, buttonY + flowerButtonRadius + 80f, resetTextPaint)
+        } else {
+            // Rose verrouillée - afficher cadenas
+            resetTextPaint.textSize = flowerButtonRadius * 1.5f
+            resetTextPaint.color = 0xAA888888.toInt()  // Gris
+            canvas.drawText("🔒", roseX, buttonY + 20f, resetTextPaint)
+            
+            // Nom en dessous
+            resetTextPaint.textSize = 50f
+            resetTextPaint.color = 0xAA888888.toInt()  // Gris
+            resetTextPaint.isFakeBoldText = false
+            canvas.drawText("VERROUILLÉ", roseX, buttonY + flowerButtonRadius + 80f, resetTextPaint)
         }
     }
     
