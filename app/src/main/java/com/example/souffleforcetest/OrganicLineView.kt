@@ -497,7 +497,7 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonPaint.style = Paint.Style.FILL
         
         // Dessiner une marguerite miniature à l'intérieur
-        drawMiniDaisy(canvas, flowerButtonX, flowerButtonY, flowerButtonRadius * 0.6f)
+        drawMiniDaisy(canvas, flowerButtonX, flowerButtonY, flowerButtonRadius * 0.8f)
         
         // Nom de la fleur en dessous
         resetTextPaint.textSize = 60f
@@ -506,50 +506,56 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun drawMiniDaisy(canvas: Canvas, centerX: Float, centerY: Float, size: Float) {
-        // Utiliser l'approche simple qui ressemble à ton image
+        // Dessiner exactement comme ton image : centre jaune avec points ET pétales blancs
+        
+        // Centre jaune (plus gros comme dans ton image)
+        val centerPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.rgb(255, 200, 50)
+            style = Paint.Style.FILL
+        }
+        val centerRadius = size * 0.35f  // Plus gros
+        canvas.drawCircle(centerX, centerY, centerRadius, centerPaint)
+        
+        // Points noirs sur le centre (comme dans ton image)
+        val dotPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.rgb(180, 120, 20)
+            style = Paint.Style.FILL
+        }
+        canvas.drawCircle(centerX - centerRadius * 0.3f, centerY - centerRadius * 0.2f, size * 0.02f, dotPaint)
+        canvas.drawCircle(centerX + centerRadius * 0.2f, centerY - centerRadius * 0.4f, size * 0.02f, dotPaint)
+        canvas.drawCircle(centerX - centerRadius * 0.1f, centerY + centerRadius * 0.3f, size * 0.02f, dotPaint)
+        canvas.drawCircle(centerX + centerRadius * 0.4f, centerY + centerRadius * 0.1f, size * 0.02f, dotPaint)
+        canvas.drawCircle(centerX, centerY, size * 0.015f, dotPaint)
+        
+        // Pétales blancs COMME DANS TON IMAGE
         val petalPaint = Paint().apply {
             isAntiAlias = true
             color = Color.WHITE
             style = Paint.Style.FILL
         }
         
-        // 16 pétales plus simples et arrondis
-        for (i in 0..15) {
-            val angle = i * 22.5f * Math.PI / 180.0  // 360°/16 = 22.5°
-            val petalDistance = size * 0.6f
+        // Exactement comme ton image : pétales arrondis qui partent du centre
+        for (i in 0..17) {  // 18 pétales comme ton image
+            val angle = i * 20f * Math.PI / 180.0
+            val petalStartDistance = centerRadius * 0.9f
+            val petalLength = size * 0.4f
             
-            val petalX = centerX + cos(angle).toFloat() * petalDistance
-            val petalY = centerY + sin(angle).toFloat() * petalDistance
+            val petalX = centerX + cos(angle).toFloat() * (petalStartDistance + petalLength * 0.6f)
+            val petalY = centerY + sin(angle).toFloat() * (petalStartDistance + petalLength * 0.6f)
             
-            // Pétales plus arrondis et plus courts
             canvas.save()
             canvas.translate(petalX, petalY)
             canvas.rotate((angle * 180.0 / Math.PI).toFloat())
             
-            val petalWidth = size * 0.15f
-            val petalHeight = size * 0.25f
+            // Pétales arrondis comme dans ton image
+            val petalWidth = size * 0.18f
+            val petalHeight = size * 0.4f
             canvas.drawOval(-petalWidth/2, -petalHeight/2, petalWidth/2, petalHeight/2, petalPaint)
             
             canvas.restore()
         }
-        
-        // Centre jaune simple comme dans ton image
-        val centerPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(255, 200, 50)
-            style = Paint.Style.FILL
-        }
-        canvas.drawCircle(centerX, centerY, size * 0.22f, centerPaint)
-        
-        // Quelques petits points pour la texture
-        val texturePaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(200, 150, 30)
-            style = Paint.Style.FILL
-        }
-        canvas.drawCircle(centerX - size * 0.08f, centerY, size * 0.015f, texturePaint)
-        canvas.drawCircle(centerX + size * 0.06f, centerY - size * 0.05f, size * 0.015f, texturePaint)
-        canvas.drawCircle(centerX, centerY + size * 0.08f, size * 0.015f, texturePaint)
     }
     
     // ==================== GESTION DES ÉVÉNEMENTS ====================
