@@ -28,7 +28,7 @@ class OrganicLineView @JvmOverloads constructor(
     
     private var plantStem: PlantStem? = null
     private lateinit var uiDrawing: UIDrawingManager
-    private val challengeManager = ChallengeManager()
+    private val challengeManager = ChallengeManager(context)
     private var selectedChallengeId = -1
     
     enum class LightState {
