@@ -19,7 +19,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         var centerSize: Float = 0f,
         val petals: MutableList<Petal> = mutableListOf(),
         var isFullyGrown: Boolean = false,
-        val id: String = generateFlowerId()  // NOUVEAU: ID unique pour chaque fleur
+        val id: String = generateFlowerId()  // ID unique pour chaque fleur
     )
     
     data class Petal(
@@ -47,10 +47,10 @@ class FlowerManager(private val plantStem: PlantStem) {
     val flowers = mutableListOf<Flower>()
     private var lastForce = 0f
     
-    // NOUVEAU : Gestionnaire de boutons
+    // Gestionnaire de boutons
     private val budManager = BudManager(plantStem)
     
-    // NOUVEAU : Référence au gestionnaire de défis (sera injectée)
+    // Référence au gestionnaire de défis (sera injectée)
     private var challengeManager: ChallengeManager? = null
     
     // ==================== PARAMÈTRES ====================
@@ -63,9 +63,11 @@ class FlowerManager(private val plantStem: PlantStem) {
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
-    // NOUVEAU: Injection du ChallengeManager
+    // Injection du ChallengeManager
     fun setChallengeManager(manager: ChallengeManager) {
         challengeManager = manager
+        // NOUVEAU: Injecter aussi dans le BudManager
+        budManager.setChallengeManager(manager)
     }
     
     fun processFlowerGrowth(force: Float) {
@@ -193,7 +195,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         createPetalsForFlower(flower)
         flowers.add(flower)
         
-        // NOUVEAU: Notifier le ChallengeManager qu'une fleur a été créée
+        // Notifier le ChallengeManager qu'une fleur a été créée
         challengeManager?.notifyFlowerCreated(flower.x, flower.y, flower.id)
         println("Fleur créée sur tige principale à (${flower.x}, ${flower.y})")
     }
@@ -222,7 +224,7 @@ class FlowerManager(private val plantStem: PlantStem) {
         createPetalsForFlower(flower)
         flowers.add(flower)
         
-        // NOUVEAU: Notifier le ChallengeManager qu'une fleur a été créée
+        // Notifier le ChallengeManager qu'une fleur a été créée
         challengeManager?.notifyFlowerCreated(flower.x, flower.y, flower.id)
         println("Fleur créée sur branche $branchIndex à (${flower.x}, ${flower.y})")
     }
@@ -281,7 +283,7 @@ class FlowerManager(private val plantStem: PlantStem) {
                 val growthProgress = flower.currentSize / flower.maxSize
                 val progressCurve = 1f - growthProgress * growthProgress
                 
-                // NOUVEAU : Ralentissement entre 30-50% de croissance
+                // Ralentissement entre 30-50% de croissance
                 val slowdownMultiplier = if (growthProgress >= 0.3f && growthProgress <= 0.5f) {
                     0.4f // 60% plus lent dans cette tranche
                 } else {
@@ -407,10 +409,162 @@ class FlowerManager(private val plantStem: PlantStem) {
     companion object {
         private var flowerIdCounter = 0
         
-        // NOUVEAU: Générateur d'ID unique pour les fleurs
+        // Générateur d'ID unique pour les fleurs
         private fun generateFlowerId(): String {
             flowerIdCounter++
             return "flower_$flowerIdCounter"
+        }
+    }
+}
+
+// ==================== BUDMANAGER MODIFIÉ ====================
+
+class BudManager(private val plantStem: PlantStem) {
+    
+    // NOUVEAU: Référence au gestionnaire de défis (sera injectée)
+    private var challengeManager: ChallengeManager? = null
+    
+    // NOUVEAU: Injection du ChallengeManager
+    fun setChallengeManager(manager: ChallengeManager) {
+        challengeManager = manager
+    }
+    
+    // Variables existantes (à adapter selon votre implémentation actuelle)
+    private val buds = mutableListOf<Bud>()
+    
+    data class Bud(
+        val x: Float,
+        val y: Float,
+        val stemIndex: Int,
+        var size: Float = 0f,
+        val maxSize: Float = 20f,
+        val id: String = generateBudId()
+    )
+    
+    fun processBudGrowth(force: Float) {
+        // Logique de création de bourgeons basée sur un souffle doux et constant
+        createBudsOnEligibleStems(force)
+        
+        // Faire grandir les bourgeons existants
+        for (bud in buds) {
+            if (bud.size < bud.maxSize && force > 0.1f && force < 0.4f) { // Souffle doux requis
+                bud.size = (bud.size + force * 0.5f).coerceAtMost(bud.maxSize)
+            }
+        }
+    }
+    
+    private fun createBudsOnEligibleStems(force: Float) {
+        // Conditions pour créer un bourgeon: souffle très doux et constant
+        if (force < 0.25f && force > 0.05f) { // Plage de force très restreinte
+            
+            // Vérifier tige principale (5-30% de croissance)
+            if (plantStem.mainStem.size > 2) {
+                val mainStemHeight = if (plantStem.mainStem.isNotEmpty()) {
+                    plantStem.getStemBaseY() - plantStem.mainStem.last().y
+                } else 0f
+                
+                if (mainStemHeight >= 20f && mainStemHeight <= 80f) { // 5-30% de croissance environ
+                    if (!buds.any { it.stemIndex == -1 }) { // Pas déjà de bourgeon sur tige principale
+                        createBudOnMainStem()
+                    }
+                }
+            }
+            
+            // Vérifier branches (5-30% de croissance)
+            for (branchIndex in plantStem.branches.indices) {
+                val branch = plantStem.branches[branchIndex]
+                val growthPercentage = if (branch.maxHeight > 0) {
+                    branch.currentHeight / branch.maxHeight
+                } else 0f
+                
+                if (growthPercentage >= 0.05f && growthPercentage <= 0.30f) {
+                    if (!buds.any { it.stemIndex == branchIndex }) { // Pas déjà de bourgeon sur cette branche
+                        createBudOnBranch(branchIndex)
+                    }
+                }
+            }
+        }
+    }
+    
+    private fun createBudOnMainStem() {
+        val mainStem = plantStem.mainStem
+        if (mainStem.size < 3) return
+        
+        val topPoint = mainStem.last()
+        val budId = generateBudId()
+        
+        val bud = Bud(
+            x = topPoint.x,
+            y = topPoint.y - 10f,
+            stemIndex = -1,
+            id = budId
+        )
+        
+        buds.add(bud)
+        
+        // NOUVEAU: Notifier le ChallengeManager qu'un bourgeon a été créé
+        challengeManager?.notifyBudCreated(bud.x, bud.y, bud.id)
+        
+        println("Bourgeon créé sur tige principale à (${bud.x}, ${bud.y}) avec ID: ${bud.id}")
+    }
+    
+    private fun createBudOnBranch(branchIndex: Int) {
+        val branch = plantStem.branches[branchIndex]
+        if (branch.points.size < 2) return
+        
+        val topPoint = branch.points.last()
+        val budId = generateBudId()
+        
+        val bud = Bud(
+            x = topPoint.x,
+            y = topPoint.y - 8f,
+            stemIndex = branchIndex,
+            id = budId
+        )
+        
+        buds.add(bud)
+        
+        // NOUVEAU: Notifier le ChallengeManager qu'un bourgeon a été créé
+        challengeManager?.notifyBudCreated(bud.x, bud.y, bud.id)
+        
+        println("Bourgeon créé sur branche $branchIndex à (${bud.x}, ${bud.y}) avec ID: ${bud.id}")
+    }
+    
+    fun drawBuds(canvas: Canvas, budPaint: Paint, budPetalPaint: Paint) {
+        for (bud in buds) {
+            if (bud.size > 0) {
+                // Dessiner le bourgeon comme un petit cercle vert
+                budPaint.color = Color.rgb(50, 150, 50)
+                canvas.drawCircle(bud.x, bud.y, bud.size, budPaint)
+                
+                // Optionnel: petites "proto-pétales" autour
+                if (bud.size > bud.maxSize * 0.5f) {
+                    budPetalPaint.color = Color.rgb(100, 200, 100)
+                    budPetalPaint.strokeWidth = 2f
+                    for (i in 0..5) {
+                        val angle = i * 60f
+                        val radians = Math.toRadians(angle.toDouble())
+                        val startX = bud.x + cos(radians).toFloat() * bud.size * 0.7f
+                        val startY = bud.y + sin(radians).toFloat() * bud.size * 0.7f
+                        val endX = bud.x + cos(radians).toFloat() * bud.size * 1.3f
+                        val endY = bud.y + sin(radians).toFloat() * bud.size * 1.3f
+                        canvas.drawLine(startX, startY, endX, endY, budPetalPaint)
+                    }
+                }
+            }
+        }
+    }
+    
+    fun resetBuds() {
+        buds.clear()
+    }
+    
+    companion object {
+        private var budIdCounter = 0
+        
+        private fun generateBudId(): String {
+            budIdCounter++
+            return "bud_$budIdCounter"
         }
     }
 }
