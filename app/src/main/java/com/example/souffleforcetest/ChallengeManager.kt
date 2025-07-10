@@ -24,9 +24,9 @@ class ChallengeManager {
         ),
         Challenge(
             id = 2,
-            title = "Défi 2: Endurance", 
-            description = "Défi temporaire - À définir ensemble",
-            briefText = "Défi 2: À définir",
+            title = "Défi 2: Bourgeons", 
+            description = "Faire pousser 2 bourgeons (souffle doux et constant)",
+            briefText = "Défi 2: 2 bourgeons",
             isUnlocked = false  // Débloqué après défi 1
         ),
         Challenge(
@@ -44,6 +44,7 @@ class ChallengeManager {
     private var challengeStartTime = 0L
     private var challengeData = mutableMapOf<String, Any>()  // Pour stocker données du défi
     private var flowersInZone = mutableListOf<String>()  // Liste des fleurs dans la zone verte
+    private var budsCreated = mutableListOf<String>()  // NOUVEAU: Liste des bourgeons créés
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -54,6 +55,7 @@ class ChallengeManager {
         challengeStartTime = System.currentTimeMillis()
         challengeData.clear()
         flowersInZone.clear()  // Reset liste des fleurs
+        budsCreated.clear()    // NOUVEAU: Reset liste des bourgeons
         println("Défi démarré: ${currentChallenge?.title}")
     }
     
@@ -66,7 +68,7 @@ class ChallengeManager {
         
         when (challenge.id) {
             1 -> updateChallenge1_FlowersInZone(force, plantState)
-            2 -> updateChallenge2(force, plantState) 
+            2 -> updateChallenge2_Buds(force, plantState) // NOUVEAU
             3 -> updateChallenge3(force, plantState)
         }
     }
@@ -93,6 +95,19 @@ class ChallengeManager {
         }
     }
     
+    // NOUVEAU: Fonction pour signaler qu'un bourgeon a été créé
+    fun notifyBudCreated(budX: Float, budY: Float, budId: String) {
+        val challenge = currentChallenge ?: return
+        
+        if (challenge.id == 2) {
+            if (!budsCreated.contains(budId)) {
+                budsCreated.add(budId)
+                challengeData["budsCreatedCount"] = budsCreated.size
+                println("Bourgeon créé! Total: ${budsCreated.size}/2 (ID: $budId)")
+            }
+        }
+    }
+    
     // NOUVEAU: Mettre à jour les dimensions d'écran pour le calcul de zone
     fun updateScreenDimensions(width: Int, height: Int) {
         challengeData["screenWidth"] = width.toFloat()
@@ -104,7 +119,7 @@ class ChallengeManager {
         
         val isSuccessful = when (challenge.id) {
             1 -> checkChallenge1_FlowersInZone()
-            2 -> checkChallenge2Completion()
+            2 -> checkChallenge2_Buds() // NOUVEAU
             3 -> checkChallenge3Completion()
             else -> false
         }
@@ -112,7 +127,14 @@ class ChallengeManager {
         if (isSuccessful) {
             challenge.isCompleted = true
             unlockNextChallenge(challenge.id)
-            return ChallengeResult(challenge, true, "Défi réussi! ${flowersInZone.size} fleurs dans la zone!")
+            
+            val successMessage = when (challenge.id) {
+                1 -> "Défi réussi! ${flowersInZone.size} fleurs dans la zone!"
+                2 -> "Défi réussi! ${budsCreated.size} bourgeons créés!" // NOUVEAU
+                else -> "Défi réussi!"
+            }
+            
+            return ChallengeResult(challenge, true, successMessage)
         }
         
         return null  // Défi encore en cours
@@ -121,11 +143,14 @@ class ChallengeManager {
     fun finalizeChallengeResult(): ChallengeResult? {
         val challenge = currentChallenge ?: return null
         
-        val result = checkChallengeCompletion() ?: ChallengeResult(
-            challenge, 
-            false, 
-            "Défi échoué - Seulement ${flowersInZone.size}/2 fleurs en zone verte!"
-        )
+        val result = checkChallengeCompletion() ?: run {
+            val failMessage = when (challenge.id) {
+                1 -> "Défi échoué - Seulement ${flowersInZone.size}/2 fleurs en zone verte!"
+                2 -> "Défi échoué - Seulement ${budsCreated.size}/2 bourgeons créés!" // NOUVEAU
+                else -> "Défi échoué!"
+            }
+            ChallengeResult(challenge, false, failMessage)
+        }
         
         currentChallenge = null
         return result
@@ -144,33 +169,41 @@ class ChallengeManager {
         return flowersInZone.size >= 2
     }
     
+    // ==================== LOGIQUE DU DÉFI 2: BOURGEONS ====================
+    
+    private fun updateChallenge2_Buds(force: Float, plantState: String) {
+        // Le suivi se fait principalement via notifyBudCreated() quand un bourgeon est créé
+        challengeData["currentPhase"] = plantState
+        challengeData["totalBuds"] = budsCreated.size
+        
+        // Optionnel: Suivre la qualité du souffle pour des stats
+        if (force > 0) {
+            val currentAvgForce = challengeData["avgForce"] as? Float ?: 0f
+            val forceCount = challengeData["forceCount"] as? Int ?: 0
+            val newAvgForce = (currentAvgForce * forceCount + force) / (forceCount + 1)
+            challengeData["avgForce"] = newAvgForce
+            challengeData["forceCount"] = forceCount + 1
+            
+            // Suivre si le joueur respecte la technique "souffle doux"
+            val gentleBreathCount = challengeData["gentleBreathCount"] as? Int ?: 0
+            if (force < 0.3f) { // Seuil pour "souffle doux"
+                challengeData["gentleBreathCount"] = gentleBreathCount + 1
+            }
+        }
+    }
+    
+    private fun checkChallenge2_Buds(): Boolean {
+        // Succès si au moins 2 bourgeons ont été créés
+        return budsCreated.size >= 2
+    }
+    
     // ==================== LOGIQUE TEMPORAIRE DES AUTRES DÉFIS ====================
-    
-    private fun updateChallenge1(force: Float, plantState: String) {
-        // TEMPORAIRE - Exemple simple (ancien défi 1)
-        challengeData["maxForce"] = maxOf(challengeData["maxForce"] as? Float ?: 0f, force)
-    }
-    
-    private fun updateChallenge2(force: Float, plantState: String) {
-        // TEMPORAIRE - Exemple simple
-        challengeData["totalForce"] = (challengeData["totalForce"] as? Float ?: 0f) + force
-    }
     
     private fun updateChallenge3(force: Float, plantState: String) {
         // TEMPORAIRE - Exemple simple
         if (plantState == "FLOWER") {
             challengeData["flowerTime"] = (System.currentTimeMillis() - challengeStartTime).toFloat()
         }
-    }
-    
-    private fun checkChallenge1Completion(): Boolean {
-        // TEMPORAIRE - Ancien défi 1 (condition bidon)
-        return (challengeData["maxForce"] as? Float ?: 0f) > 0.5f
-    }
-    
-    private fun checkChallenge2Completion(): Boolean {
-        // TEMPORAIRE - Condition bidon  
-        return (challengeData["totalForce"] as? Float ?: 0f) > 10f
     }
     
     private fun checkChallenge3Completion(): Boolean {
