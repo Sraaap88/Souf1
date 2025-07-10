@@ -69,6 +69,9 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     
     private var daisyBitmap: Bitmap? = null
     
+    // Déléguer les fonctions de défi au ChallengeUIHelper
+    private val challengeUIHelper = ChallengeUIHelper(screenWidth, screenHeight)
+    
     init {
         // Charger l'image de marguerite
         try {
@@ -96,16 +99,16 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
                 drawFlowerChoice(canvas)
             }
             OrganicLineView.LightState.CHALLENGE_SELECTION -> {
-                drawChallengeSelection(canvas, challengeManager)
+                challengeUIHelper.drawChallengeSelection(canvas, challengeManager, resetTextPaint, resetButtonPaint)
             }
             OrganicLineView.LightState.CHALLENGE_BRIEF -> {
-                drawChallengeBrief(canvas, challengeManager, timeRemaining)
+                challengeUIHelper.drawChallengeBrief(canvas, challengeManager, timeRemaining, resetTextPaint)
             }
             OrganicLineView.LightState.YELLOW -> {
                 drawInspirePhase(canvas, timeRemaining, challengeManager)
             }
             OrganicLineView.LightState.CHALLENGE_RESULT -> {
-                drawChallengeResult(canvas, challengeManager)
+                challengeUIHelper.drawChallengeResult(canvas, challengeManager, resetTextPaint)
             }
             OrganicLineView.LightState.RED -> {
                 drawResetButton(canvas, resetButtonX, resetButtonY, resetButtonRadius)
@@ -254,7 +257,7 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
             resetTextPaint.isFakeBoldText = false
             canvas.drawText(challengeBrief, screenWidth / 2f, 120f, resetTextPaint)
             
-            // NOUVEAU: Affichage spécial pour le défi bourgeons avec conseil
+            // Affichage spécial pour le défi bourgeons avec conseil
             if (challengeManager.getCurrentChallenge()?.id == 2) {
                 resetTextPaint.textSize = 35f
                 resetTextPaint.color = 0x88FFFF00.toInt()  // Jaune semi-transparent
@@ -407,148 +410,6 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         }
     }
     
-    // ==================== NOUVELLES FONCTIONS POUR LES DÉFIS ====================
-    
-    private fun drawChallengeSelection(canvas: Canvas, challengeManager: ChallengeManager) {
-        // Titre
-        resetTextPaint.textAlign = Paint.Align.CENTER
-        resetTextPaint.textSize = 120f
-        resetTextPaint.color = 0xFFFFFFFF.toInt()
-        resetTextPaint.isFakeBoldText = true
-        canvas.drawText("SÉLECTIONNER DÉFI", screenWidth / 2f, screenHeight * 0.2f, resetTextPaint)
-        
-        // Sous-titre
-        resetTextPaint.textSize = 60f
-        resetTextPaint.isFakeBoldText = false
-        canvas.drawText("MARGUERITE", screenWidth / 2f, screenHeight * 0.28f, resetTextPaint)
-        
-        // 3 boutons de défi
-        val challenges = challengeManager.getMargueriteChallenges()
-        val buttonWidth = screenWidth * 0.25f
-        val buttonHeight = screenHeight * 0.12f
-        val startY = screenHeight * 0.4f
-        
-        for (i in 1..3) {
-            val challenge = challenges.find { it.id == i }
-            val buttonY = startY + (i - 1) * (buttonHeight + 30f)
-            
-            // Couleur selon l'état
-            val color = when {
-                challenge?.isCompleted == true -> 0xFF00AA00.toInt()  // Vert si complété
-                challenge?.isUnlocked == true -> 0xFF4169E1.toInt()   // Bleu si débloqué
-                else -> 0xFF666666.toInt()  // Gris si verrouillé
-            }
-            
-            // Dessiner le bouton rectangulaire
-            resetButtonPaint.color = color
-            canvas.drawRoundRect(
-                screenWidth / 2f - buttonWidth / 2f,
-                buttonY - buttonHeight / 2f,
-                screenWidth / 2f + buttonWidth / 2f,
-                buttonY + buttonHeight / 2f,
-                20f, 20f, resetButtonPaint
-            )
-            
-            // Bordure
-            resetButtonPaint.color = 0xFF333333.toInt()
-            resetButtonPaint.style = Paint.Style.STROKE
-            resetButtonPaint.strokeWidth = 4f
-            canvas.drawRoundRect(
-                screenWidth / 2f - buttonWidth / 2f,
-                buttonY - buttonHeight / 2f,
-                screenWidth / 2f + buttonWidth / 2f,
-                buttonY + buttonHeight / 2f,
-                20f, 20f, resetButtonPaint
-            )
-            resetButtonPaint.style = Paint.Style.FILL
-            
-            // Texte du défi
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 50f
-            resetTextPaint.color = 0xFFFFFFFF.toInt()
-            resetTextPaint.isFakeBoldText = false
-            
-            val buttonText = if (challenge?.isUnlocked == true) {
-                challenge.title + if (challenge.isCompleted) " ✓" else ""
-            } else {
-                "VERROUILLÉ"
-            }
-            
-            canvas.drawText(buttonText, screenWidth / 2f, buttonY + 15f, resetTextPaint)
-        }
-    }
-    
-    private fun drawChallengeBrief(canvas: Canvas, challengeManager: ChallengeManager, timeRemaining: Long) {
-        val challenge = challengeManager.getCurrentChallenge()
-        
-        // Titre
-        resetTextPaint.textAlign = Paint.Align.CENTER
-        resetTextPaint.textSize = 120f
-        resetTextPaint.color = 0xFFFFFFFF.toInt()
-        resetTextPaint.isFakeBoldText = true
-        canvas.drawText(challenge?.title ?: "DÉFI", screenWidth / 2f, screenHeight * 0.3f, resetTextPaint)
-        
-        // Description
-        resetTextPaint.textSize = 70f
-        resetTextPaint.isFakeBoldText = false
-        canvas.drawText(challenge?.description ?: "Description à venir", screenWidth / 2f, screenHeight * 0.5f, resetTextPaint)
-        
-        // NOUVEAU: Conseil spécial pour le défi bourgeons
-        if (challenge?.id == 2) {
-            resetTextPaint.textSize = 55f
-            resetTextPaint.color = 0xFFFFD700.toInt()  // Jaune
-            canvas.drawText("Technique: souffle très doux et constant", screenWidth / 2f, screenHeight * 0.6f, resetTextPaint)
-        }
-        
-        // Compte à rebours
-        resetTextPaint.textSize = 90f
-        resetTextPaint.color = 0xFFFFD700.toInt()
-        canvas.drawText("Début dans: $timeRemaining", screenWidth / 2f, screenHeight * 0.7f, resetTextPaint)
-    }
-    
-    private fun drawChallengeResult(canvas: Canvas, challengeManager: ChallengeManager) {
-        // NOUVEAU: Récupérer le vrai résultat du défi
-        val result = challengeManager.finalizeChallengeResult()
-        
-        if (result != null) {
-            // Couleur selon le succès
-            val resultColor = if (result.success) 0xFF00FF00.toInt() else 0xFFFF0000.toInt()
-            val resultText = if (result.success) "DÉFI RÉUSSI!" else "DÉFI ÉCHOUÉ!"
-            
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 150f
-            resetTextPaint.color = resultColor
-            resetTextPaint.isFakeBoldText = true
-            canvas.drawText(resultText, screenWidth / 2f, screenHeight * 0.4f, resetTextPaint)
-            
-            // Message détaillé
-            resetTextPaint.textSize = 60f
-            resetTextPaint.color = 0xFFFFFFFF.toInt()
-            resetTextPaint.isFakeBoldText = false
-            canvas.drawText(result.message, screenWidth / 2f, screenHeight * 0.55f, resetTextPaint)
-            
-            // NOUVEAU: Message spécial selon le type de défi
-            if (result.challenge.id == 2 && result.success) {
-                resetTextPaint.textSize = 50f
-                resetTextPaint.color = 0xFFFFD700.toInt()
-                canvas.drawText("Excellente maîtrise du souffle!", screenWidth / 2f, screenHeight * 0.65f, resetTextPaint)
-            }
-        } else {
-            // Fallback si pas de résultat
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 150f
-            resetTextPaint.color = 0xFF00FF00.toInt()
-            resetTextPaint.isFakeBoldText = true
-            canvas.drawText("DÉFI TERMINÉ!", screenWidth / 2f, screenHeight * 0.4f, resetTextPaint)
-        }
-        
-        // Statut de progression
-        resetTextPaint.textSize = 60f
-        resetTextPaint.color = 0xFFFFFFFF.toInt()
-        resetTextPaint.isFakeBoldText = false
-        canvas.drawText(challengeManager.getCompletionStatus(), screenWidth / 2f, screenHeight * 0.75f, resetTextPaint)
-    }
-    
     // ==================== ZONE CIBLE POUR DÉFIS ====================
     
     private fun shouldShowTargetZone(lightState: OrganicLineView.LightState): Boolean {
@@ -562,16 +423,16 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     }
     
     private fun drawTargetZone(canvas: Canvas) {
-        // Zone au 1/3 de l'écran (en haut), hauteur ~1 pouce (120px)
-        val zoneTop = screenHeight / 3f - 60f      // 1/3 de l'écran moins la moitié de la hauteur
-        val zoneBottom = screenHeight / 3f + 60f   // 1/3 de l'écran plus la moitié de la hauteur
+        // Zone au 1/3 de l'écran, 3 fois plus large vers le bas
+        val zoneTop = screenHeight / 3f - 60f      // 1/3 de l'écran moins 60px
+        val zoneBottom = screenHeight / 3f + 180f  // 1/3 de l'écran plus 180px (3x plus large vers le bas)
         val zoneLeft = 0f
         val zoneRight = screenWidth.toFloat()
         
         // Dessiner le rectangle transparent vert lime
         canvas.drawRect(zoneLeft, zoneTop, zoneRight, zoneBottom, targetZonePaint)
         
-        // Optionnel: bordures pour mieux voir la zone
+        // Bordures pour mieux voir la zone
         val borderPaint = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
@@ -584,7 +445,7 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     // Fonction utilitaire pour vérifier si un point est dans la zone cible
     fun isPointInTargetZone(x: Float, y: Float): Boolean {
         val zoneTop = screenHeight / 3f - 60f
-        val zoneBottom = screenHeight / 3f + 60f
+        val zoneBottom = screenHeight / 3f + 180f  // Zone élargie vers le bas
         val zoneLeft = 0f
         val zoneRight = screenWidth.toFloat()
         
