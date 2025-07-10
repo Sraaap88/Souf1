@@ -9,23 +9,28 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
     // ==================== FONCTIONS POUR LES DÉFIS ====================
     
     fun drawChallengeSelection(canvas: Canvas, challengeManager: ChallengeManager, textPaint: Paint, buttonPaint: Paint) {
-        // Titre
+        // Titre avec retour à la ligne
         textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = 120f
+        textPaint.textSize = 100f  // Réduit de 120f à 100f
         textPaint.color = 0xFFFFFFFF.toInt()
         textPaint.isFakeBoldText = true
-        canvas.drawText("SÉLECTIONNER DÉFI", screenWidth / 2f, screenHeight * 0.2f, textPaint)
+        
+        // Première ligne : "SÉLECTIONNER"
+        canvas.drawText("SÉLECTIONNER", screenWidth / 2f, screenHeight * 0.15f, textPaint)
+        
+        // Deuxième ligne : "DÉFI"
+        canvas.drawText("DÉFI", screenWidth / 2f, screenHeight * 0.22f, textPaint)
         
         // Sous-titre
         textPaint.textSize = 60f
         textPaint.isFakeBoldText = false
-        canvas.drawText("MARGUERITE", screenWidth / 2f, screenHeight * 0.28f, textPaint)
+        canvas.drawText("MARGUERITE", screenWidth / 2f, screenHeight * 0.32f, textPaint)
         
-        // 3 boutons de défi
+        // 3 boutons de défi (repositionnés plus bas)
         val challenges = challengeManager.getMargueriteChallenges()
         val buttonWidth = screenWidth * 0.25f
         val buttonHeight = screenHeight * 0.12f
-        val startY = screenHeight * 0.4f
+        val startY = screenHeight * 0.45f  // Déplacé de 0.4f à 0.45f pour laisser place au titre
         
         for (i in 1..3) {
             val challenge = challenges.find { it.id == i }
