@@ -99,7 +99,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Charger l'image de marguerite (place ton image dans res/drawable/)
         try {
-            daisyBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.marguerite)
+            daisyBitmap = BitmapFactory.decodeResource(context.resources, android.R.drawable.ic_menu_gallery)
             // REMPLACE android.R.drawable.ic_menu_gallery par R.drawable.ton_nom_image
             // Exemple: R.drawable.marguerite si ton fichier s'appelle marguerite.png
         } catch (e: Exception) {
@@ -491,26 +491,13 @@ class OrganicLineView @JvmOverloads constructor(
         resetTextPaint.isFakeBoldText = true
         canvas.drawText("CHOISIR FLEUR", width / 2f, height * 0.25f, resetTextPaint)
         
-        // Bouton marguerite au centre
+        // Position du bouton marguerite (juste l'image, pas de cercle)
         val flowerButtonX = width / 2f
         val flowerButtonY = height / 2f
-        val flowerButtonRadius = width * 0.2f  // Plus gros que les boutons start
+        val flowerButtonRadius = width * 0.2f  // Taille de l'image
         
-        // Dessiner le bouton de base
-        resetButtonPaint.color = 0x40000000.toInt()
-        canvas.drawCircle(flowerButtonX + 8f, flowerButtonY + 8f, flowerButtonRadius, resetButtonPaint)
-        
-        resetButtonPaint.color = 0xFF2D5A27.toInt()  // Vert foncé pour la marguerite
-        canvas.drawCircle(flowerButtonX, flowerButtonY, flowerButtonRadius, resetButtonPaint)
-        
-        resetButtonPaint.color = 0xFF333333.toInt()
-        resetButtonPaint.style = Paint.Style.STROKE
-        resetButtonPaint.strokeWidth = 8f
-        canvas.drawCircle(flowerButtonX, flowerButtonY, flowerButtonRadius, resetButtonPaint)
-        resetButtonPaint.style = Paint.Style.FILL
-        
-        // Dessiner une marguerite miniature à l'intérieur
-        drawMiniDaisy(canvas, flowerButtonX, flowerButtonY, flowerButtonRadius * 0.8f)
+        // Dessiner SEULEMENT l'image de marguerite (pas de cercle)
+        drawMiniDaisy(canvas, flowerButtonX, flowerButtonY, flowerButtonRadius * 1.5f)
         
         // Nom de la fleur en dessous
         resetTextPaint.textSize = 60f
