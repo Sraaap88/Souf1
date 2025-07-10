@@ -54,8 +54,25 @@ class ChallengeManager(private val context: Context? = null) {
     private var challengeData = mutableMapOf<String, Any>()  // Pour stocker données du défi
     private var flowersInZone = mutableListOf<String>()  // Liste des fleurs dans la zone verte
     private var budsCreated = mutableListOf<String>()  // Liste des bourgeons créés
-    private var flowersInZoneDefi3 = mutableListOf<String>()  // NOUVEAU: Liste des fleurs zone verte défi 3
-    private var budsCreatedDefi3 = mutableListOf<String>()    // NOUVEAU: Liste des bourgeons défi 3
+    private var flowersInZoneDefi3 = mutableListOf<String>()  // Liste des fleurs zone verte défi 3
+    private var budsCreatedDefi3 = mutableListOf<String>()    // Liste des bourgeons défi 3
+    
+    // Gestion des fleurs débloquées
+    private val unlockedFlowers = mutableListOf<UnlockedFlower>()
+    
+    // ==================== SAUVEGARDE ====================
+    
+    private val sharedPrefs: SharedPreferences? by lazy {
+        context?.getSharedPreferences("challenges_save", Context.MODE_PRIVATE)
+    }
+    
+    init {
+        // Marguerite toujours débloquée par défaut
+        unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
+        
+        // Charger la sauvegarde au démarrage
+        loadChallengeProgress()
+    }
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -67,8 +84,8 @@ class ChallengeManager(private val context: Context? = null) {
         challengeData.clear()
         flowersInZone.clear()  // Reset liste des fleurs
         budsCreated.clear()    // Reset liste des bourgeons
-        flowersInZoneDefi3.clear()  // NOUVEAU: Reset défi 3
-        budsCreatedDefi3.clear()    // NOUVEAU: Reset défi 3
+        flowersInZoneDefi3.clear()  // Reset défi 3
+        budsCreatedDefi3.clear()    // Reset défi 3
         println("Défi démarré: ${currentChallenge?.title}")
     }
     
@@ -82,7 +99,7 @@ class ChallengeManager(private val context: Context? = null) {
         when (challenge.id) {
             1 -> updateChallenge1_FlowersInZone(force, plantState)
             2 -> updateChallenge2_Buds(force, plantState)
-            3 -> updateChallenge3_FlowersAndBuds(force, plantState)  // NOUVEAU
+            3 -> updateChallenge3_FlowersAndBuds(force, plantState)
         }
     }
     
@@ -106,7 +123,7 @@ class ChallengeManager(private val context: Context? = null) {
                 println("Fleur HORS zone: Y=${flowerY}, Zone=${zoneTop}-${zoneBottom}")
             }
         } else if (challenge.id == 3) {
-            // NOUVEAU: Défi 3 - Zone verte de 240px total (120px haut + 120px bas)
+            // Défi 3 - Zone verte de 240px total (120px haut + 120px bas)
             val screenHeight = challengeData["screenHeight"] as? Float ?: 2000f
             val zoneTop = screenHeight / 3f - 120f
             val zoneBottom = screenHeight / 3f + 120f  // 240px total
@@ -134,7 +151,7 @@ class ChallengeManager(private val context: Context? = null) {
                 println("Bourgeon créé! Total: ${budsCreated.size}/2 (ID: $budId)")
             }
         } else if (challenge.id == 3) {
-            // NOUVEAU: Défi 3 - Comptage des bourgeons
+            // Défi 3 - Comptage des bourgeons
             if (!budsCreatedDefi3.contains(budId)) {
                 budsCreatedDefi3.add(budId)
                 challengeData["budsCreatedDefi3Count"] = budsCreatedDefi3.size
@@ -155,7 +172,7 @@ class ChallengeManager(private val context: Context? = null) {
         val isSuccessful = when (challenge.id) {
             1 -> checkChallenge1_FlowersInZone()
             2 -> checkChallenge2_Buds()
-            3 -> checkChallenge3_FlowersAndBuds()  // NOUVEAU
+            3 -> checkChallenge3_FlowersAndBuds()
             else -> false
         }
         
@@ -163,7 +180,7 @@ class ChallengeManager(private val context: Context? = null) {
             challenge.isCompleted = true
             unlockNextChallenge(challenge.id)
             
-            // NOUVEAU: Débloquer la Rose si défi 3 de marguerite complété
+            // Débloquer la Rose si défi 3 de marguerite complété
             if (challenge.id == 3) {
                 unlockRoseFlower()
             }
@@ -191,7 +208,7 @@ class ChallengeManager(private val context: Context? = null) {
             val failMessage = when (challenge.id) {
                 1 -> "Défi échoué - Aucune fleur en zone verte!"
                 2 -> "Défi échoué - Seulement ${budsCreated.size}/2 bourgeons créés!"
-                3 -> "Défi échoué - ${flowersInZoneDefi3.size}/2 fleurs, ${budsCreatedDefi3.size}/1 bourgeon!"  // NOUVEAU
+                3 -> "Défi échoué - ${flowersInZoneDefi3.size}/2 fleurs, ${budsCreatedDefi3.size}/1 bourgeon!"
                 else -> "Défi échoué!"
             }
             ChallengeResult(challenge, false, failMessage)
@@ -199,6 +216,25 @@ class ChallengeManager(private val context: Context? = null) {
         
         currentChallenge = null
         return result
+    }
+    
+    // ==================== GESTION DES FLEURS DÉBLOQUÉES ====================
+    
+    private fun unlockRoseFlower() {
+        if (unlockedFlowers.none { it.flowerType == "ROSE" }) {
+            unlockedFlowers.add(UnlockedFlower("ROSE", "Défi 3 Marguerite complété"))
+            println("🌹 ROSE DÉBLOQUÉE! Complétez le défi 3 de la marguerite!")
+        }
+    }
+    
+    fun getUnlockedFlowers(): List<UnlockedFlower> = unlockedFlowers.toList()
+    
+    fun isFlowerUnlocked(flowerType: String): Boolean {
+        return unlockedFlowers.any { it.flowerType == flowerType }
+    }
+    
+    fun getFlowerUnlockMessage(flowerType: String): String? {
+        return unlockedFlowers.find { it.flowerType == flowerType }?.unlockedBy
     }
     
     // ==================== LOGIQUE DU DÉFI 1: FLEURS EN ZONE VERTE ====================
@@ -210,7 +246,7 @@ class ChallengeManager(private val context: Context? = null) {
     }
     
     private fun checkChallenge1_FlowersInZone(): Boolean {
-        // MODIFIÉ: Succès si au moins 1 fleur dans la zone verte
+        // Succès si au moins 1 fleur dans la zone verte
         return flowersInZone.size >= 1
     }
     
@@ -265,27 +301,6 @@ class ChallengeManager(private val context: Context? = null) {
         return flowersInZoneDefi3.size >= 2 && budsCreatedDefi3.size >= 1
     }
     
-    // ==================== LOGIQUE TEMPORAIRE SUPPRIMÉE ====================
-    
-    // ==================== GESTION DES FLEURS DÉBLOQUÉES ====================
-    
-    private fun unlockRoseFlower() {
-        if (unlockedFlowers.none { it.flowerType == "ROSE" }) {
-            unlockedFlowers.add(UnlockedFlower("ROSE", "Défi 3 Marguerite complété"))
-            println("🌹 ROSE DÉBLOQUÉE! Complétez le défi 3 de la marguerite!")
-        }
-    }
-    
-    fun getUnlockedFlowers(): List<UnlockedFlower> = unlockedFlowers.toList()
-    
-    fun isFlowerUnlocked(flowerType: String): Boolean {
-        return unlockedFlowers.any { it.flowerType == flowerType }
-    }
-    
-    fun getFlowerUnlockMessage(flowerType: String): String? {
-        return unlockedFlowers.find { it.flowerType == flowerType }?.unlockedBy
-    }
-    
     // ==================== GESTION DU DÉBLOCAGE ====================
     
     private fun unlockNextChallenge(completedId: Int) {
@@ -294,27 +309,11 @@ class ChallengeManager(private val context: Context? = null) {
             2 -> margueriteChallenges.find { it.id == 3 }?.isUnlocked = true
         }
         
-        // NOUVEAU: Sauvegarder après déblocage
+        // Sauvegarder après déblocage
         saveChallengeProgress()
     }
     
-    // ==================== FONCTIONS PUBLIQUES POUR LA SAUVEGARDE ====================
-    
-    fun getCompletionStatus(): String {
-        val completed = margueriteChallenges.count { it.isCompleted }
-        return "Marguerite: $completed/3 défis"
-    }
-    
     // ==================== SAUVEGARDE ====================
-    
-    private val sharedPrefs: SharedPreferences? by lazy {
-        context?.getSharedPreferences("challenges_save", Context.MODE_PRIVATE)
-    }
-    
-    init {
-        // Charger la sauvegarde au démarrage
-        loadChallengeProgress()
-    }
     
     private fun saveChallengeProgress() {
         val editor = sharedPrefs?.edit() ?: return
@@ -325,7 +324,7 @@ class ChallengeManager(private val context: Context? = null) {
             editor.putBoolean("challenge_${challenge.id}_unlocked", challenge.isUnlocked)
         }
         
-        // NOUVEAU: Sauvegarder les fleurs débloquées
+        // Sauvegarder les fleurs débloquées
         editor.putInt("unlocked_flowers_count", unlockedFlowers.size)
         for (i in unlockedFlowers.indices) {
             val flower = unlockedFlowers[i]
@@ -357,7 +356,7 @@ class ChallengeManager(private val context: Context? = null) {
             }
         }
         
-        // NOUVEAU: Charger les fleurs débloquées
+        // Charger les fleurs débloquées
         unlockedFlowers.clear()
         
         // Marguerite toujours débloquée par défaut
@@ -393,7 +392,7 @@ class ChallengeManager(private val context: Context? = null) {
             it.isUnlocked = (it.id == 1)  // Seul le premier débloqué
         }
         
-        // NOUVEAU: Reset des fleurs débloquées (garder seulement la marguerite)
+        // Reset des fleurs débloquées (garder seulement la marguerite)
         unlockedFlowers.clear()
         unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
         
@@ -415,6 +414,11 @@ class ChallengeManager(private val context: Context? = null) {
             |Fleurs débloquées: ${flowers.joinToString(", ")}
             |Dernière sauvegarde: ${java.util.Date()}
         """.trimMargin()
+    }
+    
+    fun getCompletionStatus(): String {
+        val completed = margueriteChallenges.count { it.isCompleted }
+        return "Marguerite: $completed/3 défis"
     }
     
     // ==================== RÉSULTAT ====================
