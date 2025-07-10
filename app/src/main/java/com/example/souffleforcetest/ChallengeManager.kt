@@ -19,13 +19,13 @@ class ChallengeManager {
         Challenge(
             id = 1,
             title = "Défi 1: Zone Verte",
-            description = "Faire pousser au moins 2 fleurs dans la zone verte",
-            briefText = "Défi 1: 2 fleurs en zone verte"
+            description = "Faire pousser 1 fleur dans la zone verte",
+            briefText = "Défi 1: 1 fleur en zone verte"
         ),
         Challenge(
             id = 2,
             title = "Défi 2: Bourgeons", 
-            description = "Faire pousser 2 bourgeons (souffle doux et constant)",
+            description = "Faire pousser 2 bourgeons avec souffle doux",
             briefText = "Défi 2: 2 bourgeons",
             isUnlocked = false  // Débloqué après défi 1
         ),
@@ -44,7 +44,7 @@ class ChallengeManager {
     private var challengeStartTime = 0L
     private var challengeData = mutableMapOf<String, Any>()  // Pour stocker données du défi
     private var flowersInZone = mutableListOf<String>()  // Liste des fleurs dans la zone verte
-    private var budsCreated = mutableListOf<String>()  // NOUVEAU: Liste des bourgeons créés
+    private var budsCreated = mutableListOf<String>()  // Liste des bourgeons créés
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -55,7 +55,7 @@ class ChallengeManager {
         challengeStartTime = System.currentTimeMillis()
         challengeData.clear()
         flowersInZone.clear()  // Reset liste des fleurs
-        budsCreated.clear()    // NOUVEAU: Reset liste des bourgeons
+        budsCreated.clear()    // Reset liste des bourgeons
         println("Défi démarré: ${currentChallenge?.title}")
     }
     
@@ -68,26 +68,26 @@ class ChallengeManager {
         
         when (challenge.id) {
             1 -> updateChallenge1_FlowersInZone(force, plantState)
-            2 -> updateChallenge2_Buds(force, plantState) // NOUVEAU
+            2 -> updateChallenge2_Buds(force, plantState)
             3 -> updateChallenge3(force, plantState)
         }
     }
     
-    // NOUVEAU: Fonction pour signaler qu'une fleur a été créée
+    // Fonction pour signaler qu'une fleur a été créée
     fun notifyFlowerCreated(flowerX: Float, flowerY: Float, flowerId: String) {
         val challenge = currentChallenge ?: return
         
         if (challenge.id == 1) {
-            // Vérifier si la fleur est dans la zone verte (1/3 de l'écran, hauteur 120px)
+            // Vérifier si la fleur est dans la zone verte (1/3 de l'écran, hauteur étendue vers le bas)
             val screenHeight = challengeData["screenHeight"] as? Float ?: 2000f
             val zoneTop = screenHeight / 3f - 60f
-            val zoneBottom = screenHeight / 3f + 60f
+            val zoneBottom = screenHeight / 3f + 180f  // 3 fois plus large vers le bas (240px total)
             
             if (flowerY >= zoneTop && flowerY <= zoneBottom) {
                 if (!flowersInZone.contains(flowerId)) {
                     flowersInZone.add(flowerId)
                     challengeData["flowersInZoneCount"] = flowersInZone.size
-                    println("Fleur dans la zone! Total: ${flowersInZone.size}/2")
+                    println("Fleur dans la zone! Total: ${flowersInZone.size}/1")
                 }
             } else {
                 println("Fleur HORS zone: Y=${flowerY}, Zone=${zoneTop}-${zoneBottom}")
@@ -95,7 +95,7 @@ class ChallengeManager {
         }
     }
     
-    // NOUVEAU: Fonction pour signaler qu'un bourgeon a été créé
+    // Fonction pour signaler qu'un bourgeon a été créé
     fun notifyBudCreated(budX: Float, budY: Float, budId: String) {
         val challenge = currentChallenge ?: return
         
@@ -108,7 +108,7 @@ class ChallengeManager {
         }
     }
     
-    // NOUVEAU: Mettre à jour les dimensions d'écran pour le calcul de zone
+    // Mettre à jour les dimensions d'écran pour le calcul de zone
     fun updateScreenDimensions(width: Int, height: Int) {
         challengeData["screenWidth"] = width.toFloat()
         challengeData["screenHeight"] = height.toFloat()
@@ -119,7 +119,7 @@ class ChallengeManager {
         
         val isSuccessful = when (challenge.id) {
             1 -> checkChallenge1_FlowersInZone()
-            2 -> checkChallenge2_Buds() // NOUVEAU
+            2 -> checkChallenge2_Buds()
             3 -> checkChallenge3Completion()
             else -> false
         }
@@ -129,8 +129,8 @@ class ChallengeManager {
             unlockNextChallenge(challenge.id)
             
             val successMessage = when (challenge.id) {
-                1 -> "Défi réussi! ${flowersInZone.size} fleurs dans la zone!"
-                2 -> "Défi réussi! ${budsCreated.size} bourgeons créés!" // NOUVEAU
+                1 -> "Défi réussi! ${flowersInZone.size} fleur dans la zone!"
+                2 -> "Défi réussi! ${budsCreated.size} bourgeons créés!"
                 else -> "Défi réussi!"
             }
             
@@ -145,8 +145,8 @@ class ChallengeManager {
         
         val result = checkChallengeCompletion() ?: run {
             val failMessage = when (challenge.id) {
-                1 -> "Défi échoué - Seulement ${flowersInZone.size}/2 fleurs en zone verte!"
-                2 -> "Défi échoué - Seulement ${budsCreated.size}/2 bourgeons créés!" // NOUVEAU
+                1 -> "Défi échoué - Aucune fleur en zone verte!"
+                2 -> "Défi échoué - Seulement ${budsCreated.size}/2 bourgeons créés!"
                 else -> "Défi échoué!"
             }
             ChallengeResult(challenge, false, failMessage)
@@ -165,8 +165,8 @@ class ChallengeManager {
     }
     
     private fun checkChallenge1_FlowersInZone(): Boolean {
-        // Succès si au moins 2 fleurs dans la zone verte
-        return flowersInZone.size >= 2
+        // MODIFIÉ: Succès si au moins 1 fleur dans la zone verte
+        return flowersInZone.size >= 1
     }
     
     // ==================== LOGIQUE DU DÉFI 2: BOURGEONS ====================
