@@ -58,7 +58,7 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         color = Color.rgb(255, 200, 50)
     }
     
-    // NOUVEAU - Paint pour la zone cible des défis
+    // Paint pour la zone cible des défis
     private val targetZonePaint = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.FILL
@@ -83,8 +83,8 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     fun drawCurrentState(canvas: Canvas, lightState: OrganicLineView.LightState, timeRemaining: Long, 
                         resetButtonX: Float, resetButtonY: Float, resetButtonRadius: Float, challengeManager: ChallengeManager) {
         
-        // Dessiner la zone cible AVANT tout le reste si défi actif
-        if (challengeManager.getCurrentChallenge() != null && shouldShowTargetZone(lightState)) {
+        // Dessiner la zone cible AVANT tout le reste si défi actif (seulement pour défi 1 - zone verte)
+        if (challengeManager.getCurrentChallenge()?.id == 1 && shouldShowTargetZone(lightState)) {
             drawTargetZone(canvas)
         }
         
@@ -245,7 +245,7 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
             canvas.drawText(timeRemaining.toString(), lightX, lightY + 60f, resetTextPaint)
         }
         
-        // Afficher le défi actuel en haut si en mode défi
+        // Afficher le défi actuel en haut si en mode défi avec indication spéciale pour défi bourgeons
         val challengeBrief = challengeManager.getCurrentChallengeBrief()
         if (challengeBrief != null) {
             resetTextPaint.textAlign = Paint.Align.CENTER
@@ -253,6 +253,13 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
             resetTextPaint.color = 0xAAFFFFFF.toInt()  // Semi-transparent
             resetTextPaint.isFakeBoldText = false
             canvas.drawText(challengeBrief, screenWidth / 2f, 120f, resetTextPaint)
+            
+            // NOUVEAU: Affichage spécial pour le défi bourgeons avec conseil
+            if (challengeManager.getCurrentChallenge()?.id == 2) {
+                resetTextPaint.textSize = 35f
+                resetTextPaint.color = 0x88FFFF00.toInt()  // Jaune semi-transparent
+                canvas.drawText("Souffle doux et constant requis", screenWidth / 2f, 170f, resetTextPaint)
+            }
         }
     }
     
@@ -486,6 +493,13 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         resetTextPaint.isFakeBoldText = false
         canvas.drawText(challenge?.description ?: "Description à venir", screenWidth / 2f, screenHeight * 0.5f, resetTextPaint)
         
+        // NOUVEAU: Conseil spécial pour le défi bourgeons
+        if (challenge?.id == 2) {
+            resetTextPaint.textSize = 55f
+            resetTextPaint.color = 0xFFFFD700.toInt()  // Jaune
+            canvas.drawText("Technique: souffle très doux et constant", screenWidth / 2f, screenHeight * 0.6f, resetTextPaint)
+        }
+        
         // Compte à rebours
         resetTextPaint.textSize = 90f
         resetTextPaint.color = 0xFFFFD700.toInt()
@@ -493,22 +507,45 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     }
     
     private fun drawChallengeResult(canvas: Canvas, challengeManager: ChallengeManager) {
-        // Note: Il faudra récupérer le résultat du dernier défi
-        // Pour l'instant, affichage temporaire
+        // NOUVEAU: Récupérer le vrai résultat du défi
+        val result = challengeManager.finalizeChallengeResult()
         
-        resetTextPaint.textAlign = Paint.Align.CENTER
-        resetTextPaint.textSize = 150f
-        resetTextPaint.color = 0xFF00FF00.toInt()  // Vert pour succès
-        resetTextPaint.isFakeBoldText = true
-        canvas.drawText("DÉFI RÉUSSI!", screenWidth / 2f, screenHeight * 0.4f, resetTextPaint)
-        
-        resetTextPaint.textSize = 80f
-        resetTextPaint.color = 0xFFFFFFFF.toInt()
-        resetTextPaint.isFakeBoldText = false
-        canvas.drawText("Félicitations!", screenWidth / 2f, screenHeight * 0.6f, resetTextPaint)
+        if (result != null) {
+            // Couleur selon le succès
+            val resultColor = if (result.success) 0xFF00FF00.toInt() else 0xFFFF0000.toInt()
+            val resultText = if (result.success) "DÉFI RÉUSSI!" else "DÉFI ÉCHOUÉ!"
+            
+            resetTextPaint.textAlign = Paint.Align.CENTER
+            resetTextPaint.textSize = 150f
+            resetTextPaint.color = resultColor
+            resetTextPaint.isFakeBoldText = true
+            canvas.drawText(resultText, screenWidth / 2f, screenHeight * 0.4f, resetTextPaint)
+            
+            // Message détaillé
+            resetTextPaint.textSize = 60f
+            resetTextPaint.color = 0xFFFFFFFF.toInt()
+            resetTextPaint.isFakeBoldText = false
+            canvas.drawText(result.message, screenWidth / 2f, screenHeight * 0.55f, resetTextPaint)
+            
+            // NOUVEAU: Message spécial selon le type de défi
+            if (result.challenge.id == 2 && result.success) {
+                resetTextPaint.textSize = 50f
+                resetTextPaint.color = 0xFFFFD700.toInt()
+                canvas.drawText("Excellente maîtrise du souffle!", screenWidth / 2f, screenHeight * 0.65f, resetTextPaint)
+            }
+        } else {
+            // Fallback si pas de résultat
+            resetTextPaint.textAlign = Paint.Align.CENTER
+            resetTextPaint.textSize = 150f
+            resetTextPaint.color = 0xFF00FF00.toInt()
+            resetTextPaint.isFakeBoldText = true
+            canvas.drawText("DÉFI TERMINÉ!", screenWidth / 2f, screenHeight * 0.4f, resetTextPaint)
+        }
         
         // Statut de progression
         resetTextPaint.textSize = 60f
+        resetTextPaint.color = 0xFFFFFFFF.toInt()
+        resetTextPaint.isFakeBoldText = false
         canvas.drawText(challengeManager.getCompletionStatus(), screenWidth / 2f, screenHeight * 0.75f, resetTextPaint)
     }
     
