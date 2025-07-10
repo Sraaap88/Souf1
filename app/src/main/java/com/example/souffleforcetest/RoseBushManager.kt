@@ -64,9 +64,15 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val spikeThreshold = 0.6f  // Seuil pour détecter un saccade
     private val spikeMinInterval = 300L  // Minimum 300ms entre saccades
     private val maxBranches = 8  // Maximum de branches
-    private val branchGrowthRate = 150f
-    private val leafGrowthRate = 80f
-    private val flowerGrowthRate = 60f
+    private val branchGrowthRate = 400f  // AUGMENTÉ de 150f à 400f
+    private val leafGrowthRate = 200f    // AUGMENTÉ de 80f à 200f
+    private val flowerGrowthRate = 150f  // AUGMENTÉ de 60f à 150f
+    
+    // Nouvelles tailles plus grandes
+    private val baseBranchThickness = 12f  // NOUVEAU: Épaisseur de base plus grosse
+    private val segmentLength = 25f        // AUGMENTÉ de 15f à 25f
+    private val baseLeafSize = 25f         // NOUVEAU: Taille de base des feuilles
+    private val baseFlowerSize = 35f       // NOUVEAU: Taille de base des fleurs
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -81,12 +87,12 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         // Créer la branche principale
         val mainBranch = RoseBranch(
             parentBranchIndex = -1,
-            maxLength = 200f,
+            maxLength = 300f,  // AUGMENTÉ de 200f à 300f
             angle = -90f  // Pousse vers le haut
         )
         
-        // Point de base
-        mainBranch.points.add(BranchPoint(baseX, baseY, 8f))
+        // Point de base plus gros
+        mainBranch.points.add(BranchPoint(baseX, baseY, baseBranchThickness))
         branches.add(mainBranch)
     }
     
@@ -187,7 +193,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         
         // Point de départ = point sur la branche parent
         branchPoint?.let {
-            newBranch.points.add(BranchPoint(it.x, it.y, 4f))
+            newBranch.points.add(BranchPoint(it.x, it.y, baseBranchThickness * 0.7f))  // MODIFIÉ: Plus gros
         }
         
         branches.add(newBranch)
@@ -228,21 +234,20 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     // ==================== CROISSANCE DES BRANCHES ====================
     
     private fun growActiveBranches(force: Float) {
-        for (branch in branches.filter { it.isActive && force > 0.2f }) {
+        for (branch in branches.filter { it.isActive && force > 0.1f }) {  // RÉDUIT de 0.2f à 0.1f (plus sensible)
             if (branch.currentLength < branch.maxLength) {
-                val growth = force * branchGrowthRate * 0.016f  // 60fps
+                val growth = force * branchGrowthRate * 0.020f  // AUGMENTÉ de 0.016f à 0.020f
                 branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
                 
                 // Ajouter un nouveau point si nécessaire
                 if (branch.points.isNotEmpty()) {
                     val lastPoint = branch.points.last()
-                    val segmentLength = 15f
                     
                     if (branch.currentLength >= branch.points.size * segmentLength) {
                         val angleRad = Math.toRadians(branch.angle.toDouble())
                         val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
                         val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
-                        val newThickness = (lastPoint.thickness * 0.95f).coerceAtLeast(2f)
+                        val newThickness = (lastPoint.thickness * 0.90f).coerceAtLeast(3f)  // AUGMENTÉ minimum de 2f à 3f
                         
                         branch.points.add(BranchPoint(newX, newY, newThickness))
                     }
@@ -262,13 +267,13 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         for ((index, branch) in branches.withIndex()) {
             if (branch.points.size < 2) continue
             
-            // Créer 3-5 feuilles par branche
-            val leafCount = 3 + (Math.random() * 3).toInt()
+            // Créer 4-6 feuilles par branche (AUGMENTÉ)
+            val leafCount = 4 + (Math.random() * 3).toInt()
             
             for (i in 0 until leafCount) {
                 val positionRatio = 0.2f + (i.toFloat() / leafCount) * 0.6f
                 val side = if (i % 2 == 0) -1 else 1
-                val size = 15f + Math.random().toFloat() * 10f
+                val size = baseLeafSize + Math.random().toFloat() * 15f  // MODIFIÉ: Plus grosses
                 val angle = Math.random().toFloat() * 60f - 30f  // ±30°
                 
                 leaves.add(RoseLeaf(
@@ -284,8 +289,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private fun growExistingLeaves(force: Float) {
         for (leaf in leaves) {
-            if (leaf.currentSize < leaf.maxSize && force > 0.15f) {
-                val growth = force * leafGrowthRate * 0.016f
+            if (leaf.currentSize < leaf.maxSize && force > 0.1f) {  // RÉDUIT de 0.15f à 0.1f
+                val growth = force * leafGrowthRate * 0.020f  // AUGMENTÉ de 0.016f à 0.020f
                 leaf.currentSize = (leaf.currentSize + growth).coerceAtMost(leaf.maxSize)
             }
         }
@@ -299,7 +304,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             
             // Une fleur au bout de chaque branche
             val lastPoint = branch.points.last()
-            val flowerSize = 25f + Math.random().toFloat() * 15f
+            val flowerSize = baseFlowerSize + Math.random().toFloat() * 20f  // MODIFIÉ: Plus grosses
             
             val flower = RoseFlower(
                 branchIndex = index,
@@ -317,8 +322,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private fun growExistingFlowers(force: Float) {
         for (flower in flowers) {
-            if (flower.currentSize < flower.maxSize && force > 0.2f) {
-                val growth = force * flowerGrowthRate * 0.016f
+            if (flower.currentSize < flower.maxSize && force > 0.1f) {  // RÉDUIT de 0.2f à 0.1f
+                val growth = force * flowerGrowthRate * 0.020f  // AUGMENTÉ de 0.016f à 0.020f
                 flower.currentSize = (flower.currentSize + growth).coerceAtMost(flower.maxSize)
             }
         }
@@ -398,9 +403,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                     canvas.drawCircle(petalX, petalY, petalSize * 0.5f, paint)
                 }
                 
-                // Centre de la fleur
+                // Centre de la fleur plus gros
                 paint.color = Color.rgb(255, 215, 0)  // Jaune
-                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.2f, paint)
+                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.3f, paint)  // AUGMENTÉ de 0.2f à 0.3f
                 paint.color = Color.rgb(255, 182, 193)  // Retour au rose
             }
         }
