@@ -76,9 +76,8 @@ class ChallengeManager {
         val challenge = currentChallenge ?: return
         
         if (challenge.id == 1) {
-            // Vérifier si la fleur est dans la zone verte (utiliser UIDrawingManager)
-            // Pour l'instant, on simule la vérification - il faudra intégrer avec UIDrawingManager
-            val screenHeight = 2000f  // À remplacer par la vraie valeur
+            // Vérifier si la fleur est dans la zone verte (1/3 de l'écran, hauteur 120px)
+            val screenHeight = challengeData["screenHeight"] as? Float ?: 2000f
             val zoneTop = screenHeight / 3f - 60f
             val zoneBottom = screenHeight / 3f + 60f
             
@@ -88,8 +87,16 @@ class ChallengeManager {
                     challengeData["flowersInZoneCount"] = flowersInZone.size
                     println("Fleur dans la zone! Total: ${flowersInZone.size}/2")
                 }
+            } else {
+                println("Fleur HORS zone: Y=${flowerY}, Zone=${zoneTop}-${zoneBottom}")
             }
         }
+    }
+    
+    // NOUVEAU: Mettre à jour les dimensions d'écran pour le calcul de zone
+    fun updateScreenDimensions(width: Int, height: Int) {
+        challengeData["screenWidth"] = width.toFloat()
+        challengeData["screenHeight"] = height.toFloat()
     }
     
     fun checkChallengeCompletion(): ChallengeResult? {
