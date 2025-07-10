@@ -18,7 +18,8 @@ class FlowerManager(private val plantStem: PlantStem) {
         val perspective: FlowerPerspective,
         var centerSize: Float = 0f,
         val petals: MutableList<Petal> = mutableListOf(),
-        var isFullyGrown: Boolean = false
+        var isFullyGrown: Boolean = false,
+        val id: String = generateFlowerId()  // NOUVEAU: ID unique pour chaque fleur
     )
     
     data class Petal(
@@ -49,6 +50,9 @@ class FlowerManager(private val plantStem: PlantStem) {
     // NOUVEAU : Gestionnaire de boutons
     private val budManager = BudManager(plantStem)
     
+    // NOUVEAU : Référence au gestionnaire de défis (sera injectée)
+    private var challengeManager: ChallengeManager? = null
+    
     // ==================== PARAMÈTRES ====================
     
     private val forceThreshold = 0.25f
@@ -58,6 +62,11 @@ class FlowerManager(private val plantStem: PlantStem) {
     private val petalCount = 18 + (Math.random() * 8).toInt() // 18-26 pétales
     
     // ==================== FONCTIONS PUBLIQUES ====================
+    
+    // NOUVEAU: Injection du ChallengeManager
+    fun setChallengeManager(manager: ChallengeManager) {
+        challengeManager = manager
+    }
     
     fun processFlowerGrowth(force: Float) {
         // Créer des boutons sur tiges éligibles (5-30% croissance)
@@ -183,6 +192,10 @@ class FlowerManager(private val plantStem: PlantStem) {
         
         createPetalsForFlower(flower)
         flowers.add(flower)
+        
+        // NOUVEAU: Notifier le ChallengeManager qu'une fleur a été créée
+        challengeManager?.notifyFlowerCreated(flower.x, flower.y, flower.id)
+        println("Fleur créée sur tige principale à (${flower.x}, ${flower.y})")
     }
     
     private fun createFlowerOnBranch(branchIndex: Int) {
@@ -208,6 +221,10 @@ class FlowerManager(private val plantStem: PlantStem) {
         
         createPetalsForFlower(flower)
         flowers.add(flower)
+        
+        // NOUVEAU: Notifier le ChallengeManager qu'une fleur a été créée
+        challengeManager?.notifyFlowerCreated(flower.x, flower.y, flower.id)
+        println("Fleur créée sur branche $branchIndex à (${flower.x}, ${flower.y})")
     }
     
     private fun createPetalsForFlower(flower: Flower) {
@@ -382,6 +399,18 @@ class FlowerManager(private val plantStem: PlantStem) {
             val pointY = centerY + sin(angle).toFloat() * distance
             
             canvas.drawCircle(pointX, pointY, 1.5f, paint)
+        }
+    }
+    
+    // ==================== FONCTION UTILITAIRE ====================
+    
+    companion object {
+        private var flowerIdCounter = 0
+        
+        // NOUVEAU: Générateur d'ID unique pour les fleurs
+        private fun generateFlowerId(): String {
+            flowerIdCounter++
+            return "flower_$flowerIdCounter"
         }
     }
 }
