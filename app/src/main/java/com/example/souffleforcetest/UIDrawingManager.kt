@@ -423,9 +423,9 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     }
     
     private fun drawTargetZone(canvas: Canvas) {
-        // Zone au 1/3 de l'écran, 3 fois plus large vers le bas
+        // Zone au 1/3 de l'écran, 2 fois plus large que la version actuelle
         val zoneTop = screenHeight / 3f - 60f      // 1/3 de l'écran moins 60px
-        val zoneBottom = screenHeight / 3f + 180f  // 1/3 de l'écran plus 180px (3x plus large vers le bas)
+        val zoneBottom = screenHeight / 3f + 360f  // 1/3 de l'écran plus 360px (2x plus large que les 180px actuels)
         val zoneLeft = 0f
         val zoneRight = screenWidth.toFloat()
         
@@ -445,7 +445,7 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     // Fonction utilitaire pour vérifier si un point est dans la zone cible
     fun isPointInTargetZone(x: Float, y: Float): Boolean {
         val zoneTop = screenHeight / 3f - 60f
-        val zoneBottom = screenHeight / 3f + 180f  // Zone élargie vers le bas
+        val zoneBottom = screenHeight / 3f + 360f  // Zone élargie à 360px vers le bas
         val zoneLeft = 0f
         val zoneRight = screenWidth.toFloat()
         
