@@ -259,11 +259,12 @@ class OrganicLineView @JvmOverloads constructor(
         canvas.drawCircle(x, y, radius, resetButtonPaint)
         resetButtonPaint.style = Paint.Style.FILL
         
-        // Texte
+        // Texte - 1/4 de hauteur plus bas
         resetTextPaint.textAlign = Paint.Align.CENTER
-        resetTextPaint.textSize = 80f  // Réduit pour les boutons plus petits
+        resetTextPaint.textSize = 80f
         resetTextPaint.color = 0xFFFFFFFF.toInt()
-        canvas.drawText(text, x, y + 10f, resetTextPaint)
+        resetTextPaint.isFakeBoldText = false
+        canvas.drawText(text, x, y + 30f, resetTextPaint)  // +30f au lieu de +10f (1/4 de 80f = 20f, mais +30f pour plus visible)
     }
     
     private fun drawBranches(canvas: Canvas, branches: List<PlantStem.Branch>) {
@@ -370,8 +371,8 @@ class OrganicLineView @JvmOverloads constructor(
             val defiButtonX = zenButtonX + spacing  // Deuxième bouton à côté
             val buttonY = height / 2f
             
-            // Dessiner bouton ZEN (orange pâle)
-            drawSingleButton(canvas, zenButtonX, buttonY, buttonRadius, 0xFFFFDAAA.toInt(), "ZEN")
+            // Dessiner bouton ZEN (bleu marine pour meilleur contraste)
+            drawSingleButton(canvas, zenButtonX, buttonY, buttonRadius, 0xFF1E3A8A.toInt(), "ZEN")
             
             // Dessiner bouton DÉFI (orange feu)
             drawSingleButton(canvas, defiButtonX, buttonY, buttonRadius, 0xFFFF4500.toInt(), "DÉFI")
@@ -405,11 +406,12 @@ class OrganicLineView @JvmOverloads constructor(
             canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
             resetButtonPaint.style = Paint.Style.FILL
             
-            // Texte reset
+            // Texte reset - 1/4 de hauteur plus bas
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 120f
             resetTextPaint.color = 0xFF000000.toInt()
-            canvas.drawText("↻", lightX, lightY, resetTextPaint)
+            resetTextPaint.isFakeBoldText = false
+            canvas.drawText("↻", lightX, lightY + 30f, resetTextPaint)  // +30f au lieu de 0f
             
         } else {
             // Phases vertes - dessiner les cercles normaux
@@ -433,10 +435,11 @@ class OrganicLineView @JvmOverloads constructor(
             canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
             resetButtonPaint.style = Paint.Style.FILL
             
-            // Texte pour les phases vertes
+            // Texte pour les phases vertes - plus grand et en gras
             resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 60f
+            resetTextPaint.textSize = 80f  // Augmenté de 60f à 80f
             resetTextPaint.color = 0xFF000000.toInt()
+            resetTextPaint.isFakeBoldText = true  // En gras
             
             val phaseText = when (lightState) {
                 LightState.GREEN_GROW -> "TIGE"
@@ -448,8 +451,9 @@ class OrganicLineView @JvmOverloads constructor(
             canvas.drawText(phaseText, lightX, lightY, resetTextPaint)
             
             if (timeRemaining > 0) {
-                resetTextPaint.textSize = 40f
-                canvas.drawText(timeRemaining.toString(), lightX, lightY + 50f, resetTextPaint)
+                resetTextPaint.textSize = 50f  // Aussi un peu plus grand
+                resetTextPaint.isFakeBoldText = false  // Timer pas en gras
+                canvas.drawText(timeRemaining.toString(), lightX, lightY + 60f, resetTextPaint)  // Ajusté l'espacement
             }
         }
     }
