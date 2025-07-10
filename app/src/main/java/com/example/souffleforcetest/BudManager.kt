@@ -17,14 +17,18 @@ class BudManager(private val plantStem: PlantStem) {
         val maxSize: Float,
         val creationTime: Long,
         var isFullyGrown: Boolean = false,
-        val petalCount: Int,             // NOUVEAU : Nombre de pointes unique pour ce bouton
-        val petalVariations: List<Float> // NOUVEAU : Variations de longueur pour chaque pointe
+        val petalCount: Int,             // Nombre de pointes unique pour ce bouton
+        val petalVariations: List<Float>, // Variations de longueur pour chaque pointe
+        val id: String = generateBudId() // NOUVEAU: ID unique pour le défi
     )
     
     // ==================== VARIABLES ====================
     
     val buds = mutableListOf<Bud>()
     private var lastForce = 0f
+    
+    // NOUVEAU: Référence au gestionnaire de défis
+    private var challengeManager: ChallengeManager? = null
     
     // ==================== PARAMÈTRES ====================
     
@@ -35,11 +39,26 @@ class BudManager(private val plantStem: PlantStem) {
     private val minPetalCount = 4           // Minimum 4 pointes
     private val maxPetalCount = 7           // Maximum 7 pointes
     
+    // NOUVEAU: Paramètres pour le défi bourgeons
+    private val budChallengeMinForce = 0.05f  // Force minimum pour défi
+    private val budChallengeMaxForce = 0.25f  // Force maximum pour défi
+    
     // ==================== FONCTIONS PUBLIQUES ====================
     
+    // NOUVEAU: Injection du ChallengeManager
+    fun setChallengeManager(manager: ChallengeManager) {
+        challengeManager = manager
+    }
+    
     fun processBudGrowth(force: Float) {
-        // Créer des boutons sur les tiges éligibles (5-30% de croissance)
-        createBudsOnEligibleStems()
+        // MODIFIÉ: Créer des boutons selon le mode (normal ou défi)
+        if (challengeManager?.getCurrentChallenge()?.id == 2) {
+            // Mode défi: conditions strictes
+            createBudsForChallenge(force)
+        } else {
+            // Mode normal: comportement existant
+            createBudsOnEligibleStems()
+        }
         
         // Faire grandir les boutons existants
         growExistingBuds(force)
@@ -61,6 +80,107 @@ class BudManager(private val plantStem: PlantStem) {
     }
     
     // ==================== FONCTIONS PRIVÉES ====================
+    
+    // NOUVEAU: Création de bourgeons pour le défi (conditions strictes)
+    private fun createBudsForChallenge(force: Float) {
+        // Conditions strictes: force très faible et constante
+        if (force < budChallengeMinForce || force > budChallengeMaxForce) return
+        
+        // Vérifier tige principale (5-30% de croissance)
+        checkMainStemForBudChallenge()
+        
+        // Vérifier branches (5-30% de croissance)
+        for (branchIndex in plantStem.branches.indices) {
+            checkBranchForBudChallenge(branchIndex)
+        }
+    }
+    
+    private fun checkMainStemForBudChallenge() {
+        if (buds.any { it.stemIndex == -1 } || plantStem.mainStem.size <= 3) return
+        
+        val mainStemHeight = if (plantStem.mainStem.isNotEmpty()) {
+            plantStem.getStemBaseY() - plantStem.mainStem.last().y
+        } else 0f
+        
+        // Conditions pour défi: entre 20px et 80px (5-30% environ)
+        if (mainStemHeight in 20f..80f) {
+            createBudOnMainStemForChallenge()
+        }
+    }
+    
+    private fun checkBranchForBudChallenge(branchIndex: Int) {
+        if (buds.any { it.stemIndex == branchIndex }) return
+        
+        val branch = plantStem.branches[branchIndex]
+        val growthPercentage = if (branch.maxHeight > 0) {
+            branch.currentHeight / branch.maxHeight
+        } else 0f
+        
+        // Conditions pour défi: 5-30% de croissance
+        if (growthPercentage >= 0.05f && growthPercentage <= 0.30f && 
+            branch.currentHeight >= 15f && branch.points.isNotEmpty()) {
+            createBudOnBranchForChallenge(branchIndex)
+        }
+    }
+    
+    private fun createBudOnMainStemForChallenge() {
+        val topPoint = plantStem.mainStem.last()
+        
+        val sizeVariation = Math.random().toFloat()
+        val size = baseBudSize + (sizeVariation * (maxBudSize - baseBudSize))
+        val petalCount = minPetalCount + (Math.random() * (maxPetalCount - minPetalCount + 1)).toInt()
+        val petalVariations = (0 until petalCount).map { 
+            0.8f + (Math.random().toFloat() * 0.4f)
+        }
+        
+        val bud = Bud(
+            x = topPoint.x,
+            y = topPoint.y - 10f,
+            stemIndex = -1,
+            maxSize = size,
+            creationTime = System.currentTimeMillis(),
+            petalCount = petalCount,
+            petalVariations = petalVariations
+        )
+        
+        buds.add(bud)
+        
+        // NOUVEAU: Notifier le ChallengeManager
+        challengeManager?.notifyBudCreated(bud.x, bud.y, bud.id)
+        
+        println("Bourgeon créé pour défi sur tige principale: ${petalCount} pointes, ID: ${bud.id}")
+    }
+    
+    private fun createBudOnBranchForChallenge(branchIndex: Int) {
+        val branch = plantStem.branches[branchIndex]
+        val topPoint = branch.points.last()
+        
+        val baseSizeForBranch = baseBudSize * 0.8f
+        val maxSizeForBranch = maxBudSize * 0.8f
+        val sizeVariation = Math.random().toFloat()
+        val size = baseSizeForBranch + (sizeVariation * (maxSizeForBranch - baseSizeForBranch))
+        val petalCount = (minPetalCount - 1) + (Math.random() * (maxPetalCount - minPetalCount + 2)).toInt()
+        val petalVariations = (0 until petalCount).map { 
+            0.7f + (Math.random().toFloat() * 0.5f)
+        }
+        
+        val bud = Bud(
+            x = topPoint.x,
+            y = topPoint.y - 8f,
+            stemIndex = branchIndex,
+            maxSize = size,
+            creationTime = System.currentTimeMillis(),
+            petalCount = petalCount,
+            petalVariations = petalVariations
+        )
+        
+        buds.add(bud)
+        
+        // NOUVEAU: Notifier le ChallengeManager
+        challengeManager?.notifyBudCreated(bud.x, bud.y, bud.id)
+        
+        println("Bourgeon créé pour défi sur branche $branchIndex: ${petalCount} pointes, ID: ${bud.id}")
+    }
     
     private fun createBudsOnEligibleStems() {
         // Vérifier la tige principale
@@ -267,5 +387,17 @@ class BudManager(private val plantStem: PlantStem) {
     
     fun hasBudOnStem(stemIndex: Int): Boolean {
         return buds.any { it.stemIndex == stemIndex }
+    }
+    
+    // ==================== COMPANION OBJECT ====================
+    
+    companion object {
+        private var budIdCounter = 0
+        
+        // NOUVEAU: Générateur d'ID unique pour les bourgeons
+        private fun generateBudId(): String {
+            budIdCounter++
+            return "bud_$budIdCounter"
+        }
     }
 }
