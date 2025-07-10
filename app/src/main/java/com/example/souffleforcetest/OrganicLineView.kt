@@ -137,7 +137,7 @@ class OrganicLineView @JvmOverloads constructor(
                 // Reste en START jusqu'à ce qu'on appuie sur le bouton
             }
             LightState.YELLOW -> {
-                if (elapsedTime >= 1000) { // 1 seconde au lieu de 2
+                if (elapsedTime >= 2000) { 
                     lightState = LightState.GREEN_GROW
                     stateStartTime = currentTime
                 }
@@ -324,9 +324,9 @@ class OrganicLineView @JvmOverloads constructor(
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
         
-        val lightRadius = if (lightState == LightState.YELLOW) width * 0.4f else resetButtonRadius
-        val lightX = if (lightState == LightState.YELLOW) width / 2f else resetButtonX
-        val lightY = if (lightState == LightState.YELLOW) height / 2f else resetButtonY
+        val lightRadius = if (lightState == LightState.START || lightState == LightState.YELLOW) width * 0.25f else resetButtonRadius
+        val lightX = if (lightState == LightState.START || lightState == LightState.YELLOW) width * 0.3f else resetButtonX
+        val lightY = if (lightState == LightState.START || lightState == LightState.YELLOW) height / 2f else resetButtonY
         
         // Ombre
         resetButtonPaint.color = 0x40000000.toInt()
@@ -334,7 +334,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Couleur selon l'état
         resetButtonPaint.color = when (lightState) {
-            LightState.START -> 0xFF00AA00.toInt()       // Vert pour démarrer
+            LightState.START -> 0xFFFFDAAA.toInt()       // Orange pâle
             LightState.YELLOW -> 0xFFFFD700.toInt()
             LightState.GREEN_GROW -> 0xFF2F4F2F.toInt()
             LightState.GREEN_LEAVES -> 0xFF00FF00.toInt()
@@ -353,7 +353,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Texte et timer
         val timeRemaining = when (lightState) {
             LightState.START -> 0
-            LightState.YELLOW -> max(0, 1 - (elapsedTime / 1000))      // 1 seconde
+            LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))      // 2 secondes
             LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))  // 4 secondes
             LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000)) // 3 secondes
             LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000)) // 4 secondes
@@ -362,9 +362,9 @@ class OrganicLineView @JvmOverloads constructor(
         
         if (lightState == LightState.START) {
             resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 150f
+            resetTextPaint.textSize = 120f
             resetTextPaint.color = 0xFFFFFFFF.toInt()
-            canvas.drawText("DÉMARRER", lightX, lightY, resetTextPaint)
+            canvas.drawText("ZEN", lightX, lightY, resetTextPaint)
         } else if (lightState == LightState.YELLOW) {
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 180f
@@ -407,32 +407,16 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN) {
             if (lightState == LightState.START) {
-                // Calculer positions des boutons
-                val centerX = width / 2f
-                val centerY = height / 2f
-                val buttonRadius = width * 0.25f
-                val spacing = buttonRadius * 1.8f
+                // Appui sur le bouton ZEN
+                val zenX = width * 0.3f
+                val zenY = height / 2f
+                val radius = width * 0.25f
                 
-                val zenButtonX = centerX - spacing / 2f
-                val defiButtonX = centerX + spacing / 2f
+                val dx = event.x - zenX
+                val dy = event.y - zenY
+                val distance = sqrt(dx * dx + dy * dy)
                 
-                // Vérifier clic sur bouton ZEN
-                val zenDx = event.x - zenButtonX
-                val zenDy = event.y - centerY
-                val zenDistance = sqrt(zenDx * zenDx + zenDy * zenDy)
-                
-                // Vérifier clic sur bouton DÉFI
-                val defiDx = event.x - defiButtonX
-                val defiDy = event.y - centerY
-                val defiDistance = sqrt(defiDx * defiDx + defiDy * defiDy)
-                
-                if (zenDistance <= buttonRadius) {
-                    // Mode ZEN sélectionné (comportement actuel)
-                    lightState = LightState.YELLOW
-                    stateStartTime = System.currentTimeMillis()
-                    return true
-                } else if (defiDistance <= buttonRadius) {
-                    // Mode DÉFI sélectionné (pour l'instant même comportement)
+                if (distance <= radius) {
                     lightState = LightState.YELLOW
                     stateStartTime = System.currentTimeMillis()
                     return true
