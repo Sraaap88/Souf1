@@ -146,4 +146,45 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
         }
         
         // Statut de progression
-        textPaint.
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = 60f
+        textPaint.color = 0xFFFFFFFF.toInt()
+        textPaint.isFakeBoldText = false
+        canvas.drawText(challengeManager.getCompletionStatus(), screenWidth / 2f, screenHeight * 0.75f, textPaint)
+    }
+    
+    // ==================== FONCTION UTILITAIRE POUR TEXTE MULTILIGNE ====================
+    
+    private fun drawMultilineText(canvas: Canvas, text: String, centerX: Float, startY: Float, textSize: Float, maxWidth: Float, textPaint: Paint) {
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = textSize
+        textPaint.color = 0xFFFFFFFF.toInt()
+        textPaint.isFakeBoldText = false
+        
+        val words = text.split(" ")
+        var currentLine = ""
+        var currentY = startY
+        val lineHeight = textSize * 1.2f
+        
+        for (word in words) {
+            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+            val testWidth = textPaint.measureText(testLine)
+            
+            if (testWidth <= maxWidth) {
+                currentLine = testLine
+            } else {
+                // Dessiner la ligne actuelle et commencer une nouvelle ligne
+                if (currentLine.isNotEmpty()) {
+                    canvas.drawText(currentLine, centerX, currentY, textPaint)
+                    currentY += lineHeight
+                }
+                currentLine = word
+            }
+        }
+        
+        // Dessiner la dernière ligne
+        if (currentLine.isNotEmpty()) {
+            canvas.drawText(currentLine, centerX, currentY, textPaint)
+        }
+    }
+}
