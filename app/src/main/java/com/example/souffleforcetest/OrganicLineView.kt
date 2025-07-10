@@ -137,7 +137,7 @@ class OrganicLineView @JvmOverloads constructor(
                 // Reste en START jusqu'à ce qu'on appuie sur le bouton
             }
             LightState.YELLOW -> {
-                if (elapsedTime >= 2000) { // 1 seconde au lieu de 2
+                if (elapsedTime >= 1000) { // 1 seconde au lieu de 2
                     lightState = LightState.GREEN_GROW
                     stateStartTime = currentTime
                 }
@@ -324,9 +324,9 @@ class OrganicLineView @JvmOverloads constructor(
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
         
-        val lightRadius = if (lightState == LightState.START || lightState == LightState.YELLOW) width * 0.4f else resetButtonRadius
-        val lightX = if (lightState == LightState.START || lightState == LightState.YELLOW) width / 2f else resetButtonX
-        val lightY = if (lightState == LightState.START || lightState == LightState.YELLOW) height / 2f else resetButtonY
+        val lightRadius = if (lightState == LightState.YELLOW) width * 0.4f else resetButtonRadius
+        val lightX = if (lightState == LightState.YELLOW) width / 2f else resetButtonX
+        val lightY = if (lightState == LightState.YELLOW) height / 2f else resetButtonY
         
         // Ombre
         resetButtonPaint.color = 0x40000000.toInt()
@@ -353,7 +353,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Texte et timer
         val timeRemaining = when (lightState) {
             LightState.START -> 0
-            LightState.YELLOW -> max(0, 1 - (elapsedTime / 2000))      // 1 seconde
+            LightState.YELLOW -> max(0, 1 - (elapsedTime / 1000))      // 1 seconde
             LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))  // 4 secondes
             LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000)) // 3 secondes
             LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000)) // 4 secondes
