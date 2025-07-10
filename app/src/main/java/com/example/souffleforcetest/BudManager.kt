@@ -52,8 +52,8 @@ class BudManager(private val plantStem: PlantStem) {
     
     fun processBudGrowth(force: Float) {
         // MODIFIÉ: Créer des boutons selon le mode (normal ou défi)
-        if (challengeManager?.getCurrentChallenge()?.id == 2) {
-            // Mode défi: conditions strictes
+        if (challengeManager?.getCurrentChallenge()?.id == 2 || challengeManager?.getCurrentChallenge()?.id == 3) {
+            // Mode défi 2 ou 3: conditions strictes
             createBudsForChallenge(force)
         } else {
             // Mode normal: comportement existant
