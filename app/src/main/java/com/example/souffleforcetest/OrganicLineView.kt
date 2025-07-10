@@ -4,6 +4,9 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -78,6 +81,7 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== LOGIQUE DE PLANTE ====================
     
     private var plantStem: PlantStem? = null
+    private var daisyBitmap: Bitmap? = null
     
     enum class LightState {
         START, FLOWER_CHOICE, YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
@@ -92,6 +96,15 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         plantStem = PlantStem(w, h)
+        
+        // Charger l'image de marguerite (place ton image dans res/drawable/)
+        try {
+            daisyBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.marguerite)
+            // REMPLACE android.R.drawable.ic_menu_gallery par R.drawable.ton_nom_image
+            // Exemple: R.drawable.marguerite si ton fichier s'appelle marguerite.png
+        } catch (e: Exception) {
+            // Si l'image n'est pas trouvée, on garde daisyBitmap = null
+        }
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -506,55 +519,36 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun drawMiniDaisy(canvas: Canvas, centerX: Float, centerY: Float, size: Float) {
-        // Dessiner exactement comme ton image : centre jaune avec points ET pétales blancs
-        
-        // Centre jaune (plus gros comme dans ton image)
-        val centerPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(255, 200, 50)
-            style = Paint.Style.FILL
-        }
-        val centerRadius = size * 0.35f  // Plus gros
-        canvas.drawCircle(centerX, centerY, centerRadius, centerPaint)
-        
-        // Points noirs sur le centre (comme dans ton image)
-        val dotPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(180, 120, 20)
-            style = Paint.Style.FILL
-        }
-        canvas.drawCircle(centerX - centerRadius * 0.3f, centerY - centerRadius * 0.2f, size * 0.02f, dotPaint)
-        canvas.drawCircle(centerX + centerRadius * 0.2f, centerY - centerRadius * 0.4f, size * 0.02f, dotPaint)
-        canvas.drawCircle(centerX - centerRadius * 0.1f, centerY + centerRadius * 0.3f, size * 0.02f, dotPaint)
-        canvas.drawCircle(centerX + centerRadius * 0.4f, centerY + centerRadius * 0.1f, size * 0.02f, dotPaint)
-        canvas.drawCircle(centerX, centerY, size * 0.015f, dotPaint)
-        
-        // Pétales blancs COMME DANS TON IMAGE
-        val petalPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.WHITE
-            style = Paint.Style.FILL
-        }
-        
-        // Exactement comme ton image : pétales arrondis qui partent du centre
-        for (i in 0..17) {  // 18 pétales comme ton image
-            val angle = i * 20f * Math.PI / 180.0
-            val petalStartDistance = centerRadius * 0.9f
-            val petalLength = size * 0.4f
+        if (daisyBitmap != null) {
+            // Utiliser ton image de marguerite
+            val matrix = Matrix()
+            val scale = size / maxOf(daisyBitmap!!.width, daisyBitmap!!.height)
+            matrix.setScale(scale, scale)
+            matrix.postTranslate(
+                centerX - (daisyBitmap!!.width * scale) / 2f,
+                centerY - (daisyBitmap!!.height * scale) / 2f
+            )
             
-            val petalX = centerX + cos(angle).toFloat() * (petalStartDistance + petalLength * 0.6f)
-            val petalY = centerY + sin(angle).toFloat() * (petalStartDistance + petalLength * 0.6f)
+            val paint = Paint().apply {
+                isAntiAlias = true
+                isFilterBitmap = true
+            }
+            canvas.drawBitmap(daisyBitmap!!, matrix, paint)
+        } else {
+            // Fallback si l'image n'est pas trouvée
+            val centerPaint = Paint().apply {
+                isAntiAlias = true
+                color = Color.rgb(255, 200, 50)
+                style = Paint.Style.FILL
+            }
+            canvas.drawCircle(centerX, centerY, size * 0.3f, centerPaint)
             
-            canvas.save()
-            canvas.translate(petalX, petalY)
-            canvas.rotate((angle * 180.0 / Math.PI).toFloat())
-            
-            // Pétales arrondis comme dans ton image
-            val petalWidth = size * 0.18f
-            val petalHeight = size * 0.4f
-            canvas.drawOval(-petalWidth/2, -petalHeight/2, petalWidth/2, petalHeight/2, petalPaint)
-            
-            canvas.restore()
+            val textPaint = Paint().apply {
+                color = Color.BLACK
+                textSize = size * 0.2f
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText("IMG", centerX, centerY, textPaint)
         }
     }
     
