@@ -1,13 +1,4 @@
-// Mettre à jour le défi si en mode DÉFI
-        if (selectedMode == "DÉFI" && challengeManager.getCurrentChallenge() != null) {
-            val plantState = when (lightState) {
-                LightState.GREEN_GROW -> "STEM"
-                LightState.GREEN_LEAVES -> "LEAVES" 
-                LightState.GREEN_FLOWER -> "FLOWER"
-                else -> "OTHER"
-            }
-            challengeManager.updateChallengeProgress(force, plantState)
-        }package com.example.souffleforcetest
+package com.example.souffleforcetest
 
 import android.content.Context
 import android.graphics.Canvas
@@ -83,6 +74,17 @@ class OrganicLineView @JvmOverloads constructor(
         // AJOUT - Croissance des fleurs pendant GREEN_FLOWER
         if (lightState == LightState.GREEN_FLOWER) {
             plantStem?.processFlowerGrowth(force)
+        }
+        
+        // Mettre à jour le défi si en mode DÉFI
+        if (selectedMode == "DÉFI" && challengeManager.getCurrentChallenge() != null) {
+            val plantState = when (lightState) {
+                LightState.GREEN_GROW -> "STEM"
+                LightState.GREEN_LEAVES -> "LEAVES" 
+                LightState.GREEN_FLOWER -> "FLOWER"
+                else -> "OTHER"
+            }
+            challengeManager.updateChallengeProgress(force, plantState)
         }
         
         if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
@@ -293,12 +295,31 @@ class OrganicLineView @JvmOverloads constructor(
         return false
     }
     
+    private fun handleFlowerChoiceClick(event: MotionEvent): Boolean {
+        // Clic sur la marguerite
+        val flowerButtonX = width / 2f
+        val flowerButtonY = height / 2f
+        val flowerButtonRadius = width * 0.2f
+        
+        val dx = event.x - flowerButtonX
+        val dy = event.y - flowerButtonY
+        val distance = sqrt(dx * dx + dy * dy)
+        
+        if (distance <= flowerButtonRadius) {
+            // Marguerite sélectionnée - aller à INSPIREZ
+            lightState = LightState.YELLOW
+            stateStartTime = System.currentTimeMillis()
+            return true
+        }
+        return false
+    }
+    
     private fun handleChallengeSelectionClick(event: MotionEvent): Boolean {
         // Zone des 3 boutons de défi (calculée dans UIDrawingManager)
-        val buttonWidth = screenWidth * 0.25f
-        val buttonHeight = screenHeight * 0.12f
-        val startY = screenHeight * 0.4f
-        val centerX = screenWidth / 2f
+        val buttonWidth = width * 0.25f
+        val buttonHeight = height * 0.12f
+        val startY = height * 0.4f
+        val centerX = width / 2f
         
         for (i in 1..3) {
             val buttonY = startY + (i - 1) * (buttonHeight + 30f)
@@ -321,25 +342,6 @@ class OrganicLineView @JvmOverloads constructor(
                     return true
                 }
             }
-        }
-        return false
-    }
-    
-    private fun handleFlowerChoiceClick(event: MotionEvent): Boolean {
-        // Clic sur la marguerite
-        val flowerButtonX = width / 2f
-        val flowerButtonY = height / 2f
-        val flowerButtonRadius = width * 0.2f
-        
-        val dx = event.x - flowerButtonX
-        val dy = event.y - flowerButtonY
-        val distance = sqrt(dx * dx + dy * dy)
-        
-        if (distance <= flowerButtonRadius) {
-            // Marguerite sélectionnée - aller à INSPIREZ
-            lightState = LightState.YELLOW
-            stateStartTime = System.currentTimeMillis()
-            return true
         }
         return false
     }
