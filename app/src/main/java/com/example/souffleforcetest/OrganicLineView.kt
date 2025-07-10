@@ -1,4 +1,13 @@
-package com.example.souffleforcetest
+// Mettre à jour le défi si en mode DÉFI
+        if (selectedMode == "DÉFI" && challengeManager.getCurrentChallenge() != null) {
+            val plantState = when (lightState) {
+                LightState.GREEN_GROW -> "STEM"
+                LightState.GREEN_LEAVES -> "LEAVES" 
+                LightState.GREEN_FLOWER -> "FLOWER"
+                else -> "OTHER"
+            }
+            challengeManager.updateChallengeProgress(force, plantState)
+        }package com.example.souffleforcetest
 
 import android.content.Context
 import android.graphics.Canvas
@@ -28,9 +37,11 @@ class OrganicLineView @JvmOverloads constructor(
     
     private var plantStem: PlantStem? = null
     private lateinit var uiDrawing: UIDrawingManager
+    private val challengeManager = ChallengeManager()
+    private var selectedChallengeId = -1
     
     enum class LightState {
-        START, FLOWER_CHOICE, YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, RED
+        START, FLOWER_CHOICE, CHALLENGE_SELECTION, CHALLENGE_BRIEF, YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, CHALLENGE_RESULT, RED
     }
     
     // ==================== GESTION DE L'ÉCRAN ====================
@@ -92,6 +103,16 @@ class OrganicLineView @JvmOverloads constructor(
             LightState.FLOWER_CHOICE -> {
                 // Reste en FLOWER_CHOICE jusqu'à ce qu'on choisisse une fleur
             }
+            LightState.CHALLENGE_SELECTION -> {
+                // Reste en CHALLENGE_SELECTION jusqu'à ce qu'on choisisse un défi
+            }
+            LightState.CHALLENGE_BRIEF -> {
+                // Auto-transition après 3 secondes
+                if (elapsedTime >= 3000) {
+                    lightState = LightState.YELLOW
+                    stateStartTime = currentTime
+                }
+            }
             LightState.YELLOW -> {
                 if (elapsedTime >= 2000) { 
                     lightState = LightState.GREEN_GROW
@@ -112,6 +133,19 @@ class OrganicLineView @JvmOverloads constructor(
             }
             LightState.GREEN_FLOWER -> {
                 if (elapsedTime >= 4000) { // 4 secondes au lieu de 5
+                    // Vérifier si on est en mode défi
+                    if (selectedMode == "DÉFI") {
+                        val result = challengeManager.finalizeChallengeResult()
+                        lightState = LightState.CHALLENGE_RESULT
+                    } else {
+                        lightState = LightState.RED
+                    }
+                    stateStartTime = currentTime
+                }
+            }
+            LightState.CHALLENGE_RESULT -> {
+                // Auto-transition après 4 secondes
+                if (elapsedTime >= 4000) {
                     lightState = LightState.RED
                     stateStartTime = currentTime
                 }
@@ -131,10 +165,13 @@ class OrganicLineView @JvmOverloads constructor(
         val timeRemaining = when (lightState) {
             LightState.START -> 0
             LightState.FLOWER_CHOICE -> 0
+            LightState.CHALLENGE_SELECTION -> 0
+            LightState.CHALLENGE_BRIEF -> max(0, 3 - (elapsedTime / 1000))
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
             LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))
             LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000))
             LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000))
+            LightState.CHALLENGE_RESULT -> max(0, 4 - (elapsedTime / 1000))
             LightState.RED -> 0
         }
         
@@ -147,7 +184,7 @@ class OrganicLineView @JvmOverloads constructor(
         }
         
         // Déléguer tout l'affichage UI au UIDrawingManager
-        uiDrawing.drawCurrentState(canvas, lightState, timeRemaining, resetButtonX, resetButtonY, resetButtonRadius)
+        uiDrawing.drawCurrentState(canvas, lightState, timeRemaining, resetButtonX, resetButtonY, resetButtonRadius, challengeManager)
     }
     
     private fun drawPlantStem(canvas: Canvas) {
@@ -212,6 +249,8 @@ class OrganicLineView @JvmOverloads constructor(
                 return handleStartButtonClick(event)
             } else if (lightState == LightState.FLOWER_CHOICE) {
                 return handleFlowerChoiceClick(event)
+            } else if (lightState == LightState.CHALLENGE_SELECTION) {
+                return handleChallengeSelectionClick(event)
             } else if (lightState == LightState.RED) {
                 return handleResetButtonClick(event)
             }
@@ -245,11 +284,43 @@ class OrganicLineView @JvmOverloads constructor(
             stateStartTime = System.currentTimeMillis()
             return true
         } else if (defiDistance <= buttonRadius) {
-            // Mode DÉFI sélectionné - aller directement à INSPIREZ
+            // Mode DÉFI sélectionné - aller à la sélection de défi
             selectedMode = "DÉFI"
-            lightState = LightState.YELLOW
+            lightState = LightState.CHALLENGE_SELECTION
             stateStartTime = System.currentTimeMillis()
             return true
+        }
+        return false
+    }
+    
+    private fun handleChallengeSelectionClick(event: MotionEvent): Boolean {
+        // Zone des 3 boutons de défi (calculée dans UIDrawingManager)
+        val buttonWidth = screenWidth * 0.25f
+        val buttonHeight = screenHeight * 0.12f
+        val startY = screenHeight * 0.4f
+        val centerX = screenWidth / 2f
+        
+        for (i in 1..3) {
+            val buttonY = startY + (i - 1) * (buttonHeight + 30f)
+            val buttonLeft = centerX - buttonWidth / 2f
+            val buttonRight = centerX + buttonWidth / 2f
+            val buttonTop = buttonY - buttonHeight / 2f
+            val buttonBottom = buttonY + buttonHeight / 2f
+            
+            if (event.x >= buttonLeft && event.x <= buttonRight && 
+                event.y >= buttonTop && event.y <= buttonBottom) {
+                
+                val challenges = challengeManager.getMargueriteChallenges()
+                val challenge = challenges.find { it.id == i }
+                
+                if (challenge?.isUnlocked == true) {
+                    selectedChallengeId = i
+                    challengeManager.startChallenge(i)
+                    lightState = LightState.CHALLENGE_BRIEF
+                    stateStartTime = System.currentTimeMillis()
+                    return true
+                }
+            }
         }
         return false
     }
