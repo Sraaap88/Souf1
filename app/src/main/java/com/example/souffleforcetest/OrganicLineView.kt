@@ -243,6 +243,29 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
+    private fun drawSingleButton(canvas: Canvas, x: Float, y: Float, radius: Float, color: Int, text: String) {
+        // Ombre
+        resetButtonPaint.color = 0x40000000.toInt()
+        canvas.drawCircle(x + 8f, y + 8f, radius, resetButtonPaint)
+        
+        // Bouton
+        resetButtonPaint.color = color
+        canvas.drawCircle(x, y, radius, resetButtonPaint)
+        
+        // Bordure
+        resetButtonPaint.color = 0xFF333333.toInt()
+        resetButtonPaint.style = Paint.Style.STROKE
+        resetButtonPaint.strokeWidth = 8f
+        canvas.drawCircle(x, y, radius, resetButtonPaint)
+        resetButtonPaint.style = Paint.Style.FILL
+        
+        // Texte
+        resetTextPaint.textAlign = Paint.Align.CENTER
+        resetTextPaint.textSize = 80f  // Réduit pour les boutons plus petits
+        resetTextPaint.color = 0xFFFFFFFF.toInt()
+        canvas.drawText(text, x, y + 10f, resetTextPaint)
+    }
+    
     private fun drawBranches(canvas: Canvas, branches: List<PlantStem.Branch>) {
         branchPaint.color = Color.rgb(40, 100, 40)
         
@@ -324,33 +347,12 @@ class OrganicLineView @JvmOverloads constructor(
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - stateStartTime
         
-        val lightRadius = if (lightState == LightState.START || lightState == LightState.YELLOW) width * 0.25f else resetButtonRadius
-        val lightX = if (lightState == LightState.START || lightState == LightState.YELLOW) width * 0.3f else resetButtonX
-        val lightY = if (lightState == LightState.START || lightState == LightState.YELLOW) height / 2f else resetButtonY
+        // Calculer les positions selon l'état
+        val lightRadius = if (lightState == LightState.START) width * 0.25f else resetButtonRadius
+        val lightX = if (lightState == LightState.START) width * 0.3f else resetButtonX
+        val lightY = if (lightState == LightState.START) height / 2f else resetButtonY
         
-        // Ombre
-        resetButtonPaint.color = 0x40000000.toInt()
-        canvas.drawCircle(lightX + 8f, lightY + 8f, lightRadius, resetButtonPaint)
-        
-        // Couleur selon l'état
-        resetButtonPaint.color = when (lightState) {
-            LightState.START -> 0xFFFFDAAA.toInt()       // Orange pâle
-            LightState.YELLOW -> 0xFFFFD700.toInt()
-            LightState.GREEN_GROW -> 0xFF2F4F2F.toInt()
-            LightState.GREEN_LEAVES -> 0xFF00FF00.toInt()
-            LightState.GREEN_FLOWER -> 0xFFFF69B4.toInt()
-            LightState.RED -> 0xFFFF0000.toInt()
-        }
-        canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
-        
-        // Bordure
-        resetButtonPaint.color = 0xFF333333.toInt()
-        resetButtonPaint.style = Paint.Style.STROKE
-        resetButtonPaint.strokeWidth = 12f
-        canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
-        resetButtonPaint.style = Paint.Style.FILL
-        
-        // Texte et timer
+        // Timer pour tous les états
         val timeRemaining = when (lightState) {
             LightState.START -> 0
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))      // 2 secondes
@@ -361,26 +363,76 @@ class OrganicLineView @JvmOverloads constructor(
         }
         
         if (lightState == LightState.START) {
-            resetTextPaint.textAlign = Paint.Align.CENTER
-            resetTextPaint.textSize = 120f
-            resetTextPaint.color = 0xFFFFFFFF.toInt()
-            canvas.drawText("ZEN", lightX, lightY, resetTextPaint)
+            // Calculer positions des deux boutons
+            val buttonRadius = width * 0.15f  // Réduit pour faire de la place aux deux
+            val spacing = buttonRadius * 2.5f  // Espacement entre les boutons
+            val zenButtonX = width * 0.25f     // Premier bouton un peu plus vers la gauche
+            val defiButtonX = zenButtonX + spacing  // Deuxième bouton à côté
+            val buttonY = height / 2f
+            
+            // Dessiner bouton ZEN (orange pâle)
+            drawSingleButton(canvas, zenButtonX, buttonY, buttonRadius, 0xFFFFDAAA.toInt(), "ZEN")
+            
+            // Dessiner bouton DÉFI (orange feu)
+            drawSingleButton(canvas, defiButtonX, buttonY, buttonRadius, 0xFFFF4500.toInt(), "DÉFI")
+            
         } else if (lightState == LightState.YELLOW) {
+            // Pas de cercle, juste le texte au centre en blanc
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 180f
-            resetTextPaint.color = 0xFF000000.toInt()
-            canvas.drawText("INSPIREZ", lightX, lightY, resetTextPaint)
+            resetTextPaint.color = 0xFFFFFFFF.toInt() // Blanc
+            canvas.drawText("INSPIREZ", width / 2f, height / 2f, resetTextPaint)
             
             if (timeRemaining > 0) {
                 resetTextPaint.textSize = 108f
-                canvas.drawText(timeRemaining.toString(), lightX, lightY + 144f, resetTextPaint)
+                canvas.drawText(timeRemaining.toString(), width / 2f, height / 2f + 144f, resetTextPaint)
             }
+            
         } else if (lightState == LightState.RED) {
+            // Dessiner le bouton RESET
+            // Ombre
+            resetButtonPaint.color = 0x40000000.toInt()
+            canvas.drawCircle(lightX + 8f, lightY + 8f, lightRadius, resetButtonPaint)
+            
+            // Bouton rouge
+            resetButtonPaint.color = 0xFFFF0000.toInt()
+            canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
+            
+            // Bordure
+            resetButtonPaint.color = 0xFF333333.toInt()
+            resetButtonPaint.style = Paint.Style.STROKE
+            resetButtonPaint.strokeWidth = 12f
+            canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
+            resetButtonPaint.style = Paint.Style.FILL
+            
+            // Texte reset
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 120f
             resetTextPaint.color = 0xFF000000.toInt()
             canvas.drawText("↻", lightX, lightY, resetTextPaint)
+            
         } else {
+            // Phases vertes - dessiner les cercles normaux
+            // Ombre
+            resetButtonPaint.color = 0x40000000.toInt()
+            canvas.drawCircle(lightX + 8f, lightY + 8f, lightRadius, resetButtonPaint)
+            
+            // Couleur selon l'état
+            resetButtonPaint.color = when (lightState) {
+                LightState.GREEN_GROW -> 0xFF2F4F2F.toInt()
+                LightState.GREEN_LEAVES -> 0xFF00FF00.toInt()
+                LightState.GREEN_FLOWER -> 0xFFFF69B4.toInt()
+                else -> 0xFF00AA00.toInt()
+            }
+            canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
+            
+            // Bordure
+            resetButtonPaint.color = 0xFF333333.toInt()
+            resetButtonPaint.style = Paint.Style.STROKE
+            resetButtonPaint.strokeWidth = 12f
+            canvas.drawCircle(lightX, lightY, lightRadius, resetButtonPaint)
+            resetButtonPaint.style = Paint.Style.FILL
+            
             // Texte pour les phases vertes
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 60f
@@ -407,16 +459,30 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN) {
             if (lightState == LightState.START) {
-                // Appui sur le bouton ZEN
-                val zenX = width * 0.3f
-                val zenY = height / 2f
-                val radius = width * 0.25f
+                // Calculer positions des boutons (même calcul que dans drawTrafficLight)
+                val buttonRadius = width * 0.15f
+                val spacing = buttonRadius * 2.5f
+                val zenButtonX = width * 0.25f
+                val defiButtonX = zenButtonX + spacing
+                val buttonY = height / 2f
                 
-                val dx = event.x - zenX
-                val dy = event.y - zenY
-                val distance = sqrt(dx * dx + dy * dy)
+                // Vérifier clic sur bouton ZEN
+                val zenDx = event.x - zenButtonX
+                val zenDy = event.y - buttonY
+                val zenDistance = sqrt(zenDx * zenDx + zenDy * zenDy)
                 
-                if (distance <= radius) {
+                // Vérifier clic sur bouton DÉFI
+                val defiDx = event.x - defiButtonX
+                val defiDy = event.y - buttonY
+                val defiDistance = sqrt(defiDx * defiDx + defiDy * defiDy)
+                
+                if (zenDistance <= buttonRadius) {
+                    // Mode ZEN sélectionné
+                    lightState = LightState.YELLOW
+                    stateStartTime = System.currentTimeMillis()
+                    return true
+                } else if (defiDistance <= buttonRadius) {
+                    // Mode DÉFI sélectionné (même comportement pour l'instant)
                     lightState = LightState.YELLOW
                     stateStartTime = System.currentTimeMillis()
                     return true
