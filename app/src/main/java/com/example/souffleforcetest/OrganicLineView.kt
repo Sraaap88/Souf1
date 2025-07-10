@@ -99,7 +99,7 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Charger l'image de marguerite (place ton image dans res/drawable/)
         try {
-            daisyBitmap = BitmapFactory.decodeResource(context.resources, android.R.drawable.ic_menu_gallery)
+            daisyBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.marguerite)
             // REMPLACE android.R.drawable.ic_menu_gallery par R.drawable.ton_nom_image
             // Exemple: R.drawable.marguerite si ton fichier s'appelle marguerite.png
         } catch (e: Exception) {
