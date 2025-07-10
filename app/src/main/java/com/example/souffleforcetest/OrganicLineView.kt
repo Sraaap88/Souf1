@@ -2,6 +2,7 @@ package com.example.souffleforcetest
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -23,10 +24,12 @@ class OrganicLineView @JvmOverloads constructor(
     private var lightState = LightState.START
     private var stateStartTime = 0L
     private var selectedMode = ""  // "ZEN" ou "DÉFI"
+    private var selectedFlowerType = "MARGUERITE"  // "MARGUERITE" ou "ROSE"
     
     // ==================== LOGIQUE DE PLANTE ====================
     
     private var plantStem: PlantStem? = null
+    private var roseBushManager: RoseBushManager? = null
     private lateinit var uiDrawing: UIDrawingManager
     private val challengeManager = ChallengeManager(context)
     private var selectedChallengeId = -1
@@ -44,11 +47,13 @@ class OrganicLineView @JvmOverloads constructor(
         resetButtonY = resetButtonRadius + 80f
         
         plantStem = PlantStem(w, h)
+        roseBushManager = RoseBushManager(w, h)
         uiDrawing = UIDrawingManager(context, w, h, challengeManager)
         
-        // NOUVEAU: Injecter le ChallengeManager dans le FlowerManager et mettre à jour les dimensions
+        // Injecter le ChallengeManager dans les gestionnaires
         challengeManager.updateScreenDimensions(w, h)
         plantStem?.getFlowerManager()?.setChallengeManager(challengeManager)
+        roseBushManager?.setChallengeManager(challengeManager)
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -58,26 +63,51 @@ class OrganicLineView @JvmOverloads constructor(
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
         selectedMode = ""
+        selectedFlowerType = "MARGUERITE"
         plantStem?.resetStem()
+        roseBushManager?.reset()
         invalidate()
     }
     
     fun updateForce(force: Float) {
         updateLightState()
         
-        if (lightState == LightState.GREEN_GROW) {
-            val phaseTime = System.currentTimeMillis() - stateStartTime
-            plantStem?.processStemGrowth(force, phaseTime)
-        }
-        
-        // AJOUT - Croissance des feuilles pendant GREEN_LEAVES
-        if (lightState == LightState.GREEN_LEAVES) {
-            plantStem?.processLeavesGrowth(force)
-        }
-        
-        // AJOUT - Croissance des fleurs pendant GREEN_FLOWER
-        if (lightState == LightState.GREEN_FLOWER) {
-            plantStem?.processFlowerGrowth(force)
+        if (selectedFlowerType == "MARGUERITE") {
+            // Logique existante pour la marguerite
+            if (lightState == LightState.GREEN_GROW) {
+                val phaseTime = System.currentTimeMillis() - stateStartTime
+                plantStem?.processStemGrowth(force, phaseTime)
+            }
+            
+            if (lightState == LightState.GREEN_LEAVES) {
+                plantStem?.processLeavesGrowth(force)
+            }
+            
+            if (lightState == LightState.GREEN_FLOWER) {
+                plantStem?.processFlowerGrowth(force)
+            }
+            
+            if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
+                showResetButton = true
+            }
+        } else if (selectedFlowerType == "ROSE") {
+            // Nouvelle logique pour le rosier
+            if (lightState == LightState.GREEN_GROW) {
+                roseBushManager?.processStemGrowth(force)
+            }
+            
+            if (lightState == LightState.GREEN_LEAVES) {
+                roseBushManager?.processLeavesGrowth(force)
+            }
+            
+            if (lightState == LightState.GREEN_FLOWER) {
+                roseBushManager?.processFlowerGrowth(force)
+            }
+            
+            // Bouton reset pour le rosier
+            if (!showResetButton) {
+                showResetButton = true
+            }
         }
         
         // Mettre à jour le défi si en mode DÉFI
@@ -89,10 +119,6 @@ class OrganicLineView @JvmOverloads constructor(
                 else -> "OTHER"
             }
             challengeManager.updateChallengeProgress(force, plantState)
-        }
-        
-        if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
-            showResetButton = true
         }
         
         invalidate()
@@ -126,19 +152,19 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.GREEN_GROW -> {
-                if (elapsedTime >= 4000) { // 4 secondes au lieu de 5
+                if (elapsedTime >= 4000) { // 4 secondes
                     lightState = LightState.GREEN_LEAVES
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_LEAVES -> {
-                if (elapsedTime >= 3000) { // 3 secondes au lieu de 4
+                if (elapsedTime >= 3000) { // 3 secondes
                     lightState = LightState.GREEN_FLOWER
                     stateStartTime = currentTime
                 }
             }
             LightState.GREEN_FLOWER -> {
-                if (elapsedTime >= 4000) { // 4 secondes au lieu de 5
+                if (elapsedTime >= 4000) { // 4 secondes
                     // Vérifier si on est en mode défi
                     if (selectedMode == "DÉFI") {
                         val result = challengeManager.finalizeChallengeResult()
@@ -181,12 +207,17 @@ class OrganicLineView @JvmOverloads constructor(
             LightState.RED -> 0
         }
         
-        // Dessiner la plante si nécessaire
+        // Dessiner la plante selon le type sélectionné
         if (lightState == LightState.GREEN_GROW || 
             lightState == LightState.GREEN_LEAVES || 
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
-            drawPlantStem(canvas)
+            
+            if (selectedFlowerType == "MARGUERITE") {
+                drawPlantStem(canvas)
+            } else if (selectedFlowerType == "ROSE") {
+                drawRoseBush(canvas)
+            }
         }
         
         // Déléguer tout l'affichage UI au UIDrawingManager
@@ -196,7 +227,7 @@ class OrganicLineView @JvmOverloads constructor(
     private fun drawPlantStem(canvas: Canvas) {
         val stem = plantStem ?: return
         
-        // AJOUT - Dessiner les fleurs de profil/arrière DERRIÈRE les tiges
+        // Dessiner les fleurs de profil/arrière DERRIÈRE les tiges
         if (lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
             drawBackgroundFlowers(canvas, stem.getFlowers())
@@ -208,17 +239,39 @@ class OrganicLineView @JvmOverloads constructor(
         // Dessiner les branches
         drawBranches(canvas, stem.branches)
         
-        // AJOUT - Dessiner les feuilles pendant GREEN_LEAVES et après
+        // Dessiner les feuilles pendant GREEN_LEAVES et après
         if (lightState == LightState.GREEN_LEAVES || 
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
             drawLeaves(canvas, stem.getLeaves())
         }
         
-        // AJOUT - Dessiner les fleurs de face/3-4 PAR-DESSUS les tiges
+        // Dessiner les fleurs de face/3-4 PAR-DESSUS les tiges
         if (lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
             drawForegroundFlowers(canvas, stem.getFlowers())
+        }
+    }
+    
+    private fun drawRoseBush(canvas: Canvas) {
+        roseBushManager?.let { manager ->
+            val branchPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.STROKE
+                strokeCap = Paint.Cap.ROUND
+            }
+            
+            val leafPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.FILL
+            }
+            
+            val flowerPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.FILL
+            }
+            
+            manager.drawRoseBush(canvas, branchPaint, leafPaint, flowerPaint)
         }
     }
     
@@ -300,17 +353,34 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun handleFlowerChoiceClick(event: MotionEvent): Boolean {
-        // Clic sur la marguerite
-        val flowerButtonX = width / 2f
-        val flowerButtonY = height / 2f
-        val flowerButtonRadius = width * 0.2f
+        val flowerButtonRadius = width * 0.15f
+        val spacing = flowerButtonRadius * 3f
+        val centerX = width / 2f
+        val buttonY = height / 2f
         
-        val dx = event.x - flowerButtonX
-        val dy = event.y - flowerButtonY
-        val distance = sqrt(dx * dx + dy * dy)
+        // Marguerite (gauche)
+        val margueriteX = centerX - spacing / 2f
+        val margueriteDx = event.x - margueriteX
+        val margueriteDy = event.y - buttonY
+        val margueriteDistance = sqrt(margueriteDx * margueriteDx + margueriteDy * margueriteDy)
         
-        if (distance <= flowerButtonRadius) {
-            // Marguerite sélectionnée - aller à INSPIREZ
+        // Rose (droite)
+        val roseX = centerX + spacing / 2f
+        val roseDx = event.x - roseX
+        val roseDy = event.y - buttonY
+        val roseDistance = sqrt(roseDx * roseDx + roseDy * roseDy)
+        
+        if (margueriteDistance <= flowerButtonRadius * 1.5f) {
+            // Marguerite sélectionnée
+            selectedFlowerType = "MARGUERITE"
+            initializePlant()
+            lightState = LightState.YELLOW
+            stateStartTime = System.currentTimeMillis()
+            return true
+        } else if (roseDistance <= flowerButtonRadius * 1.5f && challengeManager.isFlowerUnlocked("ROSE")) {
+            // Rose sélectionnée (si débloquée)
+            selectedFlowerType = "ROSE"
+            initializePlant()
             lightState = LightState.YELLOW
             stateStartTime = System.currentTimeMillis()
             return true
@@ -318,11 +388,18 @@ class OrganicLineView @JvmOverloads constructor(
         return false
     }
     
+    private fun initializePlant() {
+        if (selectedFlowerType == "ROSE") {
+            roseBushManager?.initialize(width / 2f, height * 0.85f)
+        }
+        // La marguerite s'initialise automatiquement dans PlantStem
+    }
+    
     private fun handleChallengeSelectionClick(event: MotionEvent): Boolean {
         // Zone des 3 boutons de défi (calculée dans UIDrawingManager)
         val buttonWidth = width * 0.25f
         val buttonHeight = height * 0.12f
-        val startY = height * 0.4f
+        val startY = height * 0.45f  // Ajusté pour le nouveau titre
         val centerX = width / 2f
         
         for (i in 1..3) {
