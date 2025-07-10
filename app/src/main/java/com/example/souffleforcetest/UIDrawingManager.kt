@@ -86,9 +86,9 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     fun drawCurrentState(canvas: Canvas, lightState: OrganicLineView.LightState, timeRemaining: Long, 
                         resetButtonX: Float, resetButtonY: Float, resetButtonRadius: Float, challengeManager: ChallengeManager) {
         
-        // Dessiner la zone cible AVANT tout le reste si défi actif (seulement pour défi 1 - zone verte)
-        if (challengeManager.getCurrentChallenge()?.id == 1 && shouldShowTargetZone(lightState)) {
-            drawTargetZone(canvas)
+        // Dessiner la zone cible AVANT tout le reste si défi actif
+        if ((challengeManager.getCurrentChallenge()?.id == 1 || challengeManager.getCurrentChallenge()?.id == 3) && shouldShowTargetZone(lightState)) {
+            drawTargetZone(canvas, challengeManager.getCurrentChallenge()?.id ?: 1)
         }
         
         when (lightState) {
@@ -422,10 +422,28 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         }
     }
     
-    private fun drawTargetZone(canvas: Canvas) {
-        // Zone au 1/3 de l'écran, 2 fois plus large que la version actuelle
-        val zoneTop = screenHeight / 3f - 60f      // 1/3 de l'écran moins 60px
-        val zoneBottom = screenHeight / 3f + 360f  // 1/3 de l'écran plus 360px (2x plus large que les 180px actuels)
+    private fun drawTargetZone(canvas: Canvas, challengeId: Int = 1) {
+        val zoneTop: Float
+        val zoneBottom: Float
+        
+        when (challengeId) {
+            1 -> {
+                // Défi 1: Zone au 1/3 de l'écran, 2 fois plus large que la version actuelle
+                zoneTop = screenHeight / 3f - 60f      // 1/3 de l'écran moins 60px
+                zoneBottom = screenHeight / 3f + 360f  // 1/3 de l'écran plus 360px (420px total)
+            }
+            3 -> {
+                // Défi 3: Zone verte de 240px total (120px haut + 120px bas)
+                zoneTop = screenHeight / 3f - 120f     // 1/3 de l'écran moins 120px
+                zoneBottom = screenHeight / 3f + 120f  // 1/3 de l'écran plus 120px (240px total)
+            }
+            else -> {
+                // Par défaut défi 1
+                zoneTop = screenHeight / 3f - 60f
+                zoneBottom = screenHeight / 3f + 360f
+            }
+        }
+        
         val zoneLeft = 0f
         val zoneRight = screenWidth.toFloat()
         
