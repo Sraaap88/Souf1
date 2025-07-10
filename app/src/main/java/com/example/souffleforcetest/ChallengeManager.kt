@@ -16,6 +16,12 @@ class ChallengeManager(private val context: Context? = null) {
         var isUnlocked: Boolean = true  // Pour l'instant tous débloqués
     )
     
+    data class UnlockedFlower(
+        val flowerType: String,  // "MARGUERITE", "ROSE", etc.
+        val unlockedBy: String,  // "Défi 3 Marguerite", etc.
+        val dateUnlocked: Long = System.currentTimeMillis()
+    )
+    
     // ==================== DÉFIS MARGUERITE ====================
     
     private val margueriteChallenges = listOf(
@@ -157,13 +163,18 @@ class ChallengeManager(private val context: Context? = null) {
             challenge.isCompleted = true
             unlockNextChallenge(challenge.id)
             
-            // NOUVEAU: Sauvegarder automatiquement après succès
+            // NOUVEAU: Débloquer la Rose si défi 3 de marguerite complété
+            if (challenge.id == 3) {
+                unlockRoseFlower()
+            }
+            
+            // Sauvegarder automatiquement après succès
             saveChallengeProgress()
             
             val successMessage = when (challenge.id) {
                 1 -> "Défi réussi! ${flowersInZone.size} fleur dans la zone!"
                 2 -> "Défi réussi! ${budsCreated.size} bourgeons créés!"
-                3 -> "Défi réussi! ${flowersInZoneDefi3.size} fleurs + ${budsCreatedDefi3.size} bourgeon!"  // NOUVEAU
+                3 -> "Défi réussi! ${flowersInZoneDefi3.size} fleurs + ${budsCreatedDefi3.size} bourgeon!\n🌹 ROSE DÉBLOQUÉE!"
                 else -> "Défi réussi!"
             }
             
@@ -256,6 +267,25 @@ class ChallengeManager(private val context: Context? = null) {
     
     // ==================== LOGIQUE TEMPORAIRE SUPPRIMÉE ====================
     
+    // ==================== GESTION DES FLEURS DÉBLOQUÉES ====================
+    
+    private fun unlockRoseFlower() {
+        if (unlockedFlowers.none { it.flowerType == "ROSE" }) {
+            unlockedFlowers.add(UnlockedFlower("ROSE", "Défi 3 Marguerite complété"))
+            println("🌹 ROSE DÉBLOQUÉE! Complétez le défi 3 de la marguerite!")
+        }
+    }
+    
+    fun getUnlockedFlowers(): List<UnlockedFlower> = unlockedFlowers.toList()
+    
+    fun isFlowerUnlocked(flowerType: String): Boolean {
+        return unlockedFlowers.any { it.flowerType == flowerType }
+    }
+    
+    fun getFlowerUnlockMessage(flowerType: String): String? {
+        return unlockedFlowers.find { it.flowerType == flowerType }?.unlockedBy
+    }
+    
     // ==================== GESTION DU DÉBLOCAGE ====================
     
     private fun unlockNextChallenge(completedId: Int) {
@@ -295,6 +325,15 @@ class ChallengeManager(private val context: Context? = null) {
             editor.putBoolean("challenge_${challenge.id}_unlocked", challenge.isUnlocked)
         }
         
+        // NOUVEAU: Sauvegarder les fleurs débloquées
+        editor.putInt("unlocked_flowers_count", unlockedFlowers.size)
+        for (i in unlockedFlowers.indices) {
+            val flower = unlockedFlowers[i]
+            editor.putString("unlocked_flower_${i}_type", flower.flowerType)
+            editor.putString("unlocked_flower_${i}_unlocked_by", flower.unlockedBy)
+            editor.putLong("unlocked_flower_${i}_date", flower.dateUnlocked)
+        }
+        
         // Sauvegarder la dernière mise à jour
         editor.putLong("last_save_time", System.currentTimeMillis())
         
@@ -318,11 +357,33 @@ class ChallengeManager(private val context: Context? = null) {
             }
         }
         
+        // NOUVEAU: Charger les fleurs débloquées
+        unlockedFlowers.clear()
+        
+        // Marguerite toujours débloquée par défaut
+        unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
+        
+        val flowerCount = prefs.getInt("unlocked_flowers_count", 1)
+        for (i in 0 until flowerCount) {
+            val flowerType = prefs.getString("unlocked_flower_${i}_type", null)
+            val unlockedBy = prefs.getString("unlocked_flower_${i}_unlocked_by", null)
+            val dateUnlocked = prefs.getLong("unlocked_flower_${i}_date", System.currentTimeMillis())
+            
+            if (flowerType != null && unlockedBy != null && flowerType != "MARGUERITE") {
+                // Éviter les doublons avec la marguerite par défaut
+                if (unlockedFlowers.none { it.flowerType == flowerType }) {
+                    unlockedFlowers.add(UnlockedFlower(flowerType, unlockedBy, dateUnlocked))
+                }
+            }
+        }
+        
         val lastSaveTime = prefs.getLong("last_save_time", 0L)
         if (lastSaveTime > 0) {
             println("Progression chargée depuis: ${java.util.Date(lastSaveTime)}")
             val completed = margueriteChallenges.count { it.isCompleted }
+            val flowers = unlockedFlowers.map { it.flowerType }.joinToString(", ")
             println("Défis complétés: $completed/3")
+            println("Fleurs débloquées: $flowers")
         }
     }
     
@@ -332,6 +393,10 @@ class ChallengeManager(private val context: Context? = null) {
             it.isUnlocked = (it.id == 1)  // Seul le premier débloqué
         }
         
+        // NOUVEAU: Reset des fleurs débloquées (garder seulement la marguerite)
+        unlockedFlowers.clear()
+        unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
+        
         // Supprimer la sauvegarde
         sharedPrefs?.edit()?.clear()?.apply()
         println("Progression réinitialisée!")
@@ -340,12 +405,14 @@ class ChallengeManager(private val context: Context? = null) {
     fun exportSaveData(): String {
         val completed = margueriteChallenges.filter { it.isCompleted }.map { it.id }
         val unlocked = margueriteChallenges.filter { it.isUnlocked }.map { it.id }
+        val flowers = unlockedFlowers.map { "${it.flowerType} (${it.unlockedBy})" }
         
         return """
             |=== SAUVEGARDE DÉFIS MARGUERITE ===
             |Défis complétés: ${completed.joinToString(", ")}
             |Défis débloqués: ${unlocked.joinToString(", ")}
             |Progression: ${completed.size}/3 défis
+            |Fleurs débloquées: ${flowers.joinToString(", ")}
             |Dernière sauvegarde: ${java.util.Date()}
         """.trimMargin()
     }
