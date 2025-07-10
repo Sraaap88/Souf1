@@ -248,30 +248,6 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    private fun drawSingleButton(canvas: Canvas, x: Float, y: Float, radius: Float, color: Int, text: String) {
-        // Ombre
-        resetButtonPaint.color = 0x40000000.toInt()
-        canvas.drawCircle(x + 8f, y + 8f, radius, resetButtonPaint)
-        
-        // Bouton
-        resetButtonPaint.color = color
-        canvas.drawCircle(x, y, radius, resetButtonPaint)
-        
-        // Bordure
-        resetButtonPaint.color = 0xFF333333.toInt()
-        resetButtonPaint.style = Paint.Style.STROKE
-        resetButtonPaint.strokeWidth = 8f
-        canvas.drawCircle(x, y, radius, resetButtonPaint)
-        resetButtonPaint.style = Paint.Style.FILL
-        
-        // Texte - 1/4 de hauteur plus bas
-        resetTextPaint.textAlign = Paint.Align.CENTER
-        resetTextPaint.textSize = 80f
-        resetTextPaint.color = 0xFFFFFFFF.toInt()
-        resetTextPaint.isFakeBoldText = false
-        canvas.drawText(text, x, y + 30f, resetTextPaint)  // +30f au lieu de +10f (1/4 de 80f = 20f, mais +30f pour plus visible)
-    }
-    
     private fun drawBranches(canvas: Canvas, branches: List<PlantStem.Branch>) {
         branchPaint.color = Color.rgb(40, 100, 40)
         
@@ -354,8 +330,8 @@ class OrganicLineView @JvmOverloads constructor(
         val elapsedTime = currentTime - stateStartTime
         
         // Calculer les positions selon l'état
-        val lightRadius = if (lightState == LightState.START) width * 0.25f else resetButtonRadius
-        val lightX = if (lightState == LightState.START) width * 0.3f else resetButtonX
+        val lightRadius = if (lightState == LightState.START) width * 0.15f else resetButtonRadius
+        val lightX = if (lightState == LightState.START) width * 0.4f else resetButtonX
         val lightY = if (lightState == LightState.START) height / 2f else resetButtonY
         
         // Timer pour tous les états
@@ -370,11 +346,11 @@ class OrganicLineView @JvmOverloads constructor(
         }
         
         if (lightState == LightState.START) {
-            // Calculer positions des deux boutons
-            val buttonRadius = width * 0.15f  // Réduit pour faire de la place aux deux
-            val spacing = buttonRadius * 2.5f  // Espacement entre les boutons
-            val zenButtonX = width * 0.4f     // Plus centré (était 0.25f)
-            val defiButtonX = zenButtonX + spacing  // Deuxième bouton à côté
+            // Calculer positions des deux boutons - RECENTRÉS
+            val buttonRadius = width * 0.15f
+            val spacing = buttonRadius * 2.5f
+            val zenButtonX = width * 0.4f     // RECENTRÉ (était 0.25f)
+            val defiButtonX = zenButtonX + spacing
             val buttonY = height / 2f
             
             // Dessiner bouton ZEN (bleu marine pour meilleur contraste)
@@ -392,6 +368,7 @@ class OrganicLineView @JvmOverloads constructor(
             resetTextPaint.textAlign = Paint.Align.CENTER
             resetTextPaint.textSize = 180f
             resetTextPaint.color = 0xFFFFFFFF.toInt() // Blanc
+            resetTextPaint.isFakeBoldText = false
             canvas.drawText("INSPIREZ", width / 2f, height / 2f, resetTextPaint)
             
             if (timeRemaining > 0) {
@@ -468,6 +445,97 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
+    private fun drawSingleButton(canvas: Canvas, x: Float, y: Float, radius: Float, color: Int, text: String) {
+        // Ombre
+        resetButtonPaint.color = 0x40000000.toInt()
+        canvas.drawCircle(x + 8f, y + 8f, radius, resetButtonPaint)
+        
+        // Bouton
+        resetButtonPaint.color = color
+        canvas.drawCircle(x, y, radius, resetButtonPaint)
+        
+        // Bordure
+        resetButtonPaint.color = 0xFF333333.toInt()
+        resetButtonPaint.style = Paint.Style.STROKE
+        resetButtonPaint.strokeWidth = 8f
+        canvas.drawCircle(x, y, radius, resetButtonPaint)
+        resetButtonPaint.style = Paint.Style.FILL
+        
+        // Texte - 1/4 de hauteur plus bas
+        resetTextPaint.textAlign = Paint.Align.CENTER
+        resetTextPaint.textSize = 80f
+        resetTextPaint.color = 0xFFFFFFFF.toInt()
+        resetTextPaint.isFakeBoldText = false
+        canvas.drawText(text, x, y + 30f, resetTextPaint)  // +30f au lieu de +10f (1/4 de hauteur plus bas)
+    }
+    
+    private fun drawFlowerChoice(canvas: Canvas) {
+        // Titre
+        resetTextPaint.textAlign = Paint.Align.CENTER
+        resetTextPaint.textSize = 150f
+        resetTextPaint.color = 0xFFFFFFFF.toInt()
+        resetTextPaint.isFakeBoldText = true
+        canvas.drawText("CHOISIR FLEUR", width / 2f, height * 0.25f, resetTextPaint)
+        
+        // Bouton marguerite au centre
+        val flowerButtonX = width / 2f
+        val flowerButtonY = height / 2f
+        val flowerButtonRadius = width * 0.2f  // Plus gros que les boutons start
+        
+        // Dessiner le bouton de base
+        resetButtonPaint.color = 0x40000000.toInt()
+        canvas.drawCircle(flowerButtonX + 8f, flowerButtonY + 8f, flowerButtonRadius, resetButtonPaint)
+        
+        resetButtonPaint.color = 0xFF2D5A27.toInt()  // Vert foncé pour la marguerite
+        canvas.drawCircle(flowerButtonX, flowerButtonY, flowerButtonRadius, resetButtonPaint)
+        
+        resetButtonPaint.color = 0xFF333333.toInt()
+        resetButtonPaint.style = Paint.Style.STROKE
+        resetButtonPaint.strokeWidth = 8f
+        canvas.drawCircle(flowerButtonX, flowerButtonY, flowerButtonRadius, resetButtonPaint)
+        resetButtonPaint.style = Paint.Style.FILL
+        
+        // Dessiner une marguerite miniature à l'intérieur
+        drawMiniDaisy(canvas, flowerButtonX, flowerButtonY, flowerButtonRadius * 0.6f)
+        
+        // Nom de la fleur en dessous
+        resetTextPaint.textSize = 60f
+        resetTextPaint.isFakeBoldText = false
+        canvas.drawText("MARGUERITE", flowerButtonX, flowerButtonY + flowerButtonRadius + 80f, resetTextPaint)
+    }
+    
+    private fun drawMiniDaisy(canvas: Canvas, centerX: Float, centerY: Float, size: Float) {
+        // Dessiner les pétales blancs
+        val petalPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.WHITE
+            strokeWidth = size * 0.08f
+            strokeCap = Paint.Cap.ROUND
+        }
+        
+        // 12 pétales autour du centre
+        for (i in 0..11) {
+            val angle = i * 30f * Math.PI / 180.0
+            val startDistance = size * 0.3f
+            val endDistance = size * 0.8f
+            
+            val startX = centerX + cos(angle).toFloat() * startDistance
+            val startY = centerY + sin(angle).toFloat() * startDistance
+            val endX = centerX + cos(angle).toFloat() * endDistance
+            val endY = centerY + sin(angle).toFloat() * endDistance
+            
+            canvas.drawLine(startX, startY, endX, endY, petalPaint)
+        }
+        
+        // Centre jaune
+        val centerPaint = Paint().apply {
+            isAntiAlias = true
+            color = Color.rgb(255, 200, 50)
+            style = Paint.Style.FILL
+        }
+        canvas.drawCircle(centerX, centerY, size * 0.25f, centerPaint)
+    }
+    
     // ==================== GESTION DES ÉVÉNEMENTS ====================
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -476,7 +544,7 @@ class OrganicLineView @JvmOverloads constructor(
                 // Calculer positions des boutons (même calcul que dans drawTrafficLight)
                 val buttonRadius = width * 0.15f
                 val spacing = buttonRadius * 2.5f
-                val zenButtonX = width * 0.4f     // Plus centré (était 0.25f)
+                val zenButtonX = width * 0.4f     // RECENTRÉ (était 0.25f)
                 val defiButtonX = zenButtonX + spacing
                 val buttonY = height / 2f
                 
