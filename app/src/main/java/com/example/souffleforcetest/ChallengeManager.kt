@@ -1,6 +1,9 @@
 package com.example.souffleforcetest
 
-class ChallengeManager {
+import android.content.Context
+import android.content.SharedPreferences
+
+class ChallengeManager(private val context: Context? = null) {
     
     // ==================== DATA CLASSES ====================
     
@@ -154,6 +157,9 @@ class ChallengeManager {
             challenge.isCompleted = true
             unlockNextChallenge(challenge.id)
             
+            // NOUVEAU: Sauvegarder automatiquement après succès
+            saveChallengeProgress()
+            
             val successMessage = when (challenge.id) {
                 1 -> "Défi réussi! ${flowersInZone.size} fleur dans la zone!"
                 2 -> "Défi réussi! ${budsCreated.size} bourgeons créés!"
@@ -257,13 +263,67 @@ class ChallengeManager {
             1 -> margueriteChallenges.find { it.id == 2 }?.isUnlocked = true
             2 -> margueriteChallenges.find { it.id == 3 }?.isUnlocked = true
         }
+        
+        // NOUVEAU: Sauvegarder après déblocage
+        saveChallengeProgress()
     }
     
-    // ==================== SAUVEGARDE (SIMPLE POUR L'INSTANT) ====================
+    // ==================== FONCTIONS PUBLIQUES POUR LA SAUVEGARDE ====================
     
     fun getCompletionStatus(): String {
         val completed = margueriteChallenges.count { it.isCompleted }
         return "Marguerite: $completed/3 défis"
+    }
+    
+    // ==================== SAUVEGARDE ====================
+    
+    private val sharedPrefs: SharedPreferences? by lazy {
+        context?.getSharedPreferences("challenges_save", Context.MODE_PRIVATE)
+    }
+    
+    init {
+        // Charger la sauvegarde au démarrage
+        loadChallengeProgress()
+    }
+    
+    private fun saveChallengeProgress() {
+        val editor = sharedPrefs?.edit() ?: return
+        
+        // Sauvegarder l'état de chaque défi
+        for (challenge in margueriteChallenges) {
+            editor.putBoolean("challenge_${challenge.id}_completed", challenge.isCompleted)
+            editor.putBoolean("challenge_${challenge.id}_unlocked", challenge.isUnlocked)
+        }
+        
+        // Sauvegarder la dernière mise à jour
+        editor.putLong("last_save_time", System.currentTimeMillis())
+        
+        editor.apply()
+        println("Progression sauvegardée!")
+    }
+    
+    private fun loadChallengeProgress() {
+        val prefs = sharedPrefs ?: return
+        
+        // Charger l'état de chaque défi
+        for (challenge in margueriteChallenges) {
+            challenge.isCompleted = prefs.getBoolean("challenge_${challenge.id}_completed", false)
+            
+            // Logique de déblocage : le premier est toujours débloqué
+            if (challenge.id == 1) {
+                challenge.isUnlocked = true
+            } else {
+                // Les autres se débloquent selon la progression
+                challenge.isUnlocked = prefs.getBoolean("challenge_${challenge.id}_unlocked", false)
+            }
+        }
+        
+        val lastSaveTime = prefs.getLong("last_save_time", 0L)
+        if (lastSaveTime > 0) {
+            println("Progression chargée depuis: ${java.util.Date(lastSaveTime)}")
+            val completed = margueriteChallenges.count { it.isCompleted }
+            println("Défis complétés: $completed/3")
+        }
     }
     
     fun resetAllChallenges() {
@@ -271,6 +331,23 @@ class ChallengeManager {
             it.isCompleted = false
             it.isUnlocked = (it.id == 1)  // Seul le premier débloqué
         }
+        
+        // Supprimer la sauvegarde
+        sharedPrefs?.edit()?.clear()?.apply()
+        println("Progression réinitialisée!")
+    }
+    
+    fun exportSaveData(): String {
+        val completed = margueriteChallenges.filter { it.isCompleted }.map { it.id }
+        val unlocked = margueriteChallenges.filter { it.isUnlocked }.map { it.id }
+        
+        return """
+            |=== SAUVEGARDE DÉFIS MARGUERITE ===
+            |Défis complétés: ${completed.joinToString(", ")}
+            |Défis débloqués: ${unlocked.joinToString(", ")}
+            |Progression: ${completed.size}/3 défis
+            |Dernière sauvegarde: ${java.util.Date()}
+        """.trimMargin()
     }
     
     // ==================== RÉSULTAT ====================
