@@ -346,13 +346,12 @@ class OrganicLineView @JvmOverloads constructor(
         }
         
         if (lightState == LightState.START) {
-            // Calculer positions des deux boutons - CENTRAGE MATHÉMATIQUE
+            // Calculer positions des deux boutons - VRAIMENT CENTRER L'ENSEMBLE
             val buttonRadius = width * 0.15f
             val spacing = buttonRadius * 2.5f  // Distance entre centres
-            val totalWidth = buttonRadius * 2 + spacing + buttonRadius * 2  // Largeur totale des 2 cercles
-            val startX = (width - totalWidth) / 2f + buttonRadius  // Position pour centrer l'ensemble
-            val zenButtonX = startX
-            val defiButtonX = startX + spacing
+            val centerX = width / 2f  // Centre de l'écran
+            val zenButtonX = centerX - spacing / 2f  // Moitié de l'espacement vers la gauche
+            val defiButtonX = centerX + spacing / 2f  // Moitié de l'espacement vers la droite
             val buttonY = height / 2f
             
             // Dessiner bouton ZEN (bleu marine pour meilleur contraste)
@@ -507,60 +506,50 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun drawMiniDaisy(canvas: Canvas, centerX: Float, centerY: Float, size: Float) {
-        // Dessiner les pétales blancs arrondis (comme dans le jeu)
+        // Utiliser l'approche simple qui ressemble à ton image
         val petalPaint = Paint().apply {
             isAntiAlias = true
             color = Color.WHITE
             style = Paint.Style.FILL
         }
         
-        // 20 pétales ovales autour du centre
-        for (i in 0..19) {
-            val angle = i * 18f * Math.PI / 180.0  // 360°/20 = 18°
-            val petalDistance = size * 0.55f
+        // 16 pétales plus simples et arrondis
+        for (i in 0..15) {
+            val angle = i * 22.5f * Math.PI / 180.0  // 360°/16 = 22.5°
+            val petalDistance = size * 0.6f
             
             val petalX = centerX + cos(angle).toFloat() * petalDistance
             val petalY = centerY + sin(angle).toFloat() * petalDistance
             
-            // Dessiner chaque pétale comme un ovale allongé
+            // Pétales plus arrondis et plus courts
             canvas.save()
             canvas.translate(petalX, petalY)
             canvas.rotate((angle * 180.0 / Math.PI).toFloat())
             
-            // Pétale ovale (plus long que large)
-            val petalWidth = size * 0.12f
-            val petalHeight = size * 0.28f
+            val petalWidth = size * 0.15f
+            val petalHeight = size * 0.25f
             canvas.drawOval(-petalWidth/2, -petalHeight/2, petalWidth/2, petalHeight/2, petalPaint)
             
             canvas.restore()
         }
         
-        // Centre jaune avec texture granuleuse
+        // Centre jaune simple comme dans ton image
         val centerPaint = Paint().apply {
             isAntiAlias = true
             color = Color.rgb(255, 200, 50)
             style = Paint.Style.FILL
         }
-        val centerRadius = size * 0.25f
-        canvas.drawCircle(centerX, centerY, centerRadius, centerPaint)
+        canvas.drawCircle(centerX, centerY, size * 0.22f, centerPaint)
         
-        // Ajouter texture granuleuse au centre
+        // Quelques petits points pour la texture
         val texturePaint = Paint().apply {
             isAntiAlias = true
-            color = Color.rgb(230, 170, 30)
+            color = Color.rgb(200, 150, 30)
             style = Paint.Style.FILL
         }
-        
-        // Points de texture basés sur la position (pour cohérence)
-        val seed = (centerX + centerY).toInt()
-        for (i in 0..12) {
-            val textureAngle = (seed + i * 27) % 360 * Math.PI / 180.0
-            val textureDistance = ((seed + i * 13) % 80) / 100f * centerRadius * 0.7f
-            val pointX = centerX + cos(textureAngle).toFloat() * textureDistance
-            val pointY = centerY + sin(textureAngle).toFloat() * textureDistance
-            
-            canvas.drawCircle(pointX, pointY, size * 0.02f, texturePaint)
-        }
+        canvas.drawCircle(centerX - size * 0.08f, centerY, size * 0.015f, texturePaint)
+        canvas.drawCircle(centerX + size * 0.06f, centerY - size * 0.05f, size * 0.015f, texturePaint)
+        canvas.drawCircle(centerX, centerY + size * 0.08f, size * 0.015f, texturePaint)
     }
     
     // ==================== GESTION DES ÉVÉNEMENTS ====================
@@ -568,13 +557,12 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN) {
             if (lightState == LightState.START) {
-                // Calculer positions des boutons - CENTRAGE MATHÉMATIQUE
+                // Calculer positions des boutons - VRAIMENT CENTRER L'ENSEMBLE
                 val buttonRadius = width * 0.15f
                 val spacing = buttonRadius * 2.5f
-                val totalWidth = buttonRadius * 2 + spacing + buttonRadius * 2
-                val startX = (width - totalWidth) / 2f + buttonRadius
-                val zenButtonX = startX
-                val defiButtonX = startX + spacing
+                val centerX = width / 2f
+                val zenButtonX = centerX - spacing / 2f
+                val defiButtonX = centerX + spacing / 2f
                 val buttonY = height / 2f
                 
                 // Vérifier clic sur bouton ZEN
