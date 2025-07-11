@@ -21,16 +21,34 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
         // Deuxième ligne : "DÉFI"
         canvas.drawText("DÉFI", screenWidth / 2f, screenHeight * 0.22f, textPaint)
         
-        // Sous-titre
+        // NOUVEAU: Sous-titre adaptatif selon la fleur
         textPaint.textSize = 60f
         textPaint.isFakeBoldText = false
-        canvas.drawText("MARGUERITE", screenWidth / 2f, screenHeight * 0.32f, textPaint)
         
-        // 3 boutons de défi (repositionnés plus bas)
-        val challenges = challengeManager.getMargueriteChallenges()
+        // Déterminer le type de fleur pour afficher le bon sous-titre
+        val currentChallenge = challengeManager.getCurrentChallenge()
+        val flowerType = if (currentChallenge != null) {
+            when {
+                challengeManager.getMargueriteChallenges().any { it == currentChallenge } -> "MARGUERITE"
+                challengeManager.getRoseChallenges().any { it == currentChallenge } -> "ROSIER"
+                else -> "MARGUERITE"
+            }
+        } else {
+            // Fallback: essayer de détecter selon les défis disponibles
+            if (challengeManager.isFlowerUnlocked("ROSE")) "ROSIER" else "MARGUERITE"
+        }
+        
+        canvas.drawText(flowerType, screenWidth / 2f, screenHeight * 0.32f, textPaint)
+        
+        // NOUVEAU: 3 boutons adaptatifs selon la fleur
+        val challenges = when (flowerType) {
+            "ROSIER" -> challengeManager.getRoseChallenges()
+            else -> challengeManager.getMargueriteChallenges()
+        }
+        
         val buttonWidth = screenWidth * 0.25f
         val buttonHeight = screenHeight * 0.12f
-        val startY = screenHeight * 0.45f  // Déplacé de 0.4f à 0.45f pour laisser place au titre
+        val startY = screenHeight * 0.45f
         
         for (i in 1..3) {
             val challenge = challenges.find { it.id == i }
@@ -150,12 +168,12 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             canvas.drawText("DÉFI TERMINÉ!", screenWidth / 2f, screenHeight * 0.4f, textPaint)
         }
         
-        // Statut de progression
+        // CORRIGÉ: Statut simple au lieu de getCompletionStatus()
         textPaint.textAlign = Paint.Align.CENTER
         textPaint.textSize = 60f
         textPaint.color = 0xFFFFFFFF.toInt()
         textPaint.isFakeBoldText = false
-        canvas.drawText(challengeManager.getCompletionStatus(), screenWidth / 2f, screenHeight * 0.75f, textPaint)
+        canvas.drawText("Progression sauvegardée", screenWidth / 2f, screenHeight * 0.75f, textPaint)
     }
     
     // ==================== FONCTION UTILITAIRE POUR TEXTE MULTILIGNE ====================
