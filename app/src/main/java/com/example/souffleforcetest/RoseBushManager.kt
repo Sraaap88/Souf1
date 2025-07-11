@@ -63,7 +63,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private val spikeThreshold = 0.6f  // Seuil pour détecter un saccade
     private val spikeMinInterval = 300L  // Minimum 300ms entre saccades
-    private val maxBranches = 8  // Maximum de branches
+    private val maxBranches = 12  // AUGMENTÉ pour plus d'aspect arbustif
     private val branchGrowthRate = 600f  // AUGMENTÉ pour croissance plus rapide
     private val leafGrowthRate = 300f    
     private val flowerGrowthRate = 250f  
