@@ -250,6 +250,13 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         // Point de départ = point sur la branche parent
         branchPoint?.let {
             newBranch.points.add(BranchPoint(it.x, it.y, baseBranchThickness * 0.8f))  // Épaisseur décente
+            
+            // CORRECTION CRITIQUE: Ajouter immédiatement un 2ème point pour permettre la croissance
+            val angleRad = Math.toRadians(newBranch.angle.toDouble())
+            val secondX = it.x + cos(angleRad).toFloat() * (segmentLength * 0.1f)  // Petit segment initial
+            val secondY = it.y + sin(angleRad).toFloat() * (segmentLength * 0.1f)
+            newBranch.points.add(BranchPoint(secondX, secondY, baseBranchThickness * 0.78f))
+            newBranch.currentLength = segmentLength * 0.1f  // Longueur initiale
         }
         
         branches.add(newBranch)
@@ -291,17 +298,24 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private fun growActiveBranches(force: Float) {
         // CORRIGÉ: Croissance seulement si on souffle (seuil encore réduit)
-        for (branch in branches.filter { it.isActive && force > 0.05f }) {  // RÉDUIT de 0.1f à 0.05f - plus sensible
+        val activeBranches = branches.filter { it.isActive && force > 0.05f }
+        
+        println("CROISSANCE: Force=${force}, Branches actives=${activeBranches.size}/${branches.size}")
+        
+        for (branch in activeBranches) {
             if (branch.currentLength < branch.maxLength) {
                 // CROISSANCE MASSIVE basée sur la force ET la taille d'écran
-                val baseGrowth = force * branchGrowthRate * 0.080f  // ENCORE AUGMENTÉ de 0.065f à 0.080f
+                val baseGrowth = force * branchGrowthRate * 0.080f  
                 val screenMultiplier = screenHeight / 1080f  
                 val growth = baseGrowth * screenMultiplier
                 
+                val oldLength = branch.currentLength
                 branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
                 
+                println("Branche ${branches.indexOf(branch)}: ${oldLength} -> ${branch.currentLength} (max=${branch.maxLength})")
+                
                 // Ajouter un nouveau point si nécessaire
-                if (branch.points.isNotEmpty()) {
+                if (branch.points.size >= 2) {  // CORRECTION: Vérifier qu'on a au moins 2 points
                     val lastPoint = branch.points.last()
                     
                     if (branch.currentLength >= branch.points.size * segmentLength) {
@@ -318,15 +332,17 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                         
                         val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
                         val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
-                        val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(2f)  // MOINS de réduction
+                        val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(2f)  
                         
                         branch.points.add(BranchPoint(newX, newY, newThickness))
+                        println("Nouveau point ajouté à la branche ${branches.indexOf(branch)}")
                     }
                 }
                 
                 // Arrêter la croissance PLUS TARD pour pousser plus haut
-                if (branch.currentLength >= branch.maxLength * 0.95f) {  // AUGMENTÉ de 0.80f à 0.95f
+                if (branch.currentLength >= branch.maxLength * 0.95f) {  
                     branch.isActive = false
+                    println("Branche ${branches.indexOf(branch)} terminée")
                 }
             }
         }
