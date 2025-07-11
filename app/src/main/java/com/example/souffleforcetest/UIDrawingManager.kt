@@ -93,11 +93,11 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         
         when (lightState) {
             OrganicLineView.LightState.START -> {
-                drawStartButtons(canvas)
-            }
-            OrganicLineView.LightState.FLOWER_CHOICE -> {
-                drawFlowerChoice(canvas)
-            }
+            drawFlowerChoice(canvas)  // START = choix de fleur maintenant
+            }        
+            OrganicLineView.LightState.MODE_CHOICE -> {
+                drawStartButtons(canvas)  // MODE_CHOICE = choix ZEN/DÉFI
+            }            
             OrganicLineView.LightState.CHALLENGE_SELECTION -> {
                 challengeUIHelper.drawChallengeSelection(canvas, challengeManager, resetTextPaint, resetButtonPaint)
             }
