@@ -26,6 +26,12 @@ class OrganicLineView @JvmOverloads constructor(
     private var selectedMode = ""  // "ZEN" ou "DÉFI"
     private var selectedFlowerType = "MARGUERITE"  // "MARGUERITE" ou "ROSE"
     
+    // NOUVEAU: Système de cheat code
+    private var cheatSequence = mutableListOf<Int>()  // Séquence des coins tapés
+    private var lastCheatTapTime = 0L
+    private val cheatTimeWindow = 10000L  // 10 secondes pour compléter la séquence
+    private val cheatExpectedSequence = listOf(1, 2, 3, 4, 1, 2, 3, 4)  // 2 tours: haut-droite, bas-droite, bas-gauche, haut-gauche
+    
     // ==================== LOGIQUE DE PLANTE ====================
     
     private var plantStem: PlantStem? = null
@@ -66,6 +72,11 @@ class OrganicLineView @JvmOverloads constructor(
         selectedFlowerType = "MARGUERITE"
         plantStem?.resetStem()
         roseBushManager?.reset()
+        
+        // NOUVEAU: Reset de la séquence de cheat
+        cheatSequence.clear()
+        lastCheatTapTime = 0L
+        
         invalidate()
     }
     
@@ -318,6 +329,11 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun handleStartButtonClick(event: MotionEvent): Boolean {
+        // NOUVEAU: Vérifier d'abord le cheat code
+        if (checkCheatCode(event)) {
+            return true
+        }
+        
         // Calculer positions des boutons - VRAIMENT CENTRER L'ENSEMBLE
         val buttonRadius = width * 0.15f
         val spacing = buttonRadius * 2.5f
@@ -350,6 +366,69 @@ class OrganicLineView @JvmOverloads constructor(
             return true
         }
         return false
+    }
+    
+    // ==================== CHEAT CODE SECRET ====================
+    
+    private fun checkCheatCode(event: MotionEvent): Boolean {
+        val currentTime = System.currentTimeMillis()
+        
+        // Reset si trop de temps écoulé
+        if (currentTime - lastCheatTapTime > cheatTimeWindow) {
+            cheatSequence.clear()
+        }
+        
+        lastCheatTapTime = currentTime
+        
+        // Déterminer quel coin a été tapé
+        val cornerSize = 150f  // Taille de la zone de détection pour chaque coin
+        val corner = when {
+            event.x >= width - cornerSize && event.y <= cornerSize -> 1  // Haut-droite
+            event.x >= width - cornerSize && event.y >= height - cornerSize -> 2  // Bas-droite
+            event.x <= cornerSize && event.y >= height - cornerSize -> 3  // Bas-gauche
+            event.x <= cornerSize && event.y <= cornerSize -> 4  // Haut-gauche
+            else -> -1  // Pas dans un coin
+        }
+        
+        if (corner != -1) {
+            cheatSequence.add(corner)
+            println("Cheat: Coin $corner tapé - Séquence: $cheatSequence")
+            
+            // Vérifier si la séquence est complète et correcte
+            if (cheatSequence.size == cheatExpectedSequence.size) {
+                if (cheatSequence == cheatExpectedSequence) {
+                    activateCheatCode()
+                    return true
+                } else {
+                    // Séquence incorrecte, reset
+                    cheatSequence.clear()
+                }
+            }
+            
+            // Si séquence trop longue, la raccourcir
+            if (cheatSequence.size > cheatExpectedSequence.size) {
+                cheatSequence.clear()
+            }
+        }
+        
+        return false
+    }
+    
+    private fun activateCheatCode() {
+        println("🎉 CHEAT CODE ACTIVÉ! Tous les défis débloqués!")
+        
+        // Débloquer tous les défis et les marquer comme complétés
+        challengeManager.activateCheatMode()
+        
+        // Aller directement à l'écran de choix de fleur
+        selectedMode = "ZEN"  // Mode ZEN pour éviter les défis
+        lightState = LightState.FLOWER_CHOICE
+        stateStartTime = System.currentTimeMillis()
+        
+        // Reset la séquence
+        cheatSequence.clear()
+        
+        invalidate()
     }
     
     private fun handleFlowerChoiceClick(event: MotionEvent): Boolean {
