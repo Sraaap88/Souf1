@@ -99,8 +99,15 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             angle = -90f  // Commence vers le haut mais va devenir tortueux
         )
         
-        // Point de base de taille normale
+        // Point de base de taille normale AVEC 2ème POINT POUR DÉMARRER
         mainBranch.points.add(BranchPoint(baseX, baseY, baseBranchThickness))
+        
+        // CORRECTION CRITIQUE: 2ème point initial pour que la tige principale puisse pousser
+        val secondX = baseX
+        val secondY = baseY - segmentLength * 0.2f  // Un peu vers le haut
+        mainBranch.points.add(BranchPoint(secondX, secondY, baseBranchThickness * 0.98f))
+        mainBranch.currentLength = segmentLength * 0.2f  // Longueur initiale
+        
         branches.add(mainBranch)
     }
     
@@ -179,7 +186,6 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                 }
                 
                 lastAutoRamificationTime = currentTime
-                println("Ramification par souffle! ${branchesToCreate} branche(s) créée(s) (${branches.size}/${maxBranches})")
             }
         }
     }
@@ -204,7 +210,6 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             }
             
             lastSpikeTime = currentTime
-            println("SACCADE MASSIVE! ${branchesToCreate} nouvelles branches créées (${branches.size}/${maxBranches})")
         }
     }
     
@@ -297,52 +302,40 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     // ==================== CROISSANCE DES BRANCHES (ACCÉLÉRÉE) ====================
     
     private fun growActiveBranches(force: Float) {
-        // CORRIGÉ: Croissance seulement si on souffle (seuil encore réduit)
-        val activeBranches = branches.filter { it.isActive && force > 0.05f }
-        
-        println("CROISSANCE: Force=${force}, Branches actives=${activeBranches.size}/${branches.size}")
+        val activeBranches = branches.filter { it.isActive }
         
         for (branch in activeBranches) {
-            if (branch.currentLength < branch.maxLength) {
-                // CROISSANCE MASSIVE basée sur la force ET la taille d'écran
+            if (force > 0.05f && branch.currentLength < branch.maxLength) {
+                // CROISSANCE MASSIVE
                 val baseGrowth = force * branchGrowthRate * 0.080f  
                 val screenMultiplier = screenHeight / 1080f  
                 val growth = baseGrowth * screenMultiplier
                 
-                val oldLength = branch.currentLength
                 branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
                 
-                println("Branche ${branches.indexOf(branch)}: ${oldLength} -> ${branch.currentLength} (max=${branch.maxLength})")
-                
                 // Ajouter un nouveau point si nécessaire
-                if (branch.points.size >= 2) {  // CORRECTION: Vérifier qu'on a au moins 2 points
+                if (branch.points.size >= 2 && branch.currentLength >= branch.points.size * segmentLength) {
                     val lastPoint = branch.points.last()
                     
-                    if (branch.currentLength >= branch.points.size * segmentLength) {
-                        // Tige tortueuse pour la branche principale
-                        val angleRad = if (branch.parentBranchIndex == -1) {
-                            // Branche principale: ajouter tortuosité
-                            val baseAngle = branch.angle
-                            val tortuosity = sin(branch.points.size * tortuosityFrequency) * tortuosityFactor
-                            Math.toRadians((baseAngle + tortuosity).toDouble())
-                        } else {
-                            // Branches secondaires: angle normal
-                            Math.toRadians(branch.angle.toDouble())
-                        }
-                        
-                        val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
-                        val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
-                        val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(2f)  
-                        
-                        branch.points.add(BranchPoint(newX, newY, newThickness))
-                        println("Nouveau point ajouté à la branche ${branches.indexOf(branch)}")
+                    // Tige tortueuse pour la branche principale
+                    val angleRad = if (branch.parentBranchIndex == -1) {
+                        val baseAngle = branch.angle
+                        val tortuosity = sin(branch.points.size * tortuosityFrequency) * tortuosityFactor
+                        Math.toRadians((baseAngle + tortuosity).toDouble())
+                    } else {
+                        Math.toRadians(branch.angle.toDouble())
                     }
+                    
+                    val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
+                    val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
+                    val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(2f)  
+                    
+                    branch.points.add(BranchPoint(newX, newY, newThickness))
                 }
                 
-                // Arrêter la croissance PLUS TARD pour pousser plus haut
+                // Arrêter la croissance
                 if (branch.currentLength >= branch.maxLength * 0.95f) {  
                     branch.isActive = false
-                    println("Branche ${branches.indexOf(branch)} terminée")
                 }
             }
         }
