@@ -75,7 +75,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val baseBranchThickness = 18f  // Légèrement plus épais
     private val segmentLength = 45f  // Segments moyens pour tige tortueuse
     private val baseLeafSize = 100f  // Feuilles énormes fixes (pas d'animation)
-    private val baseFlowerSize = 50f
+    private val baseFlowerSize = 75f  // AUGMENTÉ de 50f à 75f (50% plus grande)
     
     // NOUVEAU: Paramètres pour tige tortueuse
     private val tortuosityFactor = 15f  // Amplitude de la tortuosité
@@ -237,8 +237,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val angleOffset = -60f + Math.random().toFloat() * 120f  // ±60°
         val newAngle = parentAngle + angleOffset
         
-        // Longueur de la nouvelle branche proportionnelle à l'écran
-        val newLength = (screenHeight * 0.2f) + (Math.random().toFloat() * screenHeight * 0.3f)  // 20% à 50% de l'écran
+        // Longueur de la nouvelle branche PLUS LONGUE
+        val newLength = (screenHeight * 0.3f) + (Math.random().toFloat() * screenHeight * 0.4f)  // AUGMENTÉ: 30% à 70% de l'écran
         
         val newBranch = RoseBranch(
             parentBranchIndex = parentIndex,
@@ -370,11 +370,13 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private fun growExistingLeaves(force: Float) {
         for (leaf in leaves) {
-            if (leaf.currentSize < leaf.maxSize && force > 0.05f) {  // Animation de croissance
+            // PHASE 1: Croissance des feuilles (seulement si on souffle)
+            if (leaf.currentSize < leaf.maxSize && force > 0.1f) {  
                 val growth = force * leafGrowthRate * 0.035f  
                 leaf.currentSize = (leaf.currentSize + growth).coerceAtMost(leaf.maxSize)
             }
-            // Une fois que la feuille atteint sa taille max, elle reste STATIQUE (pas d'animation de mouvement)
+            // PHASE 2: Une fois adultes, les feuilles restent parfaitement STATIQUES
+            // (pas d'animation de mouvement même terminées)
         }
     }
     
@@ -410,8 +412,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private fun growExistingFlowers(force: Float) {
         for (flower in flowers) {
-            if (flower.currentSize < flower.maxSize && force > 0.05f) {  // PLUS SENSIBLE (0.1f -> 0.05f)
-                val growth = force * flowerGrowthRate * 0.030f  // AUGMENTÉ de 0.020f à 0.030f
+            // CORRIGÉ: Fleurs poussent seulement si on souffle
+            if (flower.currentSize < flower.maxSize && force > 0.1f) {  // CHANGÉ de 0.05f à 0.1f
+                val growth = force * flowerGrowthRate * 0.030f  
                 flower.currentSize = (flower.currentSize + growth).coerceAtMost(flower.maxSize)
             }
         }
@@ -460,7 +463,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         
         canvas.save()
         canvas.translate(x, y)
-        canvas.rotate(angle + side * 25f)
+        canvas.rotate(angle + side * 25f)  // ANGLE FIXE - pas d'animation de mouvement
         
         // Feuille composée de rosier ÉNORME (5-7 folioles pour les grandes feuilles)
         val folioleCount = 5 + (Math.random() * 3).toInt()  // AUGMENTÉ de 3-5 à 5-7
@@ -469,14 +472,14 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         paint.color = Color.rgb(34, 139, 34)
         paint.style = Paint.Style.FILL
         
-        // Dessiner les folioles le long d'une tige
+        // Dessiner les folioles le long d'une tige - POSITIONS FIXES
         for (i in 0 until folioleCount) {
             val folioleY = -size/2 + (i * size / (folioleCount - 1))
-            val folioleX = if (i % 2 == 0) -folioleSize/2 * side else folioleSize/2 * side  // PLUS ÉCARTÉES
+            val folioleX = if (i % 2 == 0) -folioleSize/2 * side else folioleSize/2 * side  // POSITION FIXE
             
-            // Foliole ovale dentelée PLUS GROSSE
-            val folioleWidth = folioleSize * 0.6f  // AUGMENTÉ de 0.4f à 0.6f
-            val folioleHeight = folioleSize * 0.8f  // AUGMENTÉ de 0.6f à 0.8f
+            // Foliole ovale dentelée PLUS GROSSE - FORME FIXE
+            val folioleWidth = folioleSize * 0.6f  
+            val folioleHeight = folioleSize * 0.8f  
             
             canvas.drawOval(
                 folioleX - folioleWidth/2, 
@@ -487,10 +490,10 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             )
         }
         
-        // Tige centrale de la feuille composée PLUS ÉPAISSE
+        // Tige centrale de la feuille composée PLUS ÉPAISSE - POSITION FIXE
         paint.color = Color.rgb(20, 80, 20)
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = size * 0.08f  // AUGMENTÉ de 0.05f à 0.08f
+        paint.strokeWidth = size * 0.08f  
         canvas.drawLine(0f, -size/2, 0f, size/2, paint)
         
         canvas.restore()
