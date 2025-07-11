@@ -24,7 +24,7 @@ class OrganicLineView @JvmOverloads constructor(
     private var lightState = LightState.START
     private var stateStartTime = 0L
     private var selectedMode = ""  // "ZEN" ou "DÉFI"
-    private var selectedFlowerType = "MARGUERITE"  // "MARGUERITE" ou "ROSE"
+    private var selectedFlowerType = "MARGUERITE"  // "MARGUERITE", "ROSE", "LUPIN", "IRIS", etc.
     
     // NOUVEAU: Système de cheat code
     private var cheatTapCount = 0  // Nombre de taps en haut à droite
@@ -40,8 +40,18 @@ class OrganicLineView @JvmOverloads constructor(
     private val challengeManager = ChallengeManager(context)
     private var selectedChallengeId = -1
     
+    // NOUVEAU: États réorganisés
     enum class LightState {
-        START, FLOWER_CHOICE, CHALLENGE_SELECTION, CHALLENGE_BRIEF, YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, CHALLENGE_RESULT, RED
+        START,           // Choix de fleur maintenant
+        MODE_CHOICE,     // Choix ZEN/DÉFI (ancien START)
+        CHALLENGE_SELECTION, 
+        CHALLENGE_BRIEF, 
+        YELLOW, 
+        GREEN_GROW, 
+        GREEN_LEAVES, 
+        GREEN_FLOWER, 
+        CHALLENGE_RESULT, 
+        RED
     }
     
     // ==================== GESTION DE L'ÉCRAN ====================
@@ -65,7 +75,7 @@ class OrganicLineView @JvmOverloads constructor(
     // ==================== CONTRÔLE DU CYCLE ====================
     
     fun startCycle() {
-        lightState = LightState.START
+        lightState = LightState.START  // Maintenant = choix de fleur
         stateStartTime = System.currentTimeMillis()
         showResetButton = false
         selectedMode = ""
@@ -73,7 +83,7 @@ class OrganicLineView @JvmOverloads constructor(
         plantStem?.resetStem()
         roseBushManager?.reset()
         
-        // NOUVEAU: Reset de la séquence de cheat
+        // Reset de la séquence de cheat
         cheatTapCount = 0
         lastCheatTapTime = 0L
         
@@ -102,7 +112,7 @@ class OrganicLineView @JvmOverloads constructor(
                 showResetButton = true
             }
         } else if (selectedFlowerType == "ROSE") {
-            // Nouvelle logique pour le rosier
+            // Logique pour le rosier
             if (lightState == LightState.GREEN_GROW) {
                 roseBushManager?.processStemGrowth(force)
             }
@@ -120,6 +130,7 @@ class OrganicLineView @JvmOverloads constructor(
                 showResetButton = true
             }
         }
+        // TODO: Ajouter LUPIN, IRIS, etc. ici plus tard
         
         // Mettre à jour le défi si en mode DÉFI
         if (selectedMode == "DÉFI" && challengeManager.getCurrentChallenge() != null) {
@@ -141,10 +152,10 @@ class OrganicLineView @JvmOverloads constructor(
         
         when (lightState) {
             LightState.START -> {
-                // Reste en START jusqu'à ce qu'on appuie sur le bouton
+                // Reste en START (choix de fleur) jusqu'à ce qu'on choisisse
             }
-            LightState.FLOWER_CHOICE -> {
-                // Reste en FLOWER_CHOICE jusqu'à ce qu'on choisisse une fleur
+            LightState.MODE_CHOICE -> {
+                // Reste en MODE_CHOICE jusqu'à ce qu'on choisisse ZEN/DÉFI
             }
             LightState.CHALLENGE_SELECTION -> {
                 // Reste en CHALLENGE_SELECTION jusqu'à ce qu'on choisisse un défi
@@ -207,7 +218,7 @@ class OrganicLineView @JvmOverloads constructor(
         val elapsedTime = currentTime - stateStartTime
         val timeRemaining = when (lightState) {
             LightState.START -> 0
-            LightState.FLOWER_CHOICE -> 0
+            LightState.MODE_CHOICE -> 0
             LightState.CHALLENGE_SELECTION -> 0
             LightState.CHALLENGE_BRIEF -> max(0, 3 - (elapsedTime / 1000))
             LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
@@ -229,6 +240,7 @@ class OrganicLineView @JvmOverloads constructor(
             } else if (selectedFlowerType == "ROSE") {
                 drawRoseBush(canvas)
             }
+            // TODO: Ajouter LUPIN, IRIS, etc. ici plus tard
         }
         
         // Déléguer tout l'affichage UI au UIDrawingManager
@@ -316,9 +328,9 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_DOWN) {
             if (lightState == LightState.START) {
-                return handleStartButtonClick(event)
-            } else if (lightState == LightState.FLOWER_CHOICE) {
-                return handleFlowerChoiceClick(event)
+                return handleFlowerChoiceClick(event)  // NOUVEAU: Premier écran
+            } else if (lightState == LightState.MODE_CHOICE) {
+                return handleModeChoiceClick(event)   // NOUVEAU: Deuxième écran
             } else if (lightState == LightState.CHALLENGE_SELECTION) {
                 return handleChallengeSelectionClick(event)
             } else if (lightState == LightState.RED) {
@@ -328,13 +340,97 @@ class OrganicLineView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
     
-    private fun handleStartButtonClick(event: MotionEvent): Boolean {
-        // NOUVEAU: Vérifier d'abord le cheat code
+    // ==================== NOUVEAU: CHOIX DE FLEUR (1er ÉCRAN) ====================
+    
+    private fun handleFlowerChoiceClick(event: MotionEvent): Boolean {
+        // Vérifier d'abord le cheat code
         if (checkCheatCode(event)) {
             return true
         }
         
-        // Calculer positions des boutons - VRAIMENT CENTRER L'ENSEMBLE
+        // Obtenir les fleurs débloquées
+        val unlockedFlowers = getUnlockedFlowers()
+        
+        if (unlockedFlowers.size == 1) {
+            // Seulement la marguerite - centrée
+            val flowerButtonRadius = width * 0.15f
+            val centerX = width / 2f
+            val buttonY = height / 2f
+            
+            val dx = event.x - centerX
+            val dy = event.y - buttonY
+            val distance = sqrt(dx * dx + dy * dy)
+            
+            if (distance <= flowerButtonRadius * 1.5f) {
+                selectedFlowerType = "MARGUERITE"
+                goToModeChoice()
+                return true
+            }
+        } else if (unlockedFlowers.size >= 2) {
+            // Marguerite + Rose (et plus tard d'autres) - centrées ensemble
+            val flowerButtonRadius = width * 0.15f
+            val spacing = flowerButtonRadius * 3f
+            val centerX = width / 2f
+            val buttonY = height / 2f
+            
+            // Marguerite (gauche)
+            val margueriteX = centerX - spacing / 2f
+            val margueriteDx = event.x - margueriteX
+            val margueriteDy = event.y - buttonY
+            val margueriteDistance = sqrt(margueriteDx * margueriteDx + margueriteDy * margueriteDy)
+            
+            // Rose (droite)
+            val roseX = centerX + spacing / 2f
+            val roseDx = event.x - roseX
+            val roseDy = event.y - buttonY
+            val roseDistance = sqrt(roseDx * roseDx + roseDy * roseDy)
+            
+            if (margueriteDistance <= flowerButtonRadius * 1.5f) {
+                selectedFlowerType = "MARGUERITE"
+                goToModeChoice()
+                return true
+            } else if (roseDistance <= flowerButtonRadius * 1.5f) {
+                selectedFlowerType = "ROSE"
+                goToModeChoice()
+                return true
+            }
+            
+            // TODO: Ajouter LUPIN, IRIS, etc. ici plus tard
+        }
+        
+        return false
+    }
+    
+    private fun getUnlockedFlowers(): List<String> {
+        val flowers = mutableListOf("MARGUERITE")  // Toujours débloquée
+        
+        if (challengeManager.isFlowerUnlocked("ROSE")) {
+            flowers.add("ROSE")
+        }
+        
+        if (challengeManager.isFlowerUnlocked("LUPIN")) {
+            flowers.add("LUPIN")
+        }
+        
+        if (challengeManager.isFlowerUnlocked("IRIS")) {
+            flowers.add("IRIS")
+        }
+        
+        // TODO: Ajouter d'autres fleurs ici plus tard
+        
+        return flowers
+    }
+    
+    private fun goToModeChoice() {
+        lightState = LightState.MODE_CHOICE
+        stateStartTime = System.currentTimeMillis()
+        invalidate()
+    }
+    
+    // ==================== NOUVEAU: CHOIX DE MODE (2ème ÉCRAN) ====================
+    
+    private fun handleModeChoiceClick(event: MotionEvent): Boolean {
+        // Calculer positions des boutons ZEN/DÉFI - VRAIMENT CENTRER L'ENSEMBLE
         val buttonRadius = width * 0.15f
         val spacing = buttonRadius * 2.5f
         val centerX = width / 2f
@@ -353,9 +449,10 @@ class OrganicLineView @JvmOverloads constructor(
         val defiDistance = sqrt(defiDx * defiDx + defiDy * defiDy)
         
         if (zenDistance <= buttonRadius) {
-            // Mode ZEN sélectionné - aller à l'écran de choix de fleur
+            // Mode ZEN sélectionné - aller directement à la croissance
             selectedMode = "ZEN"
-            lightState = LightState.FLOWER_CHOICE
+            initializePlant()
+            lightState = LightState.YELLOW
             stateStartTime = System.currentTimeMillis()
             return true
         } else if (defiDistance <= buttonRadius) {
@@ -385,7 +482,6 @@ class OrganicLineView @JvmOverloads constructor(
         if (isTopRightCorner) {
             cheatTapCount++
             lastCheatTapTime = currentTime
-            println("Cheat: Tap ${cheatTapCount}/${cheatRequiredTaps} en haut à droite")
             
             // Vérifier si on a atteint 3 taps
             if (cheatTapCount >= cheatRequiredTaps) {
@@ -401,70 +497,18 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun activateCheatCode() {
-        println("🎉 CHEAT CODE ACTIVÉ! 3 taps en haut à droite détectés!")
-        
-        // Débloquer tous les défis et les marquer comme complétés
+        // Débloquer toutes les fleurs instantanément
         challengeManager.activateCheatMode()
         
-        // Aller directement à l'écran de choix de fleur
-        selectedMode = "ZEN"  // Mode ZEN pour éviter les défis
-        lightState = LightState.FLOWER_CHOICE
-        stateStartTime = System.currentTimeMillis()
-        
-        // Reset le compteur
-        cheatTapCount = 0
-        
+        // Rester sur l'écran de choix de fleur pour voir le résultat
         invalidate()
-    }
-    
-    private fun handleFlowerChoiceClick(event: MotionEvent): Boolean {
-        val flowerButtonRadius = width * 0.15f
-        val spacing = flowerButtonRadius * 3f
-        val centerX = width / 2f
-        val buttonY = height / 2f
-        
-        // Marguerite (gauche)
-        val margueriteX = centerX - spacing / 2f
-        val margueriteDx = event.x - margueriteX
-        val margueriteDy = event.y - buttonY
-        val margueriteDistance = sqrt(margueriteDx * margueriteDx + margueriteDy * margueriteDy)
-        
-        // Rose (droite)
-        val roseX = centerX + spacing / 2f
-        val roseDx = event.x - roseX
-        val roseDy = event.y - buttonY
-        val roseDistance = sqrt(roseDx * roseDx + roseDy * roseDy)
-        
-        if (margueriteDistance <= flowerButtonRadius * 1.5f) {
-            // Marguerite sélectionnée
-            selectedFlowerType = "MARGUERITE"
-            initializePlant()
-            lightState = LightState.YELLOW
-            stateStartTime = System.currentTimeMillis()
-            return true
-        } else if (roseDistance <= flowerButtonRadius * 1.5f && challengeManager.isFlowerUnlocked("ROSE")) {
-            // Rose sélectionnée (si débloquée)
-            selectedFlowerType = "ROSE"
-            initializePlant()
-            lightState = LightState.YELLOW
-            stateStartTime = System.currentTimeMillis()
-            return true
-        }
-        return false
-    }
-    
-    private fun initializePlant() {
-        if (selectedFlowerType == "ROSE") {
-            roseBushManager?.initialize(width / 2f, height * 0.85f)
-        }
-        // La marguerite s'initialise automatiquement dans PlantStem
     }
     
     private fun handleChallengeSelectionClick(event: MotionEvent): Boolean {
         // Zone des 3 boutons de défi (calculée dans UIDrawingManager)
         val buttonWidth = width * 0.25f
         val buttonHeight = height * 0.12f
-        val startY = height * 0.45f  // Ajusté pour le nouveau titre
+        val startY = height * 0.45f  
         val centerX = width / 2f
         
         for (i in 1..3) {
@@ -477,7 +521,15 @@ class OrganicLineView @JvmOverloads constructor(
             if (event.x >= buttonLeft && event.x <= buttonRight && 
                 event.y >= buttonTop && event.y <= buttonBottom) {
                 
-                val challenges = challengeManager.getMargueriteChallenges()
+                // NOUVEAU: Choisir les défis selon la fleur sélectionnée
+                val challenges = when (selectedFlowerType) {
+                    "MARGUERITE" -> challengeManager.getMargueriteChallenges()
+                    "ROSE" -> challengeManager.getRoseChallenges()  // NOUVEAU
+                    "LUPIN" -> challengeManager.getLupinChallenges()  // TODO: à implémenter
+                    "IRIS" -> challengeManager.getIrisChallenges()    // TODO: à implémenter
+                    else -> challengeManager.getMargueriteChallenges()
+                }
+                
                 val challenge = challenges.find { it.id == i }
                 
                 if (challenge?.isUnlocked == true) {
@@ -490,6 +542,14 @@ class OrganicLineView @JvmOverloads constructor(
             }
         }
         return false
+    }
+    
+    private fun initializePlant() {
+        if (selectedFlowerType == "ROSE") {
+            roseBushManager?.initialize(width / 2f, height * 0.85f)
+        }
+        // La marguerite s'initialise automatiquement dans PlantStem
+        // TODO: Ajouter LUPIN, IRIS, etc. ici plus tard
     }
     
     private fun handleResetButtonClick(event: MotionEvent): Boolean {
