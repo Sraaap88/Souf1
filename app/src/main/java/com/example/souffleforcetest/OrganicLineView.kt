@@ -536,6 +536,7 @@ class OrganicLineView @JvmOverloads constructor(
                 if (challenge?.isUnlocked == true) {
                     selectedChallengeId = i
                     challengeManager.startChallenge(i)
+                    initializePlant()  // ← CORRECTION: AJOUTER CETTE LIGNE !
                     lightState = LightState.CHALLENGE_BRIEF
                     stateStartTime = System.currentTimeMillis()
                     return true
