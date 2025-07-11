@@ -64,15 +64,15 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val spikeThreshold = 0.6f  // Seuil pour détecter un saccade
     private val spikeMinInterval = 300L  // Minimum 300ms entre saccades
     private val maxBranches = 8  // Maximum de branches
-    private val branchGrowthRate = 400f  
-    private val leafGrowthRate = 200f    
-    private val flowerGrowthRate = 150f  
+    private val branchGrowthRate = 600f  // AUGMENTÉ pour croissance plus rapide
+    private val leafGrowthRate = 300f    
+    private val flowerGrowthRate = 250f  
     
-    // Tailles 6 fois plus grandes
-    private val baseBranchThickness = 72f  // MULTIPLIÉ par 6 (12f × 6)
-    private val segmentLength = 40f        // AUGMENTÉ pour plus de fluidité
-    private val baseLeafSize = 150f        // MULTIPLIÉ par 6 (25f × 6)
-    private val baseFlowerSize = 210f      // MULTIPLIÉ par 6 (35f × 6)
+    // Retour aux anciennes tailles de base mais croissance plus rapide
+    private val baseBranchThickness = 15f  // Retour à la taille précédente mais un peu plus gros
+    private val segmentLength = 25f        
+    private val baseLeafSize = 20f         // Petites folioles 
+    private val baseFlowerSize = 50f       // Plus gros que l'ancienne mais pas énorme
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -87,11 +87,11 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         // Créer la branche principale
         val mainBranch = RoseBranch(
             parentBranchIndex = -1,
-            maxLength = 500f,  // AUGMENTÉ pour la nouvelle taille
+            maxLength = 350f,  // Plus longue pour plus d'impact
             angle = -90f  // Pousse vers le haut
         )
         
-        // Point de base beaucoup plus gros
+        // Point de base de taille normale
         mainBranch.points.add(BranchPoint(baseX, baseY, baseBranchThickness))
         branches.add(mainBranch)
     }
@@ -193,7 +193,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         
         // Point de départ = point sur la branche parent
         branchPoint?.let {
-            newBranch.points.add(BranchPoint(it.x, it.y, baseBranchThickness * 0.5f))  // MODIFIÉ: Plus gros
+            newBranch.points.add(BranchPoint(it.x, it.y, baseBranchThickness * 0.6f))  // Taille normale
         }
         
         branches.add(newBranch)
@@ -247,7 +247,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                         val angleRad = Math.toRadians(branch.angle.toDouble())
                         val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
                         val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
-                        val newThickness = (lastPoint.thickness * 0.90f).coerceAtLeast(15f)  // AUGMENTÉ minimum de 3f à 15f
+                        val newThickness = (lastPoint.thickness * 0.90f).coerceAtLeast(3f)  // Retour aux anciennes tailles
                         
                         branch.points.add(BranchPoint(newX, newY, newThickness))
                     }
@@ -267,14 +267,14 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         for ((index, branch) in branches.withIndex()) {
             if (branch.points.size < 2) continue
             
-            // Créer 4-6 feuilles par branche 
-            val leafCount = 4 + (Math.random() * 3).toInt()
+            // Créer 2-3 feuilles composées par branche
+            val leafCount = 2 + (Math.random() * 2).toInt()
             
             for (i in 0 until leafCount) {
-                val positionRatio = 0.2f + (i.toFloat() / leafCount) * 0.6f
+                val positionRatio = 0.3f + (i.toFloat() / leafCount) * 0.4f
                 val side = if (i % 2 == 0) -1 else 1
-                val size = baseLeafSize + Math.random().toFloat() * 90f  // MODIFIÉ: Beaucoup plus grosses (150-240f)
-                val angle = Math.random().toFloat() * 60f - 30f  // ±30°
+                val size = baseLeafSize + Math.random().toFloat() * 10f  // Petites folioles
+                val angle = Math.random().toFloat() * 40f - 20f  // ±20°
                 
                 leaves.add(RoseLeaf(
                     branchIndex = index,
@@ -304,7 +304,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             
             // Une fleur au bout de chaque branche
             val lastPoint = branch.points.last()
-            val flowerSize = baseFlowerSize + Math.random().toFloat() * 120f  // MODIFIÉ: Beaucoup plus grosses (210-330f)
+            val flowerSize = baseFlowerSize + Math.random().toFloat() * 25f  // Plus grosses que l'ancienne version
             
             val flower = RoseFlower(
                 branchIndex = index,
@@ -366,137 +366,72 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     }
     
     private fun drawSingleLeaf(canvas: Canvas, paint: Paint, x: Float, y: Float, leaf: RoseLeaf) {
-        val path = Path()
         val size = leaf.currentSize
         val angle = leaf.angle
         val side = leaf.side
         
-        // Feuille détaillée avec nervures
-        val leafWidth = size * 0.5f
-        val leafHeight = size
-        
         canvas.save()
         canvas.translate(x, y)
-        canvas.rotate(angle + side * 30f)
+        canvas.rotate(angle + side * 25f)
         
-        // Contour principal de la feuille (forme plus réaliste)
-        path.moveTo(0f, -leafHeight/2)  // Pointe du haut
+        // Feuille composée de rosier sauvage (3-5 folioles)
+        val folioleCount = 3 + (Math.random() * 3).toInt()
+        val folioleSize = size / folioleCount * 1.2f
         
-        // Côté droit avec courbes
-        path.cubicTo(leafWidth/3, -leafHeight/3, leafWidth/2, -leafHeight/6, leafWidth/2, 0f)
-        path.cubicTo(leafWidth/2, leafHeight/6, leafWidth/3, leafHeight/3, 0f, leafHeight/2)
-        
-        // Côté gauche avec courbes
-        path.cubicTo(-leafWidth/3, leafHeight/3, -leafWidth/2, leafHeight/6, -leafWidth/2, 0f)
-        path.cubicTo(-leafWidth/2, -leafHeight/6, -leafWidth/3, -leafHeight/3, 0f, -leafHeight/2)
-        
-        path.close()
-        
-        // Couleur de base de la feuille
         paint.color = Color.rgb(34, 139, 34)
         paint.style = Paint.Style.FILL
-        canvas.drawPath(path, paint)
         
-        // Nervure centrale
-        paint.color = Color.rgb(20, 80, 20)
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = size * 0.02f
-        canvas.drawLine(0f, -leafHeight/2, 0f, leafHeight/2, paint)
-        
-        // Nervures secondaires
-        paint.strokeWidth = size * 0.01f
-        for (i in 1..3) {
-            val nervureY = (-leafHeight/3) + (i * leafHeight/6)
-            val nervureWidth = leafWidth * (0.8f - i * 0.2f) / 2f
-            canvas.drawLine(-nervureWidth, nervureY, 0f, nervureY, paint)
-            canvas.drawLine(nervureWidth, nervureY, 0f, nervureY, paint)
+        // Dessiner les folioles le long d'une tige
+        for (i in 0 until folioleCount) {
+            val folioleY = -size/2 + (i * size / (folioleCount - 1))
+            val folioleX = if (i % 2 == 0) -folioleSize/3 * side else folioleSize/3 * side
+            
+            // Foliole ovale dentelée
+            val folioleWidth = folioleSize * 0.4f
+            val folioleHeight = folioleSize * 0.6f
+            
+            canvas.drawOval(
+                folioleX - folioleWidth/2, 
+                folioleY - folioleHeight/2,
+                folioleX + folioleWidth/2, 
+                folioleY + folioleHeight/2, 
+                paint
+            )
         }
         
-        // Bordure de la feuille
-        paint.color = Color.rgb(25, 100, 25)
+        // Tige centrale de la feuille composée
+        paint.color = Color.rgb(20, 80, 20)
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = size * 0.008f
-        canvas.drawPath(path, paint)
+        paint.strokeWidth = size * 0.05f
+        canvas.drawLine(0f, -size/2, 0f, size/2, paint)
         
         canvas.restore()
     }
     
     private fun drawFlowers(canvas: Canvas, paint: Paint) {
+        paint.color = Color.rgb(255, 182, 193)  // Rose clair
+        paint.style = Paint.Style.FILL
+        
         for (flower in flowers) {
             if (flower.currentSize > 0) {
-                drawDetailedRose(canvas, paint, flower)
+                // Fleur simple mais plus grosse - 5 pétales en cercle
+                val petalCount = 5
+                val petalSize = flower.currentSize * 0.6f
+                
+                for (i in 0 until petalCount) {
+                    val angle = (i * 72f) * Math.PI / 180.0  // 72° entre chaque pétale
+                    val petalX = flower.x + cos(angle).toFloat() * flower.currentSize * 0.35f
+                    val petalY = flower.y + sin(angle).toFloat() * flower.currentSize * 0.35f
+                    
+                    canvas.drawCircle(petalX, petalY, petalSize * 0.6f, paint)
+                }
+                
+                // Centre de la fleur
+                paint.color = Color.rgb(255, 215, 0)  // Jaune
+                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.25f, paint)
+                paint.color = Color.rgb(255, 182, 193)  // Retour au rose
             }
         }
-    }
-    
-    private fun drawDetailedRose(canvas: Canvas, paint: Paint, flower: RoseFlower) {
-        val centerX = flower.x
-        val centerY = flower.y
-        val size = flower.currentSize
-        
-        // Rose détaillée avec plusieurs couches de pétales
-        val petalLayers = 3
-        val petalsPerLayer = intArrayOf(5, 8, 12)  // Pétales par couche (intérieur vers extérieur)
-        
-        for (layer in 0 until petalLayers) {
-            val layerRadius = size * (0.3f + layer * 0.2f)  // Rayons croissants
-            val petalCount = petalsPerLayer[layer]
-            val petalSize = size * (0.15f + layer * 0.1f)
-            
-            // Couleur plus claire vers l'extérieur
-            val colorIntensity = 255 - layer * 20
-            paint.color = Color.rgb(colorIntensity, 182 + layer * 15, 193 + layer * 10)
-            paint.style = Paint.Style.FILL
-            
-            for (i in 0 until petalCount) {
-                val angleOffset = if (layer % 2 == 0) 0f else (360f / petalCount / 2f)  // Décalage alterné
-                val angle = (i * 360f / petalCount + angleOffset) * Math.PI / 180.0
-                val petalX = centerX + cos(angle).toFloat() * layerRadius
-                val petalY = centerY + sin(angle).toFloat() * layerRadius
-                
-                // Pétale ovale avec orientation
-                canvas.save()
-                canvas.translate(petalX, petalY)
-                canvas.rotate((angle * 180.0 / Math.PI).toFloat() + 90f)
-                
-                val petalPath = Path()
-                petalPath.addOval(-petalSize/3, -petalSize/2, petalSize/3, petalSize/2, Path.Direction.CW)
-                canvas.drawPath(petalPath, paint)
-                
-                // Ombre/dégradé sur les pétales
-                paint.color = Color.rgb(colorIntensity - 30, 150 + layer * 10, 160 + layer * 8)
-                paint.style = Paint.Style.STROKE
-                paint.strokeWidth = petalSize * 0.05f
-                canvas.drawPath(petalPath, paint)
-                
-                canvas.restore()
-                paint.style = Paint.Style.FILL
-            }
-        }
-        
-        // Centre de la fleur avec détails
-        val centerRadius = size * 0.15f
-        
-        // Centre principal jaune
-        paint.color = Color.rgb(255, 215, 0)
-        canvas.drawCircle(centerX, centerY, centerRadius, paint)
-        
-        // Étamines (petits points autour du centre)
-        paint.color = Color.rgb(200, 150, 0)
-        val stamenCount = 12
-        for (i in 0 until stamenCount) {
-            val angle = (i * 360f / stamenCount) * Math.PI / 180.0
-            val stamenRadius = centerRadius * 0.7f
-            val stamenX = centerX + cos(angle).toFloat() * stamenRadius
-            val stamenY = centerY + sin(angle).toFloat() * stamenRadius
-            canvas.drawCircle(stamenX, stamenY, centerRadius * 0.15f, paint)
-        }
-        
-        // Contour du centre
-        paint.color = Color.rgb(180, 120, 0)
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = centerRadius * 0.1f
-        canvas.drawCircle(centerX, centerY, centerRadius, paint)
     }
     
     // ==================== UTILITAIRES ====================
