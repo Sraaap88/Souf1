@@ -200,6 +200,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         branches.add(leftBranch)
         branches.add(rightBranch)
         
+        // NOUVEAU: Notifier le challengeManager qu'une division a été créée
+        challengeManager?.notifyDivisionCreated("division_${leftBranch.id}_${rightBranch.id}")
+        
         // Arrêter la croissance de la tige mère
         branch.isActive = false
     }
