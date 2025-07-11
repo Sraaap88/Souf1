@@ -454,25 +454,40 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     }
     
     private fun drawTargetZone(canvas: Canvas, challengeId: Int = 1) {
+        val currentChallenge = challengeManager.getCurrentChallenge()
+        val currentFlowerType = if (currentChallenge != null) {
+            // NOUVEAU: Déterminer le type de fleur selon les défis actifs
+            when {
+                challengeManager.getMargueriteChallenges().any { it == currentChallenge } -> "MARGUERITE"
+                challengeManager.getRoseChallenges().any { it == currentChallenge } -> "ROSE"
+                else -> "MARGUERITE"
+            }
+        } else "MARGUERITE"
+        
         val zoneTop: Float
         val zoneBottom: Float
         
-        when (challengeId) {
-            1 -> {
-                // Défi 1: Zone au 1/3 de l'écran, 2 fois plus large que la version actuelle
-                zoneTop = screenHeight / 3f - 60f      // 1/3 de l'écran moins 60px
-                zoneBottom = screenHeight / 3f + 360f  // 1/3 de l'écran plus 360px (420px total)
+        if (currentFlowerType == "MARGUERITE") {
+            // Zones existantes pour marguerite
+            when (challengeId) {
+                1 -> {
+                    zoneTop = screenHeight / 3f - 60f
+                    zoneBottom = screenHeight / 3f + 360f
+                }
+                3 -> {
+                    zoneTop = screenHeight / 3f - 120f
+                    zoneBottom = screenHeight / 3f + 120f
+                }
+                else -> {
+                    zoneTop = screenHeight / 3f - 60f
+                    zoneBottom = screenHeight / 3f + 360f
+                }
             }
-            3 -> {
-                // Défi 3: Zone verte de 240px total (120px haut + 120px bas)
-                zoneTop = screenHeight / 3f - 120f     // 1/3 de l'écran moins 120px
-                zoneBottom = screenHeight / 3f + 120f  // 1/3 de l'écran plus 120px (240px total)
-            }
-            else -> {
-                // Par défaut défi 1
-                zoneTop = screenHeight / 3f - 60f
-                zoneBottom = screenHeight / 3f + 360f
-            }
+        } else {
+            // NOUVEAU: Zones pour rosier - bande de 2 pouces (~192px) au centre
+            val zoneHeight = 192f  // 2 pouces
+            zoneTop = (screenHeight - zoneHeight) / 2f
+            zoneBottom = zoneTop + zoneHeight
         }
         
         val zoneLeft = 0f
