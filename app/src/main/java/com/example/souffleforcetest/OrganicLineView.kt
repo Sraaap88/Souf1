@@ -27,10 +27,10 @@ class OrganicLineView @JvmOverloads constructor(
     private var selectedFlowerType = "MARGUERITE"  // "MARGUERITE" ou "ROSE"
     
     // NOUVEAU: Système de cheat code
-    private var cheatSequence = mutableListOf<Int>()  // Séquence des coins tapés
+    private var cheatTapCount = 0  // Nombre de taps en haut à droite
     private var lastCheatTapTime = 0L
-    private val cheatTimeWindow = 10000L  // 10 secondes pour compléter la séquence
-    private val cheatExpectedSequence = listOf(1, 2, 3, 4, 1, 2, 3, 4)  // 2 tours: haut-droite, bas-droite, bas-gauche, haut-gauche
+    private val cheatTimeWindow = 3000L  // 3 secondes pour faire 3 taps
+    private val cheatRequiredTaps = 3  // 3 taps requis
     
     // ==================== LOGIQUE DE PLANTE ====================
     
@@ -74,7 +74,7 @@ class OrganicLineView @JvmOverloads constructor(
         roseBushManager?.reset()
         
         // NOUVEAU: Reset de la séquence de cheat
-        cheatSequence.clear()
+        cheatTapCount = 0
         lastCheatTapTime = 0L
         
         invalidate()
@@ -375,47 +375,33 @@ class OrganicLineView @JvmOverloads constructor(
         
         // Reset si trop de temps écoulé
         if (currentTime - lastCheatTapTime > cheatTimeWindow) {
-            cheatSequence.clear()
+            cheatTapCount = 0
         }
         
-        lastCheatTapTime = currentTime
+        // Vérifier si le tap est dans le coin haut-droite
+        val cornerSize = 150f  // Taille de la zone de détection
+        val isTopRightCorner = event.x >= width - cornerSize && event.y <= cornerSize
         
-        // Déterminer quel coin a été tapé
-        val cornerSize = 150f  // Taille de la zone de détection pour chaque coin
-        val corner = when {
-            event.x >= width - cornerSize && event.y <= cornerSize -> 1  // Haut-droite
-            event.x >= width - cornerSize && event.y >= height - cornerSize -> 2  // Bas-droite
-            event.x <= cornerSize && event.y >= height - cornerSize -> 3  // Bas-gauche
-            event.x <= cornerSize && event.y <= cornerSize -> 4  // Haut-gauche
-            else -> -1  // Pas dans un coin
-        }
-        
-        if (corner != -1) {
-            cheatSequence.add(corner)
-            println("Cheat: Coin $corner tapé - Séquence: $cheatSequence")
+        if (isTopRightCorner) {
+            cheatTapCount++
+            lastCheatTapTime = currentTime
+            println("Cheat: Tap ${cheatTapCount}/${cheatRequiredTaps} en haut à droite")
             
-            // Vérifier si la séquence est complète et correcte
-            if (cheatSequence.size == cheatExpectedSequence.size) {
-                if (cheatSequence == cheatExpectedSequence) {
-                    activateCheatCode()
-                    return true
-                } else {
-                    // Séquence incorrecte, reset
-                    cheatSequence.clear()
-                }
+            // Vérifier si on a atteint 3 taps
+            if (cheatTapCount >= cheatRequiredTaps) {
+                activateCheatCode()
+                return true
             }
-            
-            // Si séquence trop longue, la raccourcir
-            if (cheatSequence.size > cheatExpectedSequence.size) {
-                cheatSequence.clear()
-            }
+        } else {
+            // Reset si tap ailleurs
+            cheatTapCount = 0
         }
         
         return false
     }
     
     private fun activateCheatCode() {
-        println("🎉 CHEAT CODE ACTIVÉ! Tous les défis débloqués!")
+        println("🎉 CHEAT CODE ACTIVÉ! 3 taps en haut à droite détectés!")
         
         // Débloquer tous les défis et les marquer comme complétés
         challengeManager.activateCheatMode()
@@ -425,8 +411,8 @@ class OrganicLineView @JvmOverloads constructor(
         lightState = LightState.FLOWER_CHOICE
         stateStartTime = System.currentTimeMillis()
         
-        // Reset la séquence
-        cheatSequence.clear()
+        // Reset le compteur
+        cheatTapCount = 0
         
         invalidate()
     }
