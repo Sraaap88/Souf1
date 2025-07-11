@@ -63,17 +63,17 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     // ==================== PARAMÈTRES AUGMENTÉS ====================
     
-    private val spikeThreshold = 0.6f  // Seuil pour détecter un saccade
+    private val spikeThreshold = 0.4f  // RÉDUIT de 0.6f à 0.4f (plus sensible)
     private val spikeMinInterval = 200L  // RÉDUIT de 300ms à 200ms
     private val autoRamificationInterval = 800L  // NOUVEAU: ramification auto toutes les 800ms
     private val maxBranches = 25  // AUGMENTÉ de 12 à 25 branches
-    private val branchGrowthRate = 1200f  // DOUBLÉ de 600f à 1200f
+    private val branchGrowthRate = 3000f  // TRIPLÉ de 1200f à 3000f !!
     private val leafGrowthRate = 800f  // PLUS QUE DOUBLÉ de 300f à 800f
     private val flowerGrowthRate = 500f  // DOUBLÉ de 250f à 500f
     
-    // Tailles augmentées
+    // Tailles augmentées pour atteindre la moitié de l'écran
     private val baseBranchThickness = 15f  
-    private val segmentLength = 35f  // AUGMENTÉ de 25f à 35f pour croissance plus visible       
+    private val segmentLength = 50f  // ENCORE AUGMENTÉ de 35f à 50f 
     private val baseLeafSize = 100f  // MULTIPLIÉ PAR 5 (de 20f à 100f)
     private val baseFlowerSize = 50f       
     
@@ -88,10 +88,10 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         baseY = bottomY
         lastAutoRamificationTime = System.currentTimeMillis()  // NOUVEAU: initialiser le timer
         
-        // Créer la branche principale
+        // Créer la branche principale BEAUCOUP PLUS GRANDE
         val mainBranch = RoseBranch(
             parentBranchIndex = -1,
-            maxLength = 400f,  // AUGMENTÉ de 350f à 400f
+            maxLength = screenHeight * 0.6f,  // 60% de la hauteur d'écran au lieu de 400f fixe!
             angle = -90f  // Pousse vers le haut
         )
         
@@ -220,8 +220,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val angleOffset = -75f + Math.random().toFloat() * 150f  // ±75°
         val newAngle = parentAngle + angleOffset
         
-        // Longueur de la nouvelle branche (plus variée)
-        val newLength = parentBranch.maxLength * (0.4f + Math.random().toFloat() * 0.5f)  // 40% à 90%
+        // Longueur de la nouvelle branche basée sur l'écran aussi
+        val newLength = (screenHeight * 0.3f) + (Math.random().toFloat() * screenHeight * 0.2f)  // 30% à 50% de l'écran
         
         val newBranch = RoseBranch(
             parentBranchIndex = parentIndex,
@@ -273,9 +273,13 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     // ==================== CROISSANCE DES BRANCHES (ACCÉLÉRÉE) ====================
     
     private fun growActiveBranches(force: Float) {
-        for (branch in branches.filter { it.isActive && force > 0.05f }) {  // ENCORE PLUS SENSIBLE (0.1f -> 0.05f)
+        for (branch in branches.filter { it.isActive && force > 0.03f }) {  // ULTRA SENSIBLE (0.05f -> 0.03f)
             if (branch.currentLength < branch.maxLength) {
-                val growth = force * branchGrowthRate * 0.035f  // AUGMENTÉ de 0.020f à 0.035f
+                // CROISSANCE MASSIVE basée sur la force ET la taille d'écran
+                val baseGrowth = force * branchGrowthRate * 0.055f  // ÉNORME AUGMENTATION de 0.035f à 0.055f
+                val screenMultiplier = screenHeight / 1080f  // Adapter à la taille d'écran (base 1080p)
+                val growth = baseGrowth * screenMultiplier
+                
                 branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
                 
                 // Ajouter un nouveau point si nécessaire
@@ -293,7 +297,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                 }
                 
                 // Arrêter la croissance si la branche atteint sa taille max
-                if (branch.currentLength >= branch.maxLength * 0.90f) {  // RÉDUIT de 0.95f à 0.90f pour arrêter plus tôt
+                if (branch.currentLength >= branch.maxLength * 0.85f) {  // RÉDUIT encore de 0.90f à 0.85f 
                     branch.isActive = false
                 }
             }
@@ -351,7 +355,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             if (existingFlowers.isNotEmpty()) continue
             
             // Une fleur au bout de chaque branche inactive (terminée)
-            if (!branch.isActive && branch.currentLength > 50f) {  // RÉDUIT le seuil de 100f à 50f
+            if (!branch.isActive && branch.currentLength > 30f) {  // ENCORE RÉDUIT de 50f à 30f
                 val lastPoint = branch.points.last()
                 val flowerSize = baseFlowerSize + Math.random().toFloat() * 25f
                 
