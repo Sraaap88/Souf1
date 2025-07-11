@@ -621,8 +621,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         
         // NOUVELLE FONCTION: Générer une vitesse de croissance aléatoire mais similaire
         private fun generateRandomGrowthSpeed(): Float {
-            // Variation de ±15% autour de la vitesse normale
-            val variation = 0.15f
+            // AUGMENTATION DRASTIQUE: Variation de ±50% autour de la vitesse normale
+            val variation = 0.5f
             return 1.0f + (Math.random().toFloat() - 0.5f) * 2 * variation
         }
     }
