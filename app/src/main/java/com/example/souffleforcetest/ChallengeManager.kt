@@ -421,6 +421,30 @@ class ChallengeManager(private val context: Context? = null) {
         return "Marguerite: $completed/3 défis"
     }
     
+    // ==================== CHEAT CODE FUNCTIONS ====================
+    
+    fun activateCheatMode() {
+        println("🎮 MODE CHEAT ACTIVÉ!")
+        
+        // Débloquer et compléter tous les défis
+        for (challenge in margueriteChallenges) {
+            challenge.isCompleted = true
+            challenge.isUnlocked = true
+        }
+        
+        // Débloquer toutes les fleurs
+        unlockedFlowers.clear()
+        unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
+        unlockedFlowers.add(UnlockedFlower("ROSE", "Débloquée par cheat code"))
+        
+        // Sauvegarder la progression
+        saveChallengeProgress()
+        
+        println("✅ Tous les défis complétés!")
+        println("✅ Toutes les fleurs débloquées!")
+        println("✅ Progression sauvegardée!")
+    }
+    
     // ==================== RÉSULTAT ====================
     
     data class ChallengeResult(
