@@ -215,7 +215,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private fun growActiveBranches(force: Float) {
         for (branch in branches.filter { it.isActive }) {
-            if (force > 0.1f && branch.currentLength < branch.maxLength) {
+            // CORRIGÉ: Pousse SEULEMENT si on souffle (force > 0.15f)
+            if (force > 0.15f && branch.currentLength < branch.maxLength) {
                 // Croissance proportionnelle à la force
                 val growth = force * branchGrowthRate * 0.020f
                 branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
@@ -275,7 +276,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private fun growExistingLeaves(force: Float) {
         for (leaf in leaves) {
-            if (leaf.currentSize < leaf.maxSize && force > 0.1f) {
+            // CORRIGÉ: Feuilles poussent seulement si on souffle
+            if (leaf.currentSize < leaf.maxSize && force > 0.15f) {
                 val growth = force * leafGrowthRate * 0.025f
                 leaf.currentSize = (leaf.currentSize + growth).coerceAtMost(leaf.maxSize)
             }
@@ -310,7 +312,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private fun growExistingFlowers(force: Float) {
         for (flower in flowers) {
-            if (flower.currentSize < flower.maxSize && force > 0.1f) {
+            // CORRIGÉ: Fleurs poussent seulement si on souffle
+            if (flower.currentSize < flower.maxSize && force > 0.15f) {
                 val growth = force * flowerGrowthRate * 0.025f
                 flower.currentSize = (flower.currentSize + growth).coerceAtMost(flower.maxSize)
             }
