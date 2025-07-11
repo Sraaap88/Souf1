@@ -50,11 +50,21 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val id: String = generateFlowerId()
     )
     
+    // ==================== NOUVELLE DATA CLASS POUR SÉPARATION PROGRAMMÉE ====================
+    
+    data class ScheduledSplit(
+        val branchId: String,
+        val scheduledTime: Long
+    )
+    
     // ==================== VARIABLES PRINCIPALES ====================
     
     private val branches = mutableListOf<RoseBranch>()
     private val leaves = mutableListOf<RoseLeaf>()
     private val flowers = mutableListOf<RoseFlower>()
+    
+    // NOUVELLE VARIABLE pour gérer les séparations programmées
+    private val scheduledSplits = mutableListOf<ScheduledSplit>()
     
     private var baseX = 0f
     private var baseY = 0f
@@ -68,6 +78,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private val spikeThreshold = 0.4f  // Seuil pour détecter une saccade
     private val spikeMinInterval = 300L  // Minimum entre saccades
+    private val secondSplitDelay = 500L  // NOUVEAU: Délai pour la 2ème séparation automatique
     private val branchGrowthRate = 3000f  // Vitesse de croissance
     private val leafGrowthRate = 800f
     private val flowerGrowthRate = 500f
@@ -111,6 +122,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         // Détecter les saccades pour diviser les tiges
         detectSpikeAndSplit(force)
         
+        // NOUVEAU: Vérifier les séparations programmées
+        processScheduledSplits()
+        
         // Faire pousser toutes les tiges actives
         growActiveBranches(force)
         
@@ -131,6 +145,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         branches.clear()
         leaves.clear()
         flowers.clear()
+        scheduledSplits.clear()  // NOUVEAU: Nettoyer les séparations programmées
         lastForce = 0f
         lastSpikeTime = 0L
     }
@@ -156,15 +171,52 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             val eligibleBranches = branches.filter { it.isActive && it.currentLength > 80f }
             
             for (branch in eligibleBranches) {
-                splitBranchInTwo(branch)
+                val newBranches = splitBranchInTwo(branch)
+                
+                // NOUVEAU: Programmer une 2ème séparation sur une des nouvelles branches
+                if (newBranches.isNotEmpty()) {
+                    scheduleSecondSplit(newBranches, currentTime)
+                }
             }
             
             lastSpikeTime = currentTime
         }
     }
     
-    private fun splitBranchInTwo(branch: RoseBranch) {
-        if (branch.points.size < 3) return
+    // NOUVELLE FONCTION: Programmer une 2ème séparation
+    private fun scheduleSecondSplit(newBranches: List<RoseBranch>, currentTime: Long) {
+        // Choisir aléatoirement une des deux nouvelles branches
+        val randomBranch = newBranches.random()
+        
+        // Programmer la séparation dans 500ms
+        val scheduledSplit = ScheduledSplit(
+            branchId = randomBranch.id,
+            scheduledTime = currentTime + secondSplitDelay
+        )
+        
+        scheduledSplits.add(scheduledSplit)
+    }
+    
+    // NOUVELLE FONCTION: Traiter les séparations programmées
+    private fun processScheduledSplits() {
+        val currentTime = System.currentTimeMillis()
+        val splitsToProcess = scheduledSplits.filter { it.scheduledTime <= currentTime }
+        
+        for (scheduledSplit in splitsToProcess) {
+            // Trouver la branche correspondante
+            val branch = branches.find { it.id == scheduledSplit.branchId && it.isActive }
+            
+            if (branch != null && branch.currentLength > 40f) {  // Vérifier qu'elle est assez longue
+                splitBranchInTwo(branch)
+            }
+        }
+        
+        // Nettoyer les séparations traitées
+        scheduledSplits.removeAll(splitsToProcess)
+    }
+    
+    private fun splitBranchInTwo(branch: RoseBranch): List<RoseBranch> {
+        if (branch.points.size < 3) return emptyList()
         
         val splitPoint = branch.points.last()
         val baseAngle = getCurrentGrowthAngle(branch)
@@ -202,6 +254,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         
         // Arrêter la croissance de la tige mère
         branch.isActive = false
+        
+        // NOUVEAU: Retourner les nouvelles branches créées
+        return listOf(leftBranch, rightBranch)
     }
     
     private fun getCurrentGrowthAngle(branch: RoseBranch): Float {
