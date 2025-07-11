@@ -15,7 +15,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val maxLength: Float,
         val angle: Float,  // Angle de base de croissance
         var isActive: Boolean = true,
-        val id: String = generateBranchId()
+        val id: String = generateBranchId(),
+        val growthSpeedMultiplier: Float = generateRandomGrowthSpeed() // NOUVEAU: Vitesse individuelle
     )
     
     data class BranchPoint(
@@ -50,8 +51,6 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val id: String = generateFlowerId()
     )
     
-    // ==================== NOUVELLE DATA CLASS POUR SÉPARATION PROGRAMMÉE ====================
-    
     data class ScheduledSplit(
         val branchId: String,
         val scheduledTime: Long
@@ -62,8 +61,6 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val branches = mutableListOf<RoseBranch>()
     private val leaves = mutableListOf<RoseLeaf>()
     private val flowers = mutableListOf<RoseFlower>()
-    
-    // NOUVELLE VARIABLE pour gérer les séparations programmées
     private val scheduledSplits = mutableListOf<ScheduledSplit>()
     
     private var baseX = 0f
@@ -78,8 +75,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private val spikeThreshold = 0.4f  // Seuil pour détecter une saccade
     private val spikeMinInterval = 300L  // Minimum entre saccades
-    private val secondSplitDelay = 500L  // NOUVEAU: Délai pour la 2ème séparation automatique
-    private val branchGrowthRate = 3000f  // Vitesse de croissance
+    private val secondSplitDelay = 500L  // Délai pour la 2ème séparation automatique
+    private val branchGrowthRate = 3000f  // Vitesse de croissance de base
     private val leafGrowthRate = 800f
     private val flowerGrowthRate = 500f
     
@@ -93,6 +90,10 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val tortuosityFactor = 12f  // Amplitude des courbures
     private val tortuosityFrequency = 0.4f  // Fréquence des changements d'angle
     
+    // NOUVEAUX PARAMÈTRES pour séparations multiples
+    private val threeWaySplitChance = 0.3f  // 30% de chance de séparation en 3
+    private val fourWaySplitChance = 0.15f  // 15% de chance de séparation en 4
+    
     // ==================== FONCTIONS PUBLIQUES ====================
     
     fun setChallengeManager(manager: ChallengeManager) {
@@ -103,26 +104,82 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         baseX = centerX
         baseY = bottomY
         
-        // Créer une seule tige principale
-        val mainBranch = RoseBranch(
-            maxLength = screenHeight * 2.0f,  // Peut sortir de l'écran
-            angle = -90f  // Pousse vers le haut
-        )
+        // NOUVEAU: Créer directement la séparation depuis le point de base
+        createInitialSplit(baseX, baseY, baseBranchThickness)
+    }
+    
+    // NOUVELLE FONCTION: Créer la séparation initiale
+    private fun createInitialSplit(x: Float, y: Float, thickness: Float) {
+        val baseAngle = -90f  // Angle vers le haut (négative Y dans Android)
         
-        // Commencer avec 2 points pour pouvoir pousser
-        mainBranch.points.add(BranchPoint(baseX, baseY, baseBranchThickness))
-        val secondY = baseY - segmentLength * 0.2f
-        mainBranch.points.add(BranchPoint(baseX, secondY, baseBranchThickness * 0.98f))
-        mainBranch.currentLength = segmentLength * 0.2f
+        // Déterminer le nombre de branches initiales (2, 3 ou 4)
+        val branchCount = when {
+            Math.random() < fourWaySplitChance -> 4
+            Math.random() < threeWaySplitChance -> 3
+            else -> 2
+        }
         
-        branches.add(mainBranch)
+        // Créer les branches initiales
+        for (i in 0 until branchCount) {
+            val branchAngle = calculateInitialBranchAngle(baseAngle, i, branchCount)
+            
+            val newBranch = RoseBranch(
+                maxLength = screenHeight * 2.0f,  // Longueur normale
+                angle = branchAngle
+            )
+            
+            // Initialiser chaque branche avec 2 points
+            newBranch.points.add(BranchPoint(x, y, thickness))
+            
+            val angleRad = Math.toRadians(branchAngle.toDouble())
+            val secondX = x + cos(angleRad).toFloat() * (segmentLength * 0.3f)
+            val secondY = y + sin(angleRad).toFloat() * (segmentLength * 0.3f)
+            newBranch.points.add(BranchPoint(secondX, secondY, thickness * 0.95f))
+            newBranch.currentLength = segmentLength * 0.3f
+            
+            branches.add(newBranch)
+        }
+        
+        // Notifier le challengeManager de la création initiale
+        challengeManager?.notifyDivisionCreated("initial_split_$branchCount")
+    }
+    
+    // NOUVELLE FONCTION: Calculer l'angle pour les branches initiales (naturel, pas éventail)
+    private fun calculateInitialBranchAngle(baseAngle: Float, branchIndex: Int, totalBranches: Int): Float {
+        return when (totalBranches) {
+            2 -> {
+                // Séparation naturelle en Y 
+                val spread = 20f
+                baseAngle + if (branchIndex == 0) -spread else spread
+            }
+            3 -> {
+                // Séparation naturelle, pas symétrique
+                when (branchIndex) {
+                    0 -> baseAngle - 25f  // vers gauche
+                    1 -> baseAngle + 5f   // légèrement vers droite
+                    2 -> baseAngle + 30f  // plus vers droite
+                    else -> baseAngle
+                }
+            }
+            4 -> {
+                // Séparation naturelle, asymétrique
+                when (branchIndex) {
+                    0 -> baseAngle - 30f  // vers gauche
+                    1 -> baseAngle - 10f  // légèrement gauche
+                    2 -> baseAngle + 15f  // vers droite
+                    3 -> baseAngle + 35f  // plus vers droite
+                    else -> baseAngle
+                }
+            }
+            else -> baseAngle
+        }
     }
     
     fun processStemGrowth(force: Float) {
         // Détecter les saccades pour diviser les tiges
         detectSpikeAndSplit(force)
         
-        // NOUVEAU: Vérifier les séparations programmées
+        // Vérifier les séparations programmées
         processScheduledSplits()
         
         // Faire pousser toutes les tiges actives
@@ -145,7 +202,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         branches.clear()
         leaves.clear()
         flowers.clear()
-        scheduledSplits.clear()  // NOUVEAU: Nettoyer les séparations programmées
+        scheduledSplits.clear()
         lastForce = 0f
         lastSpikeTime = 0L
     }
@@ -171,9 +228,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             val eligibleBranches = branches.filter { it.isActive && it.currentLength > 80f }
             
             for (branch in eligibleBranches) {
-                val newBranches = splitBranchInTwo(branch)
+                val newBranches = splitBranchMultiway(branch)
                 
-                // NOUVEAU: Programmer une 2ème séparation sur une des nouvelles branches
+                // Programmer une 2ème séparation sur une des nouvelles branches
                 if (newBranches.isNotEmpty()) {
                     scheduleSecondSplit(newBranches, currentTime)
                 }
@@ -183,9 +240,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         }
     }
     
-    // NOUVELLE FONCTION: Programmer une 2ème séparation
     private fun scheduleSecondSplit(newBranches: List<RoseBranch>, currentTime: Long) {
-        // Choisir aléatoirement une des deux nouvelles branches
+        // Choisir aléatoirement une des nouvelles branches
         val randomBranch = newBranches.random()
         
         // Programmer la séparation dans 500ms
@@ -197,7 +253,6 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         scheduledSplits.add(scheduledSplit)
     }
     
-    // NOUVELLE FONCTION: Traiter les séparations programmées
     private fun processScheduledSplits() {
         val currentTime = System.currentTimeMillis()
         val splitsToProcess = scheduledSplits.filter { it.scheduledTime <= currentTime }
@@ -206,8 +261,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             // Trouver la branche correspondante
             val branch = branches.find { it.id == scheduledSplit.branchId && it.isActive }
             
-            if (branch != null && branch.currentLength > 40f) {  // Vérifier qu'elle est assez longue
-                splitBranchInTwo(branch)
+            if (branch != null && branch.currentLength > 40f) {
+                splitBranchMultiway(branch)
             }
         }
         
@@ -215,48 +270,87 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         scheduledSplits.removeAll(splitsToProcess)
     }
     
-    private fun splitBranchInTwo(branch: RoseBranch): List<RoseBranch> {
+    // NOUVELLE FONCTION: Séparation multiple (2, 3 ou 4 branches)
+    private fun splitBranchMultiway(branch: RoseBranch): List<RoseBranch> {
         if (branch.points.size < 3) return emptyList()
         
         val splitPoint = branch.points.last()
         val baseAngle = getCurrentGrowthAngle(branch)
         
-        // Créer deux nouvelles tiges en Y
-        val leftAngle = baseAngle - 25f  // 25° vers la gauche
-        val rightAngle = baseAngle + 25f // 25° vers la droite
+        // Déterminer le nombre de branches à créer
+        val branchCount = when {
+            Math.random() < fourWaySplitChance -> 4
+            Math.random() < threeWaySplitChance -> 3
+            else -> 2
+        }
         
-        val leftBranch = RoseBranch(
-            maxLength = branch.maxLength,
-            angle = leftAngle
-        )
+        val newBranches = mutableListOf<RoseBranch>()
         
-        val rightBranch = RoseBranch(
-            maxLength = branch.maxLength,
-            angle = rightAngle
-        )
-        
-        // Initialiser chaque nouvelle tige avec 2 points
-        for ((newBranch, angle) in listOf(leftBranch to leftAngle, rightBranch to rightAngle)) {
+        // Créer les nouvelles branches
+        for (i in 0 until branchCount) {
+            val branchAngle = calculateBranchAngle(baseAngle, i, branchCount)
+            
+            val newBranch = RoseBranch(
+                maxLength = branch.maxLength,
+                angle = branchAngle
+            )
+            
+            // Initialiser la nouvelle branche avec 2 points
             newBranch.points.add(BranchPoint(splitPoint.x, splitPoint.y, splitPoint.thickness * 0.9f))
             
-            val angleRad = Math.toRadians(angle.toDouble())
+            val angleRad = Math.toRadians(branchAngle.toDouble())
             val secondX = splitPoint.x + cos(angleRad).toFloat() * (segmentLength * 0.3f)
             val secondY = splitPoint.y + sin(angleRad).toFloat() * (segmentLength * 0.3f)
             newBranch.points.add(BranchPoint(secondX, secondY, splitPoint.thickness * 0.88f))
             newBranch.currentLength = segmentLength * 0.3f
+            
+            newBranches.add(newBranch)
+            branches.add(newBranch)
         }
         
-        branches.add(leftBranch)
-        branches.add(rightBranch)
-        
-        // Notifier le challengeManager qu'une division a été créée
-        challengeManager?.notifyDivisionCreated("division_${leftBranch.id}_${rightBranch.id}")
+        // Notifier le challengeManager
+        val divisionId = newBranches.joinToString("_") { "branch_${it.id}" }
+        challengeManager?.notifyDivisionCreated("division_$divisionId")
         
         // Arrêter la croissance de la tige mère
         branch.isActive = false
         
-        // NOUVEAU: Retourner les nouvelles branches créées
-        return listOf(leftBranch, rightBranch)
+        return newBranches
+    }
+    
+    // NOUVELLE FONCTION: Calculer l'angle pour chaque branche dans une séparation multiple
+    private fun calculateBranchAngle(baseAngle: Float, branchIndex: Int, totalBranches: Int): Float {
+        return when (totalBranches) {
+            2 -> {
+                // Séparation classique en Y
+                val spread = 25f
+                baseAngle + if (branchIndex == 0) -spread else spread
+            }
+            3 -> {
+                // Séparation en trident, légèrement décalée
+                val spread = 20f
+                val offset = 5f // Petit décalage pour l'asymétrie
+                when (branchIndex) {
+                    0 -> baseAngle - spread - offset
+                    1 -> baseAngle + offset
+                    2 -> baseAngle + spread + offset
+                    else -> baseAngle
+                }
+            }
+            4 -> {
+                // Séparation en éventail, décalée pour être naturelle
+                val spread = 15f
+                val offset = 8f
+                when (branchIndex) {
+                    0 -> baseAngle - spread * 2 - offset
+                    1 -> baseAngle - spread + offset
+                    2 -> baseAngle + spread - offset
+                    3 -> baseAngle + spread * 2 + offset
+                    else -> baseAngle
+                }
+            }
+            else -> baseAngle
+        }
     }
     
     private fun getCurrentGrowthAngle(branch: RoseBranch): Float {
@@ -272,9 +366,10 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         for (branch in branches.filter { it.isActive }) {
             // Pousse SEULEMENT si on souffle (force > 0.15f)
             if (force > 0.15f && branch.currentLength < branch.maxLength) {
-                // Croissance proportionnelle à la force
-                val growth = force * branchGrowthRate * 0.020f
-                branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
+                // Croissance proportionnelle à la force ET à la vitesse individuelle de la branche
+                val baseGrowth = force * branchGrowthRate * 0.020f
+                val individualGrowth = baseGrowth * branch.growthSpeedMultiplier
+                branch.currentLength = (branch.currentLength + individualGrowth).coerceAtMost(branch.maxLength)
                 
                 // Ajouter un nouveau point si nécessaire
                 if (branch.points.size >= 2 && branch.currentLength >= branch.points.size * segmentLength) {
@@ -522,6 +617,13 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         private fun generateFlowerId(): String {
             flowerIdCounter++
             return "roseflower_$flowerIdCounter"
+        }
+        
+        // NOUVELLE FONCTION: Générer une vitesse de croissance aléatoire mais similaire
+        private fun generateRandomGrowthSpeed(): Float {
+            // Variation de ±15% autour de la vitesse normale
+            val variation = 0.15f
+            return 1.0f + (Math.random().toFloat() - 0.5f) * 2 * variation
         }
     }
 }
