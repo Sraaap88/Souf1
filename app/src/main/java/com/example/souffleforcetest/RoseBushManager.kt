@@ -76,9 +76,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val spikeThreshold = 0.4f  // Seuil pour détecter une saccade
     private val spikeMinInterval = 300L  // Minimum entre saccades
     private val secondSplitDelay = 500L  // Délai pour la 2ème séparation automatique
-    private val branchGrowthRate = 2400f  // RÉDUIT de 20% (était 3000f)
-    private val leafGrowthRate = 640f     // RÉDUIT de 20% (était 800f)
-    private val flowerGrowthRate = 400f   // RÉDUIT de 20% (était 500f)
+    private val branchGrowthRate = 1920f  // ENCORE RÉDUIT de 20% (était 2400f)
+    private val leafGrowthRate = 512f     // ENCORE RÉDUIT de 20% (était 640f)
+    private val flowerGrowthRate = 320f   // ENCORE RÉDUIT de 20% (était 400f)
     
     // Tailles
     private val baseBranchThickness = 15f  
@@ -121,7 +121,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             val branchAngle = calculateInitialBranchAngle(baseAngle, i, branchCount)
             
             val newBranch = RoseBranch(
-                maxLength = screenHeight * 2.0f,  // Longueur normale
+                maxLength = screenHeight * 0.8f,  // CONTRAINTE: 80% de l'écran max
                 angle = branchAngle
             )
             
@@ -385,7 +385,13 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                     val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
                     val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(3f)
                     
-                    branch.points.add(BranchPoint(newX, newY, newThickness))
+                    // NOUVEAU: Vérifier que la nouvelle position reste dans l'écran
+                    if (newX >= 0 && newX <= screenWidth && newY >= 0 && newY <= screenHeight) {
+                        branch.points.add(BranchPoint(newX, newY, newThickness))
+                    } else {
+                        // Si on sort de l'écran, arrêter la croissance
+                        branch.isActive = false
+                    }
                 }
                 
                 // Arrêter quand on atteint la longueur max
@@ -405,10 +411,14 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             val existingLeaves = leaves.filter { it.branchIndex == index }
             if (existingLeaves.isNotEmpty()) continue
             
+            // NOUVEAU: Ne pas créer de feuilles dans les premiers 2cm (60 pixels environ)
+            if (branch.currentLength < 60f) continue
+            
             val leafCount = 3 + (Math.random() * 3).toInt()
             
             for (i in 0 until leafCount) {
-                val positionRatio = 0.3f + (i.toFloat() / leafCount) * 0.5f
+                // NOUVEAU: Commencer les feuilles après les premiers 2cm
+                val positionRatio = 0.4f + (i.toFloat() / leafCount) * 0.5f
                 val side = if (i % 2 == 0) -1 else 1
                 val size = baseLeafSize + Math.random().toFloat() * 30f
                 val angle = Math.random().toFloat() * 50f - 25f
