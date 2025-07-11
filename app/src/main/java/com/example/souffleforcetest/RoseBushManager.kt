@@ -81,7 +81,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val flowerGrowthRate = 320f   // ENCORE RÉDUIT de 20% (était 400f)
     
     // Tailles
-    private val baseBranchThickness = 15f  
+    private val baseBranchThickness = 18.75f  // AUGMENTÉ de 25% (était 15f)
     private val segmentLength = 30f  // Segments pour croissance fluide
     private val baseLeafSize = 80f  
     private val baseFlowerSize = 35f
@@ -141,25 +141,25 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         challengeManager?.notifyDivisionCreated("initial_split_$branchCount")
     }
     
-    // NOUVELLE FONCTION: Calculer l'angle pour les branches initiales (naturel, pas éventail)
+    // NOUVELLE FONCTION: Calculer l'angle pour les branches initiales (naturel, plus rapprochées)
     private fun calculateInitialBranchAngle(baseAngle: Float, branchIndex: Int, totalBranches: Int): Float {
         return when (totalBranches) {
             3 -> {
-                // AMÉLIORATION: Séparation naturelle avec contrainte vers le haut
+                // RAPPROCHEMENT: Séparation plus serrée
                 when (branchIndex) {
-                    0 -> baseAngle - 35f  // vers gauche mais pas trop
-                    1 -> baseAngle + 5f   // légèrement vers droite
-                    2 -> baseAngle + 40f  // vers droite mais pas trop
+                    0 -> baseAngle - 20f  // vers gauche (était -35f)
+                    1 -> baseAngle + 2f   // légèrement vers droite (était +5f)
+                    2 -> baseAngle + 25f  // vers droite (était +40f)
                     else -> baseAngle
                 }
             }
             4 -> {
-                // AMÉLIORATION: Séparation naturelle, toutes vers le haut
+                // RAPPROCHEMENT: Séparation plus serrée
                 when (branchIndex) {
-                    0 -> baseAngle - 40f  // vers gauche
-                    1 -> baseAngle - 15f  // légèrement gauche
-                    2 -> baseAngle + 10f  // légèrement droite
-                    3 -> baseAngle + 35f  // vers droite
+                    0 -> baseAngle - 25f  // vers gauche (était -40f)
+                    1 -> baseAngle - 8f   // légèrement gauche (était -15f)
+                    2 -> baseAngle + 5f   // légèrement droite (était +10f)
+                    3 -> baseAngle + 20f  // vers droite (était +35f)
                     else -> baseAngle
                 }
             }
@@ -310,18 +310,18 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         return newBranches
     }
     
-    // NOUVELLE FONCTION: Calculer l'angle pour chaque branche dans une séparation multiple
+    // NOUVELLE FONCTION: Calculer l'angle pour chaque branche dans une séparation multiple (plus rapprochées)
     private fun calculateBranchAngle(baseAngle: Float, branchIndex: Int, totalBranches: Int): Float {
         return when (totalBranches) {
             2 -> {
-                // Séparation classique en Y
-                val spread = 25f
+                // Séparation classique en Y plus rapprochée
+                val spread = 15f  // RÉDUIT (était 25f)
                 baseAngle + if (branchIndex == 0) -spread else spread
             }
             3 -> {
-                // Séparation en trident, légèrement décalée
-                val spread = 20f
-                val offset = 5f // Petit décalage pour l'asymétrie
+                // Séparation en trident, plus rapprochée
+                val spread = 12f  // RÉDUIT (était 20f)
+                val offset = 3f   // RÉDUIT (était 5f)
                 when (branchIndex) {
                     0 -> baseAngle - spread - offset
                     1 -> baseAngle + offset
@@ -330,9 +330,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                 }
             }
             4 -> {
-                // Séparation en éventail, décalée pour être naturelle
-                val spread = 15f
-                val offset = 8f
+                // Séparation en éventail, plus rapprochée
+                val spread = 10f  // RÉDUIT (était 15f)
+                val offset = 5f   // RÉDUIT (était 8f)
                 when (branchIndex) {
                     0 -> baseAngle - spread * 2 - offset
                     1 -> baseAngle - spread + offset
@@ -411,14 +411,14 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             val existingLeaves = leaves.filter { it.branchIndex == index }
             if (existingLeaves.isNotEmpty()) continue
             
-            // NOUVEAU: Ne pas créer de feuilles dans les premiers 2cm (60 pixels environ)
-            if (branch.currentLength < 60f) continue
+            // RENFORCÉ: Ne pas créer de feuilles dans les premiers 3cm (90 pixels)
+            if (branch.currentLength < 90f) continue
             
             val leafCount = 3 + (Math.random() * 3).toInt()
             
             for (i in 0 until leafCount) {
-                // NOUVEAU: Commencer les feuilles après les premiers 2cm
-                val positionRatio = 0.4f + (i.toFloat() / leafCount) * 0.5f
+                // RENFORCÉ: Commencer les feuilles encore plus haut
+                val positionRatio = 0.5f + (i.toFloat() / leafCount) * 0.4f
                 val side = if (i % 2 == 0) -1 else 1
                 val size = baseLeafSize + Math.random().toFloat() * 30f
                 val angle = Math.random().toFloat() * 50f - 25f
