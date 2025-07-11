@@ -67,7 +67,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val spikeMinInterval = 200L  // RÉDUIT de 300ms à 200ms
     private val autoRamificationInterval = 500L  // RÉDUIT de 800ms à 500ms pour plus de branches
     private val maxBranches = 40  // AUGMENTÉ de 25 à 40 pour arbuste fourni
-    private val branchGrowthRate = 3500f  // ENCORE AUGMENTÉ de 3000f à 3500f
+    private val branchGrowthRate = 4500f  // ENCORE AUGMENTÉ de 3500f à 4500f
     private val leafGrowthRate = 800f  // RETOUR: animation de croissance des feuilles
     private val flowerGrowthRate = 500f  // DOUBLÉ de 250f à 500f
     
@@ -75,7 +75,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val baseBranchThickness = 18f  // Légèrement plus épais
     private val segmentLength = 45f  // Segments moyens pour tige tortueuse
     private val baseLeafSize = 100f  // Feuilles énormes fixes (pas d'animation)
-    private val baseFlowerSize = 75f  // AUGMENTÉ de 50f à 75f (50% plus grande)
+    private val baseFlowerSize = 50f  // RÉDUIT de 75f à 50f (30% plus petites)
     
     // NOUVEAU: Paramètres pour tige tortueuse
     private val tortuosityFactor = 15f  // Amplitude de la tortuosité
@@ -95,7 +95,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         // Créer la branche principale TORTUEUSE et TRÈS HAUTE
         val mainBranch = RoseBranch(
             parentBranchIndex = -1,
-            maxLength = screenHeight * 0.8f,  // 80% de la hauteur d'écran (plus haut!)
+            maxLength = screenHeight * 1.2f,  // AUGMENTÉ: 120% de la hauteur d'écran!
             angle = -90f  // Commence vers le haut mais va devenir tortueux
         )
         
@@ -290,11 +290,11 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     // ==================== CROISSANCE DES BRANCHES (ACCÉLÉRÉE) ====================
     
     private fun growActiveBranches(force: Float) {
-        // CORRIGÉ: Croissance seulement si on souffle (force > 0.1f au lieu de 0.02f)
-        for (branch in branches.filter { it.isActive && force > 0.1f }) {  // FORCE REQUISE POUR POUSSER
+        // CORRIGÉ: Croissance seulement si on souffle (seuil encore réduit)
+        for (branch in branches.filter { it.isActive && force > 0.05f }) {  // RÉDUIT de 0.1f à 0.05f - plus sensible
             if (branch.currentLength < branch.maxLength) {
                 // CROISSANCE MASSIVE basée sur la force ET la taille d'écran
-                val baseGrowth = force * branchGrowthRate * 0.065f  
+                val baseGrowth = force * branchGrowthRate * 0.080f  // ENCORE AUGMENTÉ de 0.065f à 0.080f
                 val screenMultiplier = screenHeight / 1080f  
                 val growth = baseGrowth * screenMultiplier
                 
@@ -318,14 +318,14 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                         
                         val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
                         val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
-                        val newThickness = (lastPoint.thickness * 0.94f).coerceAtLeast(2f)  
+                        val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(2f)  // MOINS de réduction
                         
                         branch.points.add(BranchPoint(newX, newY, newThickness))
                     }
                 }
                 
-                // Arrêter la croissance si la branche atteint sa taille max
-                if (branch.currentLength >= branch.maxLength * 0.80f) {
+                // Arrêter la croissance PLUS TARD pour pousser plus haut
+                if (branch.currentLength >= branch.maxLength * 0.95f) {  // AUGMENTÉ de 0.80f à 0.95f
                     branch.isActive = false
                 }
             }
