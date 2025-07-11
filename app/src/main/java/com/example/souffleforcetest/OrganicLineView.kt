@@ -521,8 +521,15 @@ class OrganicLineView @JvmOverloads constructor(
             if (event.x >= buttonLeft && event.x <= buttonRight && 
                 event.y >= buttonTop && event.y <= buttonBottom) {
                 
-                // TEMPORAIRE: Utiliser les défis marguerite pour toutes les fleurs
-                val challenges = challengeManager.getMargueriteChallenges()  // TODO: Implémenter les autres plus tard
+                // NOUVEAU: Définir le type de fleur pour les défis
+                challengeManager.setCurrentFlowerType(selectedFlowerType)
+                
+                // Choisir les défis selon la fleur sélectionnée
+                val challenges = when (selectedFlowerType) {
+                    "MARGUERITE" -> challengeManager.getMargueriteChallenges()
+                    "ROSE" -> challengeManager.getRoseChallenges()
+                    else -> challengeManager.getMargueriteChallenges()
+                }
                 
                 val challenge = challenges.find { it.id == i }
                 
