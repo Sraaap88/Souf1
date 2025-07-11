@@ -75,7 +75,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val baseBranchThickness = 18f  // Légèrement plus épais
     private val segmentLength = 45f  // Segments moyens pour tige tortueuse
     private val baseLeafSize = 100f  // Feuilles énormes fixes (pas d'animation)
-    private val baseFlowerSize = 50f  // RÉDUIT de 75f à 50f (30% plus petites)
+    private val baseFlowerSize = 35f  // RÉDUIT de 50f à 35f (30% plus petites)
     
     // NOUVEAU: Paramètres pour tige tortueuse
     private val tortuosityFactor = 15f  // Amplitude de la tortuosité
@@ -199,8 +199,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val canCreateBranches = currentTime - lastSpikeTime > spikeMinInterval && branches.size < maxBranches
         
         if (isSpike && canCreateBranches) {
-            // SACCADE = quelques grosses branches bien placées
-            val branchesToCreate = minOf(3, maxBranches - branches.size)  // 3 BRANCHES bien placées
+            // NOUVEAU: DOUBLER + créer sur branches actives
+            val activeBranches = branches.filter { it.isActive && it.currentLength > 10f }
+            val branchesToCreate = minOf(3 + activeBranches.size / 3, maxBranches - branches.size)  // 3+ branches selon densité
             
             for (i in 0 until branchesToCreate) {
                 createNewBranch()
@@ -230,36 +231,17 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private fun createNewBranchFrom(parentBranch: RoseBranch) {
         val parentIndex = branches.indexOf(parentBranch)
         
-        // POSITION plus logique selon le type de branche parent
-        val positionRatio = if (parentIndex == 0) {
-            // Tige principale: branches surtout dans le haut (50% à 90%)
-            0.5f + Math.random().toFloat() * 0.4f
-        } else {
-            // Branches secondaires: ramification plus proche de la base (20% à 70%)
-            0.2f + Math.random().toFloat() * 0.5f
-        }
-        
+        // Position TOUT LE LONG de la branche parent (0.1 à 0.9)
+        val positionRatio = 0.1f + Math.random().toFloat() * 0.8f
         val branchPoint = getBranchPointAtRatio(parentBranch, positionRatio)
         
-        // ANGLES plus réalistes selon le parent
+        // Angle de ramification varié (30° à 120° par rapport à la branche parent)
         val parentAngle = parentBranch.angle
-        val angleOffset = if (parentIndex == 0) {
-            // Tige principale: branches à 45-135° (vers les côtés et le haut)
-            45f + Math.random().toFloat() * 90f * (if (Math.random() < 0.5) -1 else 1)
-        } else {
-            // Branches secondaires: angles plus modérés (30-60°)
-            30f + Math.random().toFloat() * 30f * (if (Math.random() < 0.5) -1 else 1)
-        }
+        val angleOffset = -60f + Math.random().toFloat() * 120f  // ±60°
         val newAngle = parentAngle + angleOffset
         
-        // LONGUEUR selon la hiérarchie
-        val newLength = if (parentIndex == 0) {
-            // Branches principales: très longues (60% à 120% de l'écran)
-            (screenHeight * 0.6f) + (Math.random().toFloat() * screenHeight * 0.6f)
-        } else {
-            // Branches secondaires: plus courtes (30% à 80% de l'écran)
-            (screenHeight * 0.3f) + (Math.random().toFloat() * screenHeight * 0.5f)
-        }
+        // Longueur de la nouvelle branche ÉNORME AUSSI
+        val newLength = (screenHeight * 0.8f) + (Math.random().toFloat() * screenHeight * 0.8f)  // ÉNORME: 80% à 160% de l'écran
         
         val newBranch = RoseBranch(
             parentBranchIndex = parentIndex,
@@ -268,15 +250,16 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             angle = newAngle
         )
         
-        // Point de départ + 2ème point pour démarrer immédiatement
+        // Point de départ = point sur la branche parent
         branchPoint?.let {
-            newBranch.points.add(BranchPoint(it.x, it.y, baseBranchThickness * 0.9f))
+            newBranch.points.add(BranchPoint(it.x, it.y, baseBranchThickness * 0.8f))  // Épaisseur décente
             
+            // CORRECTION CRITIQUE: Ajouter immédiatement un 2ème point pour permettre la croissance
             val angleRad = Math.toRadians(newBranch.angle.toDouble())
-            val secondX = it.x + cos(angleRad).toFloat() * (segmentLength * 0.1f)
+            val secondX = it.x + cos(angleRad).toFloat() * (segmentLength * 0.1f)  // Petit segment initial
             val secondY = it.y + sin(angleRad).toFloat() * (segmentLength * 0.1f)
-            newBranch.points.add(BranchPoint(secondX, secondY, baseBranchThickness * 0.88f))
-            newBranch.currentLength = segmentLength * 0.1f
+            newBranch.points.add(BranchPoint(secondX, secondY, baseBranchThickness * 0.78f))
+            newBranch.currentLength = segmentLength * 0.1f  // Longueur initiale
         }
         
         branches.add(newBranch)
@@ -317,39 +300,44 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     // ==================== CROISSANCE DES BRANCHES (ACCÉLÉRÉE) ====================
     
     private fun growActiveBranches(force: Float) {
-        val activeBranches = branches.filter { it.isActive }
-        
-        for (branch in activeBranches) {
-            if (force > 0.05f && branch.currentLength < branch.maxLength) {
-                // CROISSANCE MASSIVE
-                val baseGrowth = force * branchGrowthRate * 0.12f  // ÉNORME AUGMENTATION de 0.080f à 0.12f
+        // CORRIGÉ: Croissance seulement si on souffle (seuil encore réduit)
+        for (branch in branches.filter { it.isActive && force > 0.05f }) {  // RÉDUIT de 0.1f à 0.05f - plus sensible
+            if (branch.currentLength < branch.maxLength) {
+                // CROISSANCE MASSIVE basée sur la force ET la taille d'écran
+                val baseGrowth = force * branchGrowthRate * 0.12f  // ÉNORME AUGMENTATION de 0.080f à 0.12f// ENCORE AUGMENTÉ de 0.065f à 0.080f
                 val screenMultiplier = screenHeight / 1080f  
                 val growth = baseGrowth * screenMultiplier
                 
                 branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
                 
                 // Ajouter un nouveau point si nécessaire
-                if (branch.points.size >= 2 && branch.currentLength >= branch.points.size * segmentLength) {
+                if (branch.points.isNotEmpty()) {
                     val lastPoint = branch.points.last()
                     
-                    // Tige tortueuse pour la branche principale
-                    val angleRad = if (branch.parentBranchIndex == -1) {
-                        val baseAngle = branch.angle
-                        val tortuosity = sin(branch.points.size * tortuosityFrequency) * tortuosityFactor
-                        Math.toRadians((baseAngle + tortuosity).toDouble())
-                    } else {
-                        Math.toRadians(branch.angle.toDouble())
+                    if (branch.currentLength >= branch.points.size * segmentLength) {
+                        // NOUVEAU: Toutes les branches sont maintenant tortueuses
+                        val angleRad = if (branch.parentBranchIndex == -1) {
+                            // Branche principale: tortuosité forte
+                            val baseAngle = branch.angle
+                            val tortuosity = sin(branch.points.size * tortuosityFrequency) * tortuosityFactor
+                            Math.toRadians((baseAngle + tortuosity).toDouble())
+                        } else {
+                            // Branches secondaires: tortuosité plus légère
+                            val baseAngle = branch.angle
+                            val tortuosity = sin(branch.points.size * tortuosityFrequency * 0.7f) * (tortuosityFactor * 0.6f)
+                            Math.toRadians((baseAngle + tortuosity).toDouble())
+                        }
+                        
+                        val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
+                        val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
+                        val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(2f)  // MOINS de réduction
+                        
+                        branch.points.add(BranchPoint(newX, newY, newThickness))
                     }
-                    
-                    val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
-                    val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
-                    val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(2f)  
-                    
-                    branch.points.add(BranchPoint(newX, newY, newThickness))
                 }
                 
-                // Arrêter la croissance BEAUCOUP PLUS TARD
-                if (branch.currentLength >= branch.maxLength * 0.98f) {  // QUASI JAMAIS S'ARRÊTE
+                // Arrêter la croissance PLUS TARD pour pousser plus haut
+                if (branch.currentLength >= branch.maxLength * 0.95f) {  // AUGMENTÉ de 0.80f à 0.95f
                     branch.isActive = false
                 }
             }
@@ -480,7 +468,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         }
     }
     
-  private fun drawSingleLeaf(canvas: Canvas, paint: Paint, x: Float, y: Float, leaf: RoseLeaf) {
+    private fun drawSingleLeaf(canvas: Canvas, paint: Paint, x: Float, y: Float, leaf: RoseLeaf) {
         val size = leaf.currentSize
         val angle = leaf.angle
         val side = leaf.side
