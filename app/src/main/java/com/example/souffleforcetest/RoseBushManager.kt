@@ -65,9 +65,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private val spikeThreshold = 0.4f  // RÉDUIT de 0.6f à 0.4f (plus sensible)
     private val spikeMinInterval = 200L  // RÉDUIT de 300ms à 200ms
-    private val autoRamificationInterval = 500L  // RÉDUIT de 800ms à 500ms pour plus de branches
-    private val maxBranches = 40  // AUGMENTÉ de 25 à 40 pour arbuste fourni
-    private val branchGrowthRate = 4500f  // ENCORE AUGMENTÉ de 3500f à 4500f
+    private val autoRamificationInterval = 300L  // ENCORE PLUS RAPIDE: toutes les 300ms
+    private val maxBranches = 50  // BEAUCOUP PLUS pour ressembler aux vraies photos
+    private val branchGrowthRate = 12000f  // ENCORE PLUS RAPIDE
     private val leafGrowthRate = 800f  // RETOUR: animation de croissance des feuilles
     private val flowerGrowthRate = 500f  // DOUBLÉ de 250f à 500f
     
@@ -95,7 +95,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         // Créer la branche principale TORTUEUSE et TRÈS HAUTE
         val mainBranch = RoseBranch(
             parentBranchIndex = -1,
-            maxLength = screenHeight * 1.2f,  // AUGMENTÉ: 120% de la hauteur d'écran!
+            maxLength = screenHeight * 2.0f,  // ÉNORME: 200% de la hauteur d'écran!
             angle = -90f  // Commence vers le haut mais va devenir tortueux
         )
         
@@ -165,28 +165,27 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private fun continuousRamification(force: Float) {
         val currentTime = System.currentTimeMillis()
         
-        // CORRIGÉ: Ramification seulement SI on souffle (force > 0.15f)
+        // RAMIFICATION CONTINUE MASSIVE quand on souffle
         if (currentTime - lastAutoRamificationTime > autoRamificationInterval && 
-            branches.size < maxBranches && force > 0.15f) {  // CHANGÉ: force requise
+            branches.size < maxBranches && force > 0.08f) {  
             
-            // Trouver des branches éligibles pour ramification
-            val eligibleBranches = branches.filter { 
-                it.points.size >= 2 && 
-                it.currentLength > 15f && 
-                it.isActive  // Seulement les branches actives
-            }
+            // CRÉER PLEIN DE BRANCHES D'UN COUP comme un vrai rosier sauvage
+            val branchesToCreate = if (force > 0.6f) 4 else if (force > 0.3f) 3 else 2
             
-            if (eligibleBranches.isNotEmpty()) {
-                // Créer 1-2 branches selon la force
-                val branchesToCreate = if (force > 0.5f) 2 else 1
+            for (i in 0 until minOf(branchesToCreate, maxBranches - branches.size)) {
+                // Choisir n'importe quelle branche comme parent
+                val eligibleBranches = branches.filter { 
+                    it.points.size >= 2 && 
+                    it.currentLength > 10f
+                }
                 
-                for (i in 0 until minOf(branchesToCreate, maxBranches - branches.size)) {
+                if (eligibleBranches.isNotEmpty()) {
                     val branch = eligibleBranches.random()
                     createNewBranchFrom(branch)
                 }
-                
-                lastAutoRamificationTime = currentTime
             }
+            
+            lastAutoRamificationTime = currentTime
         }
     }
     
@@ -201,9 +200,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val canCreateBranches = currentTime - lastSpikeTime > spikeMinInterval && branches.size < maxBranches
         
         if (isSpike && canCreateBranches) {
-            // NOUVEAU: DOUBLER + créer sur branches actives
-            val activeBranches = branches.filter { it.isActive && it.currentLength > 10f }
-            val branchesToCreate = minOf(3 + activeBranches.size / 3, maxBranches - branches.size)  // 3+ branches selon densité
+            // SACCADE = EXPLOSION DE BRANCHES comme un vrai rosier sauvage
+            val branchesToCreate = minOf(8, maxBranches - branches.size)  // 8 BRANCHES D'UN COUP!
             
             for (i in 0 until branchesToCreate) {
                 createNewBranch()
@@ -233,17 +231,17 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private fun createNewBranchFrom(parentBranch: RoseBranch) {
         val parentIndex = branches.indexOf(parentBranch)
         
-        // Position TOUT LE LONG de la branche parent (0.1 à 0.9)
-        val positionRatio = 0.1f + Math.random().toFloat() * 0.8f
+        // Branches qui partent de PARTOUT sur la branche parent
+        val positionRatio = 0.05f + Math.random().toFloat() * 0.9f  // PARTOUT de 5% à 95%
         val branchPoint = getBranchPointAtRatio(parentBranch, positionRatio)
         
-        // Angle de ramification varié (30° à 120° par rapport à la branche parent)
+        // Angles TRÈS variés pour ressembler aux vraies photos
         val parentAngle = parentBranch.angle
-        val angleOffset = -60f + Math.random().toFloat() * 120f  // ±60°
+        val angleOffset = -90f + Math.random().toFloat() * 180f  // TRÈS VARIÉ ±90°
         val newAngle = parentAngle + angleOffset
         
-        // Longueur de la nouvelle branche PLUS LONGUE
-        val newLength = (screenHeight * 0.3f) + (Math.random().toFloat() * screenHeight * 0.4f)  // AUGMENTÉ: 30% à 70% de l'écran
+        // Branches TRÈS longues comme sur les photos
+        val newLength = (screenHeight * 0.8f) + (Math.random().toFloat() * screenHeight * 1.2f)  // 80% à 200% !
         
         val newBranch = RoseBranch(
             parentBranchIndex = parentIndex,
@@ -252,16 +250,15 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
             angle = newAngle
         )
         
-        // Point de départ = point sur la branche parent
+        // Point de départ + 2ème point pour démarrer immédiatement
         branchPoint?.let {
-            newBranch.points.add(BranchPoint(it.x, it.y, baseBranchThickness * 0.8f))  // Épaisseur décente
+            newBranch.points.add(BranchPoint(it.x, it.y, baseBranchThickness * 0.9f))
             
-            // CORRECTION CRITIQUE: Ajouter immédiatement un 2ème point pour permettre la croissance
             val angleRad = Math.toRadians(newBranch.angle.toDouble())
-            val secondX = it.x + cos(angleRad).toFloat() * (segmentLength * 0.1f)  // Petit segment initial
+            val secondX = it.x + cos(angleRad).toFloat() * (segmentLength * 0.1f)
             val secondY = it.y + sin(angleRad).toFloat() * (segmentLength * 0.1f)
-            newBranch.points.add(BranchPoint(secondX, secondY, baseBranchThickness * 0.78f))
-            newBranch.currentLength = segmentLength * 0.1f  // Longueur initiale
+            newBranch.points.add(BranchPoint(secondX, secondY, baseBranchThickness * 0.88f))
+            newBranch.currentLength = segmentLength * 0.1f
         }
         
         branches.add(newBranch)
@@ -307,7 +304,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         for (branch in activeBranches) {
             if (force > 0.05f && branch.currentLength < branch.maxLength) {
                 // CROISSANCE MASSIVE
-                val baseGrowth = force * branchGrowthRate * 0.080f  
+                val baseGrowth = force * branchGrowthRate * 0.12f  // ÉNORME AUGMENTATION de 0.080f à 0.12f
                 val screenMultiplier = screenHeight / 1080f  
                 val growth = baseGrowth * screenMultiplier
                 
@@ -333,8 +330,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                     branch.points.add(BranchPoint(newX, newY, newThickness))
                 }
                 
-                // Arrêter la croissance
-                if (branch.currentLength >= branch.maxLength * 0.95f) {  
+                // Arrêter la croissance BEAUCOUP PLUS TARD
+                if (branch.currentLength >= branch.maxLength * 0.98f) {  // QUASI JAMAIS S'ARRÊTE
                     branch.isActive = false
                 }
             }
