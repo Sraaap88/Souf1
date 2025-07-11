@@ -66,7 +66,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val spikeThreshold = 0.4f  // RÉDUIT de 0.6f à 0.4f (plus sensible)
     private val spikeMinInterval = 200L  // RÉDUIT de 300ms à 200ms
     private val autoRamificationInterval = 300L  // ENCORE PLUS RAPIDE: toutes les 300ms
-    private val maxBranches = 50  // BEAUCOUP PLUS pour ressembler aux vraies photos
+    private val maxBranches = 25  // Réduit pour éviter le bordel
     private val branchGrowthRate = 12000f  // ENCORE PLUS RAPIDE
     private val leafGrowthRate = 800f  // RETOUR: animation de croissance des feuilles
     private val flowerGrowthRate = 500f  // DOUBLÉ de 250f à 500f
@@ -165,27 +165,26 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private fun continuousRamification(force: Float) {
         val currentTime = System.currentTimeMillis()
         
-        // RAMIFICATION CONTINUE MASSIVE quand on souffle
+        // RAMIFICATION plus structurée, surtout sur la tige principale
         if (currentTime - lastAutoRamificationTime > autoRamificationInterval && 
             branches.size < maxBranches && force > 0.08f) {  
             
-            // CRÉER PLEIN DE BRANCHES D'UN COUP comme un vrai rosier sauvage
-            val branchesToCreate = if (force > 0.6f) 4 else if (force > 0.3f) 3 else 2
-            
-            for (i in 0 until minOf(branchesToCreate, maxBranches - branches.size)) {
-                // Choisir n'importe quelle branche comme parent
-                val eligibleBranches = branches.filter { 
-                    it.points.size >= 2 && 
-                    it.currentLength > 10f
-                }
-                
-                if (eligibleBranches.isNotEmpty()) {
-                    val branch = eligibleBranches.random()
-                    createNewBranchFrom(branch)
-                }
+            // Privilégier la tige principale (index 0) pour 70% des ramifications
+            val eligibleBranches = branches.filter { 
+                it.points.size >= 2 && 
+                it.currentLength > 20f
             }
             
-            lastAutoRamificationTime = currentTime
+            if (eligibleBranches.isNotEmpty()) {
+                val parentBranch = if (Math.random() < 0.7 && branches.isNotEmpty()) {
+                    branches[0]  // Tige principale dans 70% des cas
+                } else {
+                    eligibleBranches.random()
+                }
+                
+                createNewBranchFrom(parentBranch)
+                lastAutoRamificationTime = currentTime
+            }
         }
     }
     
@@ -200,8 +199,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val canCreateBranches = currentTime - lastSpikeTime > spikeMinInterval && branches.size < maxBranches
         
         if (isSpike && canCreateBranches) {
-            // SACCADE = EXPLOSION DE BRANCHES comme un vrai rosier sauvage
-            val branchesToCreate = minOf(8, maxBranches - branches.size)  // 8 BRANCHES D'UN COUP!
+            // SACCADE = quelques grosses branches bien placées
+            val branchesToCreate = minOf(3, maxBranches - branches.size)  // 3 BRANCHES bien placées
             
             for (i in 0 until branchesToCreate) {
                 createNewBranch()
@@ -231,17 +230,36 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private fun createNewBranchFrom(parentBranch: RoseBranch) {
         val parentIndex = branches.indexOf(parentBranch)
         
-        // Branches qui partent de PARTOUT sur la branche parent
-        val positionRatio = 0.05f + Math.random().toFloat() * 0.9f  // PARTOUT de 5% à 95%
+        // POSITION plus logique selon le type de branche parent
+        val positionRatio = if (parentIndex == 0) {
+            // Tige principale: branches surtout dans le haut (50% à 90%)
+            0.5f + Math.random().toFloat() * 0.4f
+        } else {
+            // Branches secondaires: ramification plus proche de la base (20% à 70%)
+            0.2f + Math.random().toFloat() * 0.5f
+        }
+        
         val branchPoint = getBranchPointAtRatio(parentBranch, positionRatio)
         
-        // Angles TRÈS variés pour ressembler aux vraies photos
+        // ANGLES plus réalistes selon le parent
         val parentAngle = parentBranch.angle
-        val angleOffset = -90f + Math.random().toFloat() * 180f  // TRÈS VARIÉ ±90°
+        val angleOffset = if (parentIndex == 0) {
+            // Tige principale: branches à 45-135° (vers les côtés et le haut)
+            45f + Math.random().toFloat() * 90f * (if (Math.random() < 0.5) -1 else 1)
+        } else {
+            // Branches secondaires: angles plus modérés (30-60°)
+            30f + Math.random().toFloat() * 30f * (if (Math.random() < 0.5) -1 else 1)
+        }
         val newAngle = parentAngle + angleOffset
         
-        // Branches TRÈS longues comme sur les photos
-        val newLength = (screenHeight * 0.8f) + (Math.random().toFloat() * screenHeight * 1.2f)  // 80% à 200% !
+        // LONGUEUR selon la hiérarchie
+        val newLength = if (parentIndex == 0) {
+            // Branches principales: très longues (60% à 120% de l'écran)
+            (screenHeight * 0.6f) + (Math.random().toFloat() * screenHeight * 0.6f)
+        } else {
+            // Branches secondaires: plus courtes (30% à 80% de l'écran)
+            (screenHeight * 0.3f) + (Math.random().toFloat() * screenHeight * 0.5f)
+        }
         
         val newBranch = RoseBranch(
             parentBranchIndex = parentIndex,
@@ -462,7 +480,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         }
     }
     
-    private fun drawSingleLeaf(canvas: Canvas, paint: Paint, x: Float, y: Float, leaf: RoseLeaf) {
+  private fun drawSingleLeaf(canvas: Canvas, paint: Paint, x: Float, y: Float, leaf: RoseLeaf) {
         val size = leaf.currentSize
         val angle = leaf.angle
         val side = leaf.side
