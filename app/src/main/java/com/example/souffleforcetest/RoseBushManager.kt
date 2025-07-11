@@ -1,4 +1,5 @@
-package com.example.souffleforcetest
+// Référence au gestionnaire de défis
+    private var challengeManager: ChallengeManager? = nullpackage com.example.souffleforcetest
 
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -15,7 +16,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val maxLength: Float,
         val angle: Float,  // Angle de base de croissance
         var isActive: Boolean = true,
-        val id: String = generateBranchId()
+        val id: String = generateBranchId(),
+        var generationLevel: Int = 0,  // NOUVEAU: Niveau de génération (0=principale, 1=1ère division, etc.)
+        var splitsCount: Int = 0       // NOUVEAU: Nombre de fois que cette tige a été divisée
     )
     
     data class BranchPoint(
@@ -58,11 +61,17 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     
     private var baseX = 0f
     private var baseY = 0f
-    private var lastForce = 0f
-    private var lastSpikeTime = 0L
+    // NOUVEAU: Variables pour la ramification en cascade
+    private var pendingSplits = mutableListOf<PendingSplit>()  // Divisions en attente
+    
+    data class PendingSplit(
+        val branchId: String,
+        val scheduledTime: Long  // Quand effectuer la division
+    )
     
     // Référence au gestionnaire de défis
-    private var challengeManager: ChallengeManager? = null
+    private var lastForce = 0f
+    private var lastSpikeTime = 0L
     
     // ==================== PARAMÈTRES SIMPLES ====================
     
@@ -78,9 +87,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val baseLeafSize = 80f  
     private val baseFlowerSize = 35f
     
-    // Paramètres pour tige tortueuse naturelle
-    private val tortuosityFactor = 12f  // Amplitude des courbures
-    private val tortuosityFrequency = 0.4f  // Fréquence des changements d'angle
+    // Paramètres pour tiges tortueuses arbustives
+    private val tortuosityFactor = 20f  // AUGMENTÉ pour plus de courbures
+    private val tortuosityFrequency = 0.25f  // RÉDUIT pour des courbures plus lentes et naturelles
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -92,22 +101,33 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         baseX = centerX
         baseY = bottomY
         
-        // Créer une seule tige principale
-        val mainBranch = RoseBranch(
-            maxLength = screenHeight * 2.0f,  // Peut sortir de l'écran
-            angle = -90f  // Pousse vers le haut
-        )
+        // NOUVEAU: Créer 4 tiges principales pour un aspect arbustif
+        val startingAngles = listOf(-45f, -15f, 15f, 45f)  // Angles de départ horizontaux-montants
         
-        // Commencer avec 2 points pour pouvoir pousser
-        mainBranch.points.add(BranchPoint(baseX, baseY, baseBranchThickness))
-        val secondY = baseY - segmentLength * 0.2f
-        mainBranch.points.add(BranchPoint(baseX, secondY, baseBranchThickness * 0.98f))
-        mainBranch.currentLength = segmentLength * 0.2f
-        
-        branches.add(mainBranch)
+        for (i in startingAngles.indices) {
+            val branch = RoseBranch(
+                maxLength = screenHeight * 1.8f,  // Tiges principales longues
+                angle = startingAngles[i]  // Angle de départ
+            )
+            
+            // Commencer avec 2 points pour pouvoir pousser immédiatement
+            branch.points.add(BranchPoint(baseX, baseY, baseBranchThickness))
+            
+            // Deuxième point dans la direction initiale
+            val angleRad = Math.toRadians(startingAngles[i].toDouble())
+            val secondX = baseX + cos(angleRad).toFloat() * (segmentLength * 0.3f)
+            val secondY = baseY + sin(angleRad).toFloat() * (segmentLength * 0.3f)
+            branch.points.add(BranchPoint(secondX, secondY, baseBranchThickness * 0.98f))
+            branch.currentLength = segmentLength * 0.3f
+            
+            branches.add(branch)
+        }
     }
     
     fun processStemGrowth(force: Float) {
+        // NOUVEAU: Traiter les divisions en cascade programmées
+        processPendingSplits()
+        
         // Détecter les saccades pour diviser les tiges
         detectSpikeAndSplit(force)
         
@@ -133,6 +153,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         flowers.clear()
         lastForce = 0f
         lastSpikeTime = 0L
+        pendingSplits.clear()  // NOUVEAU: Reset des divisions en attente
     }
     
     fun drawRoseBush(canvas: Canvas, branchPaint: Paint, leafPaint: Paint, flowerPaint: Paint) {
@@ -141,7 +162,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         drawFlowers(canvas, flowerPaint)
     }
     
-    // ==================== DIVISION DES TIGES ====================
+    // ==================== DIVISION DES TIGES AMÉLIORÉE ====================
     
     private fun detectSpikeAndSplit(force: Float) {
         val currentTime = System.currentTimeMillis()
@@ -152,15 +173,47 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val canSplit = currentTime - lastSpikeTime > spikeMinInterval
         
         if (isSpike && canSplit) {
-            // Diviser toutes les tiges actives qui sont assez longues
-            val eligibleBranches = branches.filter { it.isActive && it.currentLength > 80f }
+            // Diviser les tiges actives qui sont assez développées
+            val eligibleBranches = branches.filter { 
+                it.isActive && 
+                it.currentLength > 60f &&  // RÉDUIT de 80f à 60f pour divisions plus précoces
+                it.points.size >= 4  // Au moins 4 points pour avoir une belle courbure
+            }
             
             for (branch in eligibleBranches) {
                 splitBranchInTwo(branch)
+                
+                // Programmer une 2ème division aléatoire 500ms plus tard
+                val delayedSplitTime = currentTime + 500L
+                pendingSplits.add(PendingSplit(branch.id, delayedSplitTime))
             }
             
             lastSpikeTime = currentTime
         }
+    }
+    
+    // NOUVEAU: Traiter les divisions programmées en cascade
+    private fun processPendingSplits() {
+        val currentTime = System.currentTimeMillis()
+        val splitsToProcess = pendingSplits.filter { currentTime >= it.scheduledTime }
+        
+        for (pendingSplit in splitsToProcess) {
+            // Trouver une des nouvelles branches créées pour la diviser à nouveau
+            val recentBranches = branches.filter { 
+                it.isActive && 
+                it.currentLength > 40f &&
+                it.generationLevel > 0  // Seulement les branches déjà divisées
+            }
+            
+            if (recentBranches.isNotEmpty()) {
+                // Choisir aléatoirement une branche récente à diviser
+                val branchToSplit = recentBranches.random()
+                splitBranchInTwo(branchToSplit)
+            }
+        }
+        
+        // Supprimer les divisions traitées
+        pendingSplits.removeAll(splitsToProcess)
     }
     
     private fun splitBranchInTwo(branch: RoseBranch) {
@@ -173,17 +226,22 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         val leftAngle = baseAngle - 25f  // 25° vers la gauche
         val rightAngle = baseAngle + 25f // 25° vers la droite
         
-        // Les nouvelles tiges héritent de la longueur restante
-        val remainingLength = branch.maxLength - branch.currentLength
+        // NOUVEAU: Calculer la réduction de vitesse selon le nombre de divisions
+        val speedReduction = 1f - (branch.splitsCount / 2 * 0.15f).coerceAtMost(0.6f)  // Max 60% de réduction
+        val newMaxLength = branch.maxLength * speedReduction
         
         val leftBranch = RoseBranch(
-            maxLength = branch.maxLength,
-            angle = leftAngle
+            maxLength = newMaxLength,
+            angle = leftAngle,
+            generationLevel = branch.generationLevel + 1,  // NOUVEAU: Niveau plus élevé
+            splitsCount = 0  // NOUVEAU: Reset pour les nouvelles branches
         )
         
         val rightBranch = RoseBranch(
-            maxLength = branch.maxLength,
-            angle = rightAngle
+            maxLength = newMaxLength,
+            angle = rightAngle,
+            generationLevel = branch.generationLevel + 1,  // NOUVEAU: Niveau plus élevé
+            splitsCount = 0  // NOUVEAU: Reset pour les nouvelles branches
         )
         
         // Initialiser chaque nouvelle tige avec 2 points
@@ -200,7 +258,10 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         branches.add(leftBranch)
         branches.add(rightBranch)
         
-        // NOUVEAU: Notifier le challengeManager qu'une division a été créée
+        // NOUVEAU: Incrémenter le compteur de divisions de la branche mère
+        branch.splitsCount++
+        
+        // Notifier le challengeManager qu'une division a été créée
         challengeManager?.notifyDivisionCreated("division_${leftBranch.id}_${rightBranch.id}")
         
         // Arrêter la croissance de la tige mère
@@ -208,21 +269,50 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     }
     
     private fun getCurrentGrowthAngle(branch: RoseBranch): Float {
-        // Calculer l'angle actuel avec la tortuosité
+        // NOUVEAU: Redressement progressif + tortuosité pour aspect arbustif
         val baseAngle = branch.angle
-        val tortuosity = sin(branch.points.size * tortuosityFrequency) * tortuosityFactor
-        return baseAngle + tortuosity
+        val progressRatio = (branch.currentLength / branch.maxLength).coerceAtMost(1f)
+        
+        // Redressement progressif vers le ciel (-90°)
+        val targetAngle = -90f  // Vertical vers le haut
+        val redirectionFactor = (progressRatio * 0.7f).coerceAtMost(0.7f)  // Max 70% de redirection
+        val redirectedAngle = baseAngle + (targetAngle - baseAngle) * redirectionFactor
+        
+        // Tortuosité naturelle avec courbures plus marquées
+        val tortuosityIntensity = tortuosityFactor * 1.5f  // Plus de courbures
+        val tortuosity = sin(branch.points.size * tortuosityFrequency) * tortuosityIntensity
+        
+        // Courbures supplémentaires pour aspect plus organique
+        val secondaryWave = cos(branch.points.size * tortuosityFrequency * 0.3f) * (tortuosityFactor * 0.8f)
+        
+        return redirectedAngle + tortuosity + secondaryWave
     }
     
     // ==================== CROISSANCE DES TIGES ====================
     
     private fun growActiveBranches(force: Float) {
         for (branch in branches.filter { it.isActive }) {
-            // CORRIGÉ: Pousse SEULEMENT si on souffle (force > 0.15f)
+            // Pousse SEULEMENT si on souffle (force > 0.15f)
             if (force > 0.15f && branch.currentLength < branch.maxLength) {
-                // Croissance proportionnelle à la force
-                val growth = force * branchGrowthRate * 0.020f
-                branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
+                
+                // NOUVEAU: Ralentir la croissance près du haut de l'écran (80%)
+                val screenLimit = screenHeight * 0.8f
+                val currentY = if (branch.points.isNotEmpty()) branch.points.last().y else screenHeight.toFloat()
+                val distanceFromTop = screenLimit - currentY
+                val slowdownFactor = when {
+                    distanceFromTop > 200f -> 1f  // Croissance normale
+                    distanceFromTop > 0f -> (distanceFromTop / 200f).coerceAtLeast(0.3f)  // Ralentissement progressif
+                    else -> 0.1f  // Très lent si on dépasse 80%
+                }
+                
+                // NOUVEAU: Réduction de vitesse selon le niveau de génération
+                val generationSlowdown = 1f - (branch.generationLevel * 0.1f).coerceAtMost(0.5f)  // Max 50% de réduction
+                
+                // Croissance avec tous les facteurs de ralentissement
+                val baseGrowth = force * branchGrowthRate * 0.020f
+                val finalGrowth = baseGrowth * slowdownFactor * generationSlowdown
+                
+                branch.currentLength = (branch.currentLength + finalGrowth).coerceAtMost(branch.maxLength)
                 
                 // Ajouter un nouveau point si nécessaire
                 if (branch.points.size >= 2 && branch.currentLength >= branch.points.size * segmentLength) {
@@ -236,7 +326,13 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                     val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
                     val newThickness = (lastPoint.thickness * 0.96f).coerceAtLeast(3f)
                     
-                    branch.points.add(BranchPoint(newX, newY, newThickness))
+                    // NOUVEAU: Arrêter complètement si on atteint le haut de l'écran
+                    if (newY > 50f) {  // Marge de 50px du haut
+                        branch.points.add(BranchPoint(newX, newY, newThickness))
+                    } else {
+                        // Forcer l'arrêt si on touche le haut
+                        branch.isActive = false
+                    }
                 }
                 
                 // Arrêter quand on atteint la longueur max
