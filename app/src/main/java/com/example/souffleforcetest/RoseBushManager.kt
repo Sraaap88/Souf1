@@ -153,14 +153,14 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         drawFlowers(canvas, flowerPaint)
     }
     
-    // ==================== RAMIFICATION CONTINUE ====================
+    // ==================== RAMIFICATION BASÉE SUR LE SOUFFLE ====================
     
     private fun continuousRamification(force: Float) {
         val currentTime = System.currentTimeMillis()
         
-        // Ramification continue basée sur la force ET le temps
+        // CORRIGÉ: Ramification seulement SI on souffle (force > 0.15f)
         if (currentTime - lastAutoRamificationTime > autoRamificationInterval && 
-            branches.size < maxBranches && force > 0.1f) {
+            branches.size < maxBranches && force > 0.15f) {  // CHANGÉ: force requise
             
             // Trouver des branches éligibles pour ramification
             val eligibleBranches = branches.filter { 
@@ -179,7 +179,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                 }
                 
                 lastAutoRamificationTime = currentTime
-                println("Ramification continue! ${branchesToCreate} branche(s) créée(s) (${branches.size}/${maxBranches})")
+                println("Ramification par souffle! ${branchesToCreate} branche(s) créée(s) (${branches.size}/${maxBranches})")
             }
         }
     }
@@ -290,11 +290,12 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     // ==================== CROISSANCE DES BRANCHES (ACCÉLÉRÉE) ====================
     
     private fun growActiveBranches(force: Float) {
-        for (branch in branches.filter { it.isActive && force > 0.02f }) {  // ULTRA SENSIBLE (0.03f -> 0.02f)
+        // CORRIGÉ: Croissance seulement si on souffle (force > 0.1f au lieu de 0.02f)
+        for (branch in branches.filter { it.isActive && force > 0.1f }) {  // FORCE REQUISE POUR POUSSER
             if (branch.currentLength < branch.maxLength) {
                 // CROISSANCE MASSIVE basée sur la force ET la taille d'écran
-                val baseGrowth = force * branchGrowthRate * 0.065f  // ENCORE AUGMENTÉ de 0.055f à 0.065f
-                val screenMultiplier = screenHeight / 1080f  // Adapter à la taille d'écran (base 1080p)
+                val baseGrowth = force * branchGrowthRate * 0.065f  
+                val screenMultiplier = screenHeight / 1080f  
                 val growth = baseGrowth * screenMultiplier
                 
                 branch.currentLength = (branch.currentLength + growth).coerceAtMost(branch.maxLength)
@@ -304,7 +305,7 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                     val lastPoint = branch.points.last()
                     
                     if (branch.currentLength >= branch.points.size * segmentLength) {
-                        // NOUVEAU: Tige tortueuse pour la branche principale
+                        // Tige tortueuse pour la branche principale
                         val angleRad = if (branch.parentBranchIndex == -1) {
                             // Branche principale: ajouter tortuosité
                             val baseAngle = branch.angle
@@ -317,14 +318,14 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
                         
                         val newX = lastPoint.x + cos(angleRad).toFloat() * segmentLength
                         val newY = lastPoint.y + sin(angleRad).toFloat() * segmentLength
-                        val newThickness = (lastPoint.thickness * 0.94f).coerceAtLeast(2f)  // Moins de réduction
+                        val newThickness = (lastPoint.thickness * 0.94f).coerceAtLeast(2f)  
                         
                         branch.points.add(BranchPoint(newX, newY, newThickness))
                     }
                 }
                 
                 // Arrêter la croissance si la branche atteint sa taille max
-                if (branch.currentLength >= branch.maxLength * 0.80f) {  // RÉDUIT encore de 0.85f à 0.80f 
+                if (branch.currentLength >= branch.maxLength * 0.80f) {
                     branch.isActive = false
                 }
             }
