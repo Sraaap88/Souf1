@@ -76,9 +76,9 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val spikeThreshold = 0.4f  // Seuil pour détecter une saccade
     private val spikeMinInterval = 300L  // Minimum entre saccades
     private val secondSplitDelay = 500L  // Délai pour la 2ème séparation automatique
-    private val branchGrowthRate = 3000f  // Vitesse de croissance de base
-    private val leafGrowthRate = 800f
-    private val flowerGrowthRate = 500f
+    private val branchGrowthRate = 2400f  // RÉDUIT de 20% (était 3000f)
+    private val leafGrowthRate = 640f     // RÉDUIT de 20% (était 800f)
+    private val flowerGrowthRate = 400f   // RÉDUIT de 20% (était 500f)
     
     // Tailles
     private val baseBranchThickness = 15f  
@@ -86,13 +86,14 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private val baseLeafSize = 80f  
     private val baseFlowerSize = 35f
     
-    // Paramètres pour tige tortueuse naturelle
-    private val tortuosityFactor = 12f  // Amplitude des courbures
-    private val tortuosityFrequency = 0.4f  // Fréquence des changements d'angle
+    // Paramètres pour tige tortueuse naturelle - AMÉLIORÉS POUR RÉALISME
+    private val tortuosityFactor = 8f      // RÉDUIT (était 12f) - moins parfait
+    private val tortuosityFrequency = 0.3f // RÉDUIT (était 0.4f) - moins régulier
+    private val randomNoiseFactor = 5f     // NOUVEAU - bruit aléatoire
     
     // NOUVEAUX PARAMÈTRES pour séparations multiples
-    private val threeWaySplitChance = 0.3f  // 30% de chance de séparation en 3
-    private val fourWaySplitChance = 0.15f  // 15% de chance de séparation en 4
+    private val threeWaySplitChance = 0.4f  // 40% de chance de séparation en 3 (était 0.3f)
+    private val fourWaySplitChance = 0.0f   // 0% de chance de séparation en 4 pour éviter éventail
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -112,12 +113,8 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     private fun createInitialSplit(x: Float, y: Float, thickness: Float) {
         val baseAngle = -90f  // Angle vers le haut (négative Y dans Android)
         
-        // Déterminer le nombre de branches initiales (2, 3 ou 4)
-        val branchCount = when {
-            Math.random() < fourWaySplitChance -> 4
-            Math.random() < threeWaySplitChance -> 3
-            else -> 2
-        }
+        // FORCER minimum 3 branches pour éviter séparation en 2 au début
+        val branchCount = if (Math.random() < 0.6f) 3 else 4
         
         // Créer les branches initiales
         for (i in 0 until branchCount) {
@@ -147,27 +144,22 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     // NOUVELLE FONCTION: Calculer l'angle pour les branches initiales (naturel, pas éventail)
     private fun calculateInitialBranchAngle(baseAngle: Float, branchIndex: Int, totalBranches: Int): Float {
         return when (totalBranches) {
-            2 -> {
-                // Séparation naturelle en Y 
-                val spread = 20f
-                baseAngle + if (branchIndex == 0) -spread else spread
-            }
             3 -> {
-                // Séparation naturelle, pas symétrique
+                // AMÉLIORATION: Séparation naturelle avec contrainte vers le haut
                 when (branchIndex) {
-                    0 -> baseAngle - 25f  // vers gauche
+                    0 -> baseAngle - 35f  // vers gauche mais pas trop
                     1 -> baseAngle + 5f   // légèrement vers droite
-                    2 -> baseAngle + 30f  // plus vers droite
+                    2 -> baseAngle + 40f  // vers droite mais pas trop
                     else -> baseAngle
                 }
             }
             4 -> {
-                // Séparation naturelle, asymétrique
+                // AMÉLIORATION: Séparation naturelle, toutes vers le haut
                 when (branchIndex) {
-                    0 -> baseAngle - 30f  // vers gauche
-                    1 -> baseAngle - 10f  // légèrement gauche
-                    2 -> baseAngle + 15f  // vers droite
-                    3 -> baseAngle + 35f  // plus vers droite
+                    0 -> baseAngle - 40f  // vers gauche
+                    1 -> baseAngle - 15f  // légèrement gauche
+                    2 -> baseAngle + 10f  // légèrement droite
+                    3 -> baseAngle + 35f  // vers droite
                     else -> baseAngle
                 }
             }
@@ -354,10 +346,20 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
     }
     
     private fun getCurrentGrowthAngle(branch: RoseBranch): Float {
-        // Calculer l'angle actuel avec la tortuosité
+        // AMÉLIORATION: Calculer l'angle avec tortuosité naturelle ET bruit aléatoire
         val baseAngle = branch.angle
+        
+        // Tortuosité sinusoïdale (moins parfaite)
         val tortuosity = sin(branch.points.size * tortuosityFrequency) * tortuosityFactor
-        return baseAngle + tortuosity
+        
+        // NOUVEAU: Bruit aléatoire pour briser la perfection sinusoïdale
+        val randomNoise = (Math.random().toFloat() - 0.5f) * randomNoiseFactor * 2f
+        
+        // NOUVEAU: Contrainte pour empêcher les tiges de pointer vers le bas
+        val currentAngle = baseAngle + tortuosity + randomNoise
+        
+        // Contraindre l'angle entre -150° et -30° (toujours vers le haut)
+        return currentAngle.coerceIn(-150f, -30f)
     }
     
     // ==================== CROISSANCE DES TIGES ====================
