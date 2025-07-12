@@ -712,7 +712,7 @@ class OrganicLineView @JvmOverloads constructor(
                 lupinManager?.initialize(width / 2f, height * 0.85f)
             }
             "IRIS" -> {
-                irisManager?.initialize(width / 2f, height * 0.85f)  // NOUVEAU
+                irisManager?.initialize(width / 2f, height * 0.85f)  // CORRECTION: Ajouter l'initialisation
             }
             // La marguerite s'initialise automatiquement dans PlantStem
         }
