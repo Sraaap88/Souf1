@@ -47,22 +47,22 @@ class ChallengeDefinitions {
     val roseChallenges = listOf(
         Challenge(
             id = 1,
-            title = "Défi 1: Zone Verte",
-            description = "Faire pousser 4 fleurs dans la zone verte",
-            briefText = "Défi 1: 4 fleurs en zone verte"
+            title = "Défi 1: Jardin Ordonné",
+            description = "Faire pousser 6 fleurs dans la zone verte",
+            briefText = "Défi 1: 6 fleurs en zone verte"
         ),
         Challenge(
             id = 2,
-            title = "Défi 2: Ramification", 
-            description = "Créer 6 divisions avec saccades",
-            briefText = "Défi 2: 6 divisions",
+            title = "Défi 2: Maître Ramification", 
+            description = "Créer 10 divisions avec saccades précises",
+            briefText = "Défi 2: 10 divisions",
             isUnlocked = false  // Débloqué après défi 1
         ),
         Challenge(
             id = 3,
-            title = "Défi 3: Maîtrise",
-            description = "8 fleurs dont 3 en zone verte", 
-            briefText = "Défi 3: 8 fleurs (3 en zone)",
+            title = "Défi 3: Expertise Totale",
+            description = "15 fleurs dont 5 en zone verte + 8 divisions", 
+            briefText = "Défi 3: 15 fleurs (5 en zone) + 8 divisions",
             isUnlocked = false  // Débloqué après défi 2
         )
     )
@@ -242,9 +242,9 @@ class ChallengeDefinitions {
         roseFlowersInZoneDefi3: List<String>
     ): Boolean {
         return when (challengeId) {
-            1 -> roseFlowersInZone.size >= 4
-            2 -> roseDivisions.size >= 6
-            3 -> roseTotalFlowers.size >= 8 && roseFlowersInZoneDefi3.size >= 3
+            1 -> roseFlowersInZone.size >= 6  // AUGMENTÉ de 4 à 6
+            2 -> roseDivisions.size >= 10     // AUGMENTÉ de 6 à 10
+            3 -> roseTotalFlowers.size >= 15 && roseFlowersInZoneDefi3.size >= 5 && roseDivisions.size >= 8  // NOUVEAU: 15 fleurs + 5 en zone + 8 divisions
             else -> false
         }
     }
@@ -257,9 +257,9 @@ class ChallengeDefinitions {
         roseFlowersInZoneDefi3: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi réussi! ${roseFlowersInZone.size} fleurs en zone verte!"
-            2 -> "Défi réussi! ${roseDivisions.size} divisions créées!"
-            3 -> "Défi réussi! ${roseTotalFlowers.size} fleurs (${roseFlowersInZoneDefi3.size} en zone)!\n🌼 LUPIN DÉBLOQUÉ!"
+            1 -> "Défi réussi! ${roseFlowersInZone.size} fleurs parfaitement alignées en zone verte!"
+            2 -> "Défi réussi! ${roseDivisions.size} divisions créées avec maîtrise!"
+            3 -> "Défi réussi! ${roseTotalFlowers.size} fleurs (${roseFlowersInZoneDefi3.size} en zone) + ${roseDivisions.size} divisions!\n🌼 LUPIN DÉBLOQUÉ!"
             else -> "Défi réussi!"
         }
     }
@@ -272,9 +272,9 @@ class ChallengeDefinitions {
         roseFlowersInZoneDefi3: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi échoué - Seulement ${roseFlowersInZone.size}/4 fleurs en zone!"
-            2 -> "Défi échoué - Seulement ${roseDivisions.size}/6 divisions créées!"
-            3 -> "Défi échoué - ${roseTotalFlowers.size}/8 fleurs (${roseFlowersInZoneDefi3.size}/3 en zone)!"
+            1 -> "Défi échoué - Seulement ${roseFlowersInZone.size}/6 fleurs en zone verte!"
+            2 -> "Défi échoué - Seulement ${roseDivisions.size}/10 divisions créées!"
+            3 -> "Défi échoué - ${roseTotalFlowers.size}/15 fleurs (${roseFlowersInZoneDefi3.size}/5 en zone) + ${roseDivisions.size}/8 divisions!"
             else -> "Défi échoué!"
         }
     }
