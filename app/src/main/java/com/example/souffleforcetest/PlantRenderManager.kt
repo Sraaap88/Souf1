@@ -2,6 +2,8 @@ package com.example.souffleforcetest
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Color
+import kotlin.math.*
 
 class PlantRenderManager(
     private val plantStem: PlantStem?,
@@ -62,19 +64,76 @@ class PlantRenderManager(
         uiDrawing.drawBranches(canvas, branches)
     }
     
+    // ==================== FONCTIONS DE RENDU POUR MARGUERITES ====================
+    
     private fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>) {
         val stem = plantStem ?: return
-        uiDrawing.drawLeaves(canvas, leaves, stem)
+        val paint = Paint().apply {
+            isAntiAlias = true
+            color = Color.rgb(34, 139, 34)
+            style = Paint.Style.FILL
+        }
+        
+        for (leaf in leaves) {
+            if (leaf.currentSize > 0) {
+                // Obtenir la position sur la tige
+                val leafPoint = stem.getStemPointAtRatio(leaf.heightRatio)
+                leafPoint?.let { point ->
+                    canvas.save()
+                    canvas.translate(point.x, point.y)
+                    canvas.rotate(leaf.angle)
+                    
+                    val size = leaf.currentSize
+                    canvas.drawOval(
+                        -size/2, -size/4,
+                        size/2, size/4,
+                        paint
+                    )
+                    
+                    canvas.restore()
+                }
+            }
+        }
     }
     
     private fun drawBackgroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
-        val stem = plantStem ?: return
-        uiDrawing.drawBackgroundFlowers(canvas, flowers, stem)
+        val paint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+        }
+        
+        for (flower in flowers) {
+            if (flower.currentSize > 0 && (flower.orientation == 1 || flower.orientation == 2)) {
+                paint.color = Color.rgb(255, 255, 255)
+                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.6f, paint)
+                
+                paint.color = Color.rgb(255, 215, 0)
+                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.3f, paint)
+            }
+        }
     }
     
     private fun drawForegroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
-        val stem = plantStem ?: return
-        uiDrawing.drawForegroundFlowers(canvas, flowers, stem)
+        val paint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+        }
+        
+        for (flower in flowers) {
+            if (flower.currentSize > 0 && (flower.orientation == 3 || flower.orientation == 4)) {
+                for (i in 0..11) {
+                    val angle = i * 30f * PI / 180f
+                    val petalX = flower.x + cos(angle).toFloat() * flower.currentSize * 0.7f
+                    val petalY = flower.y + sin(angle).toFloat() * flower.currentSize * 0.7f
+                    
+                    paint.color = Color.rgb(255, 255, 255)
+                    canvas.drawCircle(petalX, petalY, flower.currentSize * 0.2f, paint)
+                }
+                
+                paint.color = Color.rgb(255, 215, 0)
+                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.3f, paint)
+            }
+        }
     }
     
     // ==================== RENDU DU ROSIER ====================
