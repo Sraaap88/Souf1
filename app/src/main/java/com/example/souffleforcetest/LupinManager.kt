@@ -3,7 +3,31 @@ package com.example.souffleforcetest
 import android.graphics.Canvas
 import android.graphics.Paint
 import kotlin.math.*
- 
+
+// ==================== FONCTIONS UTILITAIRES GLOBALES ====================
+
+private var stemIdCounter = 0
+private var flowerIdCounter = 0
+
+fun generateStemId(): String {
+    stemIdCounter++
+    return "lupinstem_$stemIdCounter"
+}
+
+fun generateFlowerId(): String {
+    flowerIdCounter++
+    return "lupinflower_$flowerIdCounter"
+}
+
+fun generateRandomGrowthSpeed(): Float {
+    val variation = 0.1f
+    return 1.0f + (Math.random().toFloat() - 0.5f) * 2 * variation
+}
+
+fun generateFolioleAngles(): List<Float> {
+    return (0..8).map { Math.random().toFloat() * 30f - 15f }
+}
+
 // ==================== DATA CLASSES ====================
 
 data class LupinStem(
@@ -63,13 +87,7 @@ data class LupinLeaf(
     val isBasalShoot: Boolean = false,
     val basalShootIndex: Int = -1,
     val isSubFloral: Boolean = false
-) {
-    companion object {
-        private fun generateFolioleAngles(): List<Float> {
-            return (0..8).map { Math.random().toFloat() * 30f - 15f }
-        }
-    }
-}
+)
 
 enum class FlowerColor(val rgb: IntArray) {
     PURPLE(intArrayOf(138, 43, 226)),
@@ -79,7 +97,7 @@ enum class FlowerColor(val rgb: IntArray) {
     YELLOW(intArrayOf(255, 215, 0))
 }
 
-// ==================== MÉCANIQUES DE CROISSANCE ====================
+// ==================== CLASSE PRINCIPALE ====================
 
 class LupinManager(private val screenWidth: Int, private val screenHeight: Int) {
     
@@ -564,28 +582,6 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
                     }
                 }
             }
-        }
-    }
-    
-    // ==================== UTILITAIRES ====================
-    
-    companion object {
-        private var stemIdCounter = 0
-        private var flowerIdCounter = 0
-        
-        fun generateStemId(): String {
-            stemIdCounter++
-            return "lupinstem_$stemIdCounter"
-        }
-        
-        fun generateFlowerId(): String {
-            flowerIdCounter++
-            return "lupinflower_$flowerIdCounter"
-        }
-        
-        fun generateRandomGrowthSpeed(): Float {
-            val variation = 0.1f
-            return 1.0f + (Math.random().toFloat() - 0.5f) * 2 * variation
         }
     }
 }
