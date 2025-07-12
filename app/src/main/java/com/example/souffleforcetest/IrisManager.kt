@@ -94,6 +94,18 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     fun processStemGrowth(force: Float) {
+        // CORRECTION: Créer les tiges initiales AVANT de détecter les saccades
+        if (stems.isEmpty()) {
+            createInitialStemGroup(screenWidth / 2f, screenHeight * 0.85f)
+            
+            if (force > forceThreshold) {
+                saccadeCount = 1
+                currentActiveStemGroup = 0
+                lastSaccadeTime = System.currentTimeMillis()
+                isCurrentlyBreathing = true
+            }
+        }
+        
         detectSaccadesAndActivateGroups(force, System.currentTimeMillis())
         
         if (force > forceThreshold && currentActiveStemGroup >= 0) {
