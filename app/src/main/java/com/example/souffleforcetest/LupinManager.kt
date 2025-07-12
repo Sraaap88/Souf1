@@ -121,7 +121,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     // ==================== PARAMÈTRES COPIÉS DE PLANTSTEM ====================
     
     private val forceThreshold = 0.15f      // EXACTEMENT comme PlantStem
-    private val maxStemHeight = 0.5f        // Maximum 50% de l'écran au lieu de 75%
+    private val maxStemHeight = 0.6f        // Maximum 60% de l'écran au lieu de 50%
     private val baseThickness = 13.1f       // 25% plus fin (17.5 * 0.75)
     private val tipThickness = 4.2f         // 25% plus fin (5.6 * 0.75)
     private val growthRate = 7200f          // 3X plus rapide (2400 * 3)
