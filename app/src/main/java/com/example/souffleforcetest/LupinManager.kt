@@ -82,26 +82,26 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     // ==================== PARAMÈTRES CORRIGÉS ====================
     
-    // Croissance PLUS RAPIDE
-    private val stemGrowthRate = 6000f      // 2.5X plus rapide qu'avant
+    // Croissance EXPLOSIVE pour monter haut
+    private val stemGrowthRate = 15000f     // 2.5X plus rapide pour monter haut
     private val leafGrowthRate = 1200f      
     private val flowerGrowthRate = 1000f    
     
     // Tailles ajustées
     private val baseStemThickness = 12f
     private val segmentLength = 25f
-    private val baseLeafSize = 69f          // 25% plus grand (55 * 1.25)
-    private val baseFlowerSize = 8f
+    private val baseLeafSize = 83f          // 20% plus grand (69 * 1.2)
+    private val baseFlowerSize = 10f        // 25% plus grand (8 * 1.25)
     
     // Paramètres équilibrés
     private val maxStems = 7
     private val baseStemSpacing = 35f
     private val flowerDensity = 12
     
-    // Seuils pour saccades MOINS sensibles
+    // Seuils pour ÉVITER fausses saccades
     private val forceThreshold = 0.15f      
-    private val spikeThreshold = 0.12f      // Plus élevé pour éviter fausses détections
-    private val spikeMinInterval = 800L     // Plus long pour éviter fausses saccades
+    private val spikeThreshold = 0.25f      // TRÈS élevé pour éviter fausses détections
+    private val spikeMinInterval = 2000L    // 2 secondes pour vraiment éviter fausses saccades
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -180,8 +180,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         
         if (latestStem.isActive && force > forceThreshold && latestStem.currentHeight < latestStem.maxHeight) {
             
-            // CROISSANCE PLUS RAPIDE
-            val baseGrowth = force * stemGrowthRate * 0.02f  // 2.5X plus rapide
+            // CROISSANCE EXPLOSIVE POUR MONTER HAUT
+            val baseGrowth = force * stemGrowthRate * 0.05f  // 2.5X plus rapide pour monter haut
             val individualGrowth = baseGrowth * latestStem.growthSpeedMultiplier
             latestStem.currentHeight = (latestStem.currentHeight + individualGrowth).coerceAtMost(latestStem.maxHeight)
             
@@ -409,15 +409,26 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
                     
                     val size = flower.currentSize
                     
-                    canvas.drawCircle(flower.x, flower.y, size * 1.0f, paint)
+                    // Pétale principal plus gros
+                    canvas.drawCircle(flower.x, flower.y, size * 1.2f, paint)
                     
+                    // Pétales latéraux plus détaillés
                     paint.color = Color.rgb(
                         (colorRgb[0] * 0.8f).toInt(),
                         (colorRgb[1] * 0.8f).toInt(),
                         (colorRgb[2] * 0.8f).toInt()
                     )
-                    canvas.drawCircle(flower.x - size * 0.6f, flower.y + size * 0.3f, size * 0.6f, paint)
-                    canvas.drawCircle(flower.x + size * 0.6f, flower.y + size * 0.3f, size * 0.6f, paint)
+                    canvas.drawCircle(flower.x - size * 0.7f, flower.y + size * 0.4f, size * 0.7f, paint)
+                    canvas.drawCircle(flower.x + size * 0.7f, flower.y + size * 0.4f, size * 0.7f, paint)
+                    
+                    // Détails supplémentaires
+                    paint.color = Color.rgb(
+                        (colorRgb[0] * 0.6f).toInt(),
+                        (colorRgb[1] * 0.6f).toInt(),
+                        (colorRgb[2] * 0.6f).toInt()
+                    )
+                    canvas.drawCircle(flower.x, flower.y - size * 0.3f, size * 0.4f, paint)
+                    canvas.drawCircle(flower.x, flower.y + size * 0.5f, size * 0.3f, paint)
                 }
             }
         }
