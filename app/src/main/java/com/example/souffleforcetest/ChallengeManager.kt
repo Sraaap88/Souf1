@@ -97,10 +97,6 @@ class ChallengeManager(private val context: Context? = null) {
     init {
         // Marguerite toujours débloquée par défaut
         unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
-        // FORCE L'IRIS POUR TESTER
-        unlockedFlowers.add(UnlockedFlower("ROSE", "Test"))
-        unlockedFlowers.add(UnlockedFlower("LUPIN", "Test"))
-        unlockedFlowers.add(UnlockedFlower("IRIS", "Test"))
         loadChallengeProgress()
     }
     
