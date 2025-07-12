@@ -98,10 +98,10 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private val baseStemSpacing = 35f
     private val flowerDensity = 12
     
-    // Seuils pour ÉVITER fausses saccades
+    // Seuils pour ÉVITER fausses saccades MAIS permettre 7 tiges
     private val forceThreshold = 0.15f      
     private val spikeThreshold = 0.25f      // TRÈS élevé pour éviter fausses détections
-    private val spikeMinInterval = 2000L    // 2 secondes pour vraiment éviter fausses saccades
+    private val spikeMinInterval = 400L     // 0.4 seconde pour permettre 7 tiges en 4 secondes
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
