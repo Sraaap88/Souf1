@@ -89,6 +89,52 @@ class ChallengeDefinitions {
             isUnlocked = false  // Débloqué après défi 2
         )
     )
+
+    val irisChallenges = listOf(
+        Challenge(
+            id = 1,
+            title = "Défi 1: Élégance Bleue",
+            description = "Faire pousser 4 iris dans la zone centrale",
+            briefText = "Défi 1: 4 iris en zone centrale"
+        ),
+        Challenge(
+            id = 2,
+            title = "Défi 2: Jardin d'Iris", 
+            description = "Créer 8 tiges d'iris avec ramifications",
+            briefText = "Défi 2: 8 tiges ramifiées",
+            isUnlocked = false  // Débloqué après défi 1
+        ),
+        Challenge(
+            id = 3,
+            title = "Défi 3: Maître Iris",
+            description = "12 iris parfaits + 6 ramifications précises", 
+            briefText = "Défi 3: 12 iris + 6 ramifications",
+            isUnlocked = false  // Débloqué après défi 2
+        )
+    )
+
+    val orchideeChallenges = listOf(
+        Challenge(
+            id = 1,
+            title = "Défi 1: Orchidée Royale",
+            description = "Faire éclore 2 orchidées parfaites",
+            briefText = "Défi 1: 2 orchidées parfaites"
+        ),
+        Challenge(
+            id = 2,
+            title = "Défi 2: Collection Exotique", 
+            description = "Cultiver 5 orchidées avec contrôle précis",
+            briefText = "Défi 2: 5 orchidées précises",
+            isUnlocked = false  // Débloqué après défi 1
+        ),
+        Challenge(
+            id = 3,
+            title = "Défi 3: Jardinier Expert",
+            description = "8 orchidées + ramifications + zone parfaite", 
+            briefText = "Défi 3: Maîtrise totale",
+            isUnlocked = false  // Débloqué après défi 2
+        )
+    )
     
     // ==================== LOGIQUE DES DÉFIS MARGUERITE ====================
     
@@ -242,9 +288,9 @@ class ChallengeDefinitions {
         roseFlowersInZoneDefi3: List<String>
     ): Boolean {
         return when (challengeId) {
-            1 -> roseFlowersInZone.size >= 6  // AUGMENTÉ de 4 à 6
-            2 -> roseDivisions.size >= 10     // AUGMENTÉ de 6 à 10
-            3 -> roseTotalFlowers.size >= 15 && roseFlowersInZoneDefi3.size >= 5 && roseDivisions.size >= 8  // NOUVEAU: 15 fleurs + 5 en zone + 8 divisions
+            1 -> roseFlowersInZone.size >= 6
+            2 -> roseDivisions.size >= 10
+            3 -> roseTotalFlowers.size >= 15 && roseFlowersInZoneDefi3.size >= 5 && roseDivisions.size >= 8
             else -> false
         }
     }
@@ -359,6 +405,168 @@ class ChallengeDefinitions {
             else -> "Défi échoué!"
         }
     }
+
+    // ==================== LOGIQUE DES DÉFIS IRIS ====================
+    
+    fun updateIrisChallenge(
+        challengeId: Int, 
+        force: Float, 
+        plantState: String, 
+        challengeData: MutableMap<String, Any>
+    ) {
+        when (challengeId) {
+            1 -> updateIrisChallenge1_CentralZone(force, plantState, challengeData)
+            2 -> updateIrisChallenge2_Ramifications(force, plantState, challengeData)
+            3 -> updateIrisChallenge3_Mastery(force, plantState, challengeData)
+        }
+    }
+    
+    private fun updateIrisChallenge1_CentralZone(
+        force: Float, 
+        plantState: String, 
+        challengeData: MutableMap<String, Any>
+    ) {
+        challengeData["currentPhase"] = plantState
+    }
+    
+    private fun updateIrisChallenge2_Ramifications(
+        force: Float, 
+        plantState: String, 
+        challengeData: MutableMap<String, Any>
+    ) {
+        challengeData["currentPhase"] = plantState
+    }
+    
+    private fun updateIrisChallenge3_Mastery(
+        force: Float, 
+        plantState: String, 
+        challengeData: MutableMap<String, Any>
+    ) {
+        challengeData["currentPhase"] = plantState
+    }
+    
+    fun checkIrisChallenge(
+        challengeId: Int,
+        irisFlowersInZone: List<String>,
+        irisRamifications: List<String>,
+        irisTotalFlowers: List<String>
+    ): Boolean {
+        return when (challengeId) {
+            1 -> irisFlowersInZone.size >= 4
+            2 -> irisRamifications.size >= 8
+            3 -> irisTotalFlowers.size >= 12 && irisRamifications.size >= 6
+            else -> false
+        }
+    }
+    
+    fun getIrisSuccessMessage(
+        challengeId: Int,
+        irisFlowersInZone: List<String>,
+        irisRamifications: List<String>,
+        irisTotalFlowers: List<String>
+    ): String {
+        return when (challengeId) {
+            1 -> "Défi réussi! ${irisFlowersInZone.size} iris élégants en zone centrale!"
+            2 -> "Défi réussi! ${irisRamifications.size} ramifications parfaites!"
+            3 -> "Défi réussi! ${irisTotalFlowers.size} iris + ${irisRamifications.size} ramifications!\n🌺 ORCHIDÉE DÉBLOQUÉE!"
+            else -> "Défi réussi!"
+        }
+    }
+    
+    fun getIrisFailMessage(
+        challengeId: Int,
+        irisFlowersInZone: List<String>,
+        irisRamifications: List<String>,
+        irisTotalFlowers: List<String>
+    ): String {
+        return when (challengeId) {
+            1 -> "Défi échoué - Seulement ${irisFlowersInZone.size}/4 iris en zone centrale!"
+            2 -> "Défi échoué - Seulement ${irisRamifications.size}/8 ramifications créées!"
+            3 -> "Défi échoué - ${irisTotalFlowers.size}/12 iris + ${irisRamifications.size}/6 ramifications!"
+            else -> "Défi échoué!"
+        }
+    }
+
+    // ==================== LOGIQUE DES DÉFIS ORCHIDÉE ====================
+    
+    fun updateOrchideeChallenge(
+        challengeId: Int, 
+        force: Float, 
+        plantState: String, 
+        challengeData: MutableMap<String, Any>
+    ) {
+        when (challengeId) {
+            1 -> updateOrchideeChallenge1_Perfect(force, plantState, challengeData)
+            2 -> updateOrchideeChallenge2_Precision(force, plantState, challengeData)
+            3 -> updateOrchideeChallenge3_Expertise(force, plantState, challengeData)
+        }
+    }
+    
+    private fun updateOrchideeChallenge1_Perfect(
+        force: Float, 
+        plantState: String, 
+        challengeData: MutableMap<String, Any>
+    ) {
+        challengeData["currentPhase"] = plantState
+    }
+    
+    private fun updateOrchideeChallenge2_Precision(
+        force: Float, 
+        plantState: String, 
+        challengeData: MutableMap<String, Any>
+    ) {
+        challengeData["currentPhase"] = plantState
+    }
+    
+    private fun updateOrchideeChallenge3_Expertise(
+        force: Float, 
+        plantState: String, 
+        challengeData: MutableMap<String, Any>
+    ) {
+        challengeData["currentPhase"] = plantState
+    }
+    
+    fun checkOrchideeChallenge(
+        challengeId: Int,
+        orchideeFlowers: List<String>,
+        orchideeRamifications: List<String>,
+        orchideeInZone: List<String>
+    ): Boolean {
+        return when (challengeId) {
+            1 -> orchideeFlowers.size >= 2
+            2 -> orchideeFlowers.size >= 5
+            3 -> orchideeFlowers.size >= 8 && orchideeRamifications.size >= 4 && orchideeInZone.size >= 3
+            else -> false
+        }
+    }
+    
+    fun getOrchideeSuccessMessage(
+        challengeId: Int,
+        orchideeFlowers: List<String>,
+        orchideeRamifications: List<String>,
+        orchideeInZone: List<String>
+    ): String {
+        return when (challengeId) {
+            1 -> "Défi réussi! ${orchideeFlowers.size} orchidées royales parfaites!"
+            2 -> "Défi réussi! ${orchideeFlowers.size} orchidées avec contrôle précis!"
+            3 -> "Défi réussi! Maîtrise totale - ${orchideeFlowers.size} orchidées + ${orchideeRamifications.size} ramifications!\n👑 EXPERT JARDINIER!"
+            else -> "Défi réussi!"
+        }
+    }
+    
+    fun getOrchideeFailMessage(
+        challengeId: Int,
+        orchideeFlowers: List<String>,
+        orchideeRamifications: List<String>,
+        orchideeInZone: List<String>
+    ): String {
+        return when (challengeId) {
+            1 -> "Défi échoué - Seulement ${orchideeFlowers.size}/2 orchidées parfaites!"
+            2 -> "Défi échoué - Seulement ${orchideeFlowers.size}/5 orchidées précises!"
+            3 -> "Défi échoué - ${orchideeFlowers.size}/8 orchidées + ${orchideeRamifications.size}/4 ramifications + ${orchideeInZone.size}/3 en zone!"
+            else -> "Défi échoué!"
+        }
+    }
     
     // ==================== GESTION DES ZONES ====================
     
@@ -378,11 +586,15 @@ class ChallengeDefinitions {
         }
     }
     
-    fun isInRoseZone(flowerY: Float, screenHeight: Float): Boolean {
+    fun isInCentralZone(flowerY: Float, screenHeight: Float): Boolean {
         val zoneHeight = 192f  // 2 pouces
         val zoneTop = (screenHeight - zoneHeight) / 2f
         val zoneBottom = zoneTop + zoneHeight
         return flowerY >= zoneTop && flowerY <= zoneBottom
+    }
+
+    fun isInRoseZone(flowerY: Float, screenHeight: Float): Boolean {
+        return isInCentralZone(flowerY, screenHeight)
     }
     
     // ==================== DÉBLOCAGE DES DÉFIS ====================
@@ -410,6 +622,20 @@ class ChallengeDefinitions {
                     else -> null
                 }
             }
+            "IRIS" -> {
+                when (completedId) {
+                    1 -> "IRIS" to 2
+                    2 -> "IRIS" to 3
+                    else -> null
+                }
+            }
+            "ORCHIDEE" -> {
+                when (completedId) {
+                    1 -> "ORCHIDEE" to 2
+                    2 -> "ORCHIDEE" to 3
+                    else -> null
+                }
+            }
             else -> null
         }
     }
@@ -419,6 +645,7 @@ class ChallengeDefinitions {
             currentFlowerType == "MARGUERITE" && completedChallengeId == 3 -> "ROSE"
             currentFlowerType == "ROSE" && completedChallengeId == 3 -> "LUPIN"
             currentFlowerType == "LUPIN" && completedChallengeId == 3 -> "IRIS"
+            currentFlowerType == "IRIS" && completedChallengeId == 3 -> "ORCHIDEE"
             else -> null
         }
     }
@@ -430,11 +657,23 @@ class ChallengeDefinitions {
             "MARGUERITE" -> margueriteChallenges
             "ROSE" -> roseChallenges
             "LUPIN" -> lupinChallenges
+            "IRIS" -> irisChallenges
+            "ORCHIDEE" -> orchideeChallenges
             else -> margueriteChallenges
         }
     }
     
     fun findChallengeById(flowerType: String, challengeId: Int): Challenge? {
         return getChallengesByFlowerType(flowerType).find { it.id == challengeId }
+    }
+
+    // ==================== NOUVELLES FONCTIONS POUR IRIS ET ORCHIDÉE ====================
+    
+    fun getIrisChallenges(): List<Challenge> {
+        return irisChallenges
+    }
+    
+    fun getOrchideeChallenges(): List<Challenge> {
+        return orchideeChallenges
     }
 }
