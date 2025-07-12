@@ -1,7 +1,7 @@
 package com.example.souffleforcetest
 
 class LupinChallengeHandler {
-    
+     
     // ==================== LOGIQUE DES DÉFIS LUPIN MODIFIÉE ====================
     
     fun updateChallenge(
