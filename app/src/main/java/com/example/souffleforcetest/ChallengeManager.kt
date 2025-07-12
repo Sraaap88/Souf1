@@ -95,9 +95,11 @@ class ChallengeManager(private val context: Context? = null) {
     }
     
     init {
-        // Marguerite toujours débloquée par défaut
-        unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
         loadChallengeProgress()
+        // S'assurer que marguerite est toujours là
+        if (unlockedFlowers.none { it.flowerType == "MARGUERITE" }) {
+            unlockedFlowers.add(0, UnlockedFlower("MARGUERITE", "Disponible par défaut"))
+        }
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
