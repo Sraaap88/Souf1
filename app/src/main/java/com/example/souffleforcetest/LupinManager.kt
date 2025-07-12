@@ -99,7 +99,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private val baseThickness = 17.5f       // 30% plus fin (25 * 0.7)
     private val tipThickness = 5.6f         // 30% plus fin (8 * 0.7)
     private val growthRate = 7200f          // 3X plus rapide (2400 * 3)
-    private val maxBranches = 14            // 14 tiges max (7 paires)
+    private val maxBranches = 21            // 21 tiges max (7 groupes de 3)
     
     private val baseLeafSize = 83f
     private val baseFlowerSize = 20f        // 2X plus gros (10 * 2)
@@ -182,7 +182,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     // ==================== SYSTÈME COPIÉ DE PLANTSTEM ====================
     
     private fun setupRandomStemOrder() {
-        // Créer un pool des 7 paires de tiges possibles (0=principale, 1-6=paires)
+        // Créer un pool des 7 groupes de tiges possibles (0=principal, 1-6=groupes)
         stemOrderPool = mutableListOf(0, 1, 2, 3, 4, 5, 6)
         stemOrderPool.shuffle() // Mélanger l'ordre de façon aléatoire
     }
@@ -211,99 +211,88 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     private fun activateNextStemInOrder() {
         if (saccadeCount <= stemOrderPool.size) {
-            // Prendre la paire suivante dans l'ordre aléatoire
-            val pairTypeToActivate = stemOrderPool[saccadeCount - 1]
+            // Prendre le groupe suivant dans l'ordre aléatoire
+            val groupTypeToActivate = stemOrderPool[saccadeCount - 1]
             currentActiveStemIndex = saccadeCount - 1
             
-            if (pairTypeToActivate == 0) {
-                // Paire principale (déjà créée)
-                println("Saccade $saccadeCount: Paire PRINCIPALE activée")
+            if (groupTypeToActivate == 0) {
+                // Groupe principal (déjà créé)
+                println("Saccade $saccadeCount: Groupe PRINCIPAL activé")
             } else {
-                // Créer une nouvelle paire de tiges à côté
-                println("Saccade $saccadeCount: Nouvelle paire $pairTypeToActivate créée")
-                createNewStemPair(pairTypeToActivate)
+                // Créer un nouveau groupe de 3 tiges n'importe où
+                println("Saccade $saccadeCount: Nouveau groupe $groupTypeToActivate créé")
+                createNewStemGroup(groupTypeToActivate)
             }
         }
     }
     
     private fun createMainStem() {
-        // Créer la première paire de tiges au centre avec plus d'espacement
-        val baseSpacing = 30f  // Espacement entre les 2 tiges de la paire
+        // Créer le premier groupe de 3 tiges au centre, positions aléatoires
+        val radius = 40f  // Rayon autour du centre
         
-        // Première tige de la paire
-        val stem1 = LupinStem(
-            maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f),
-            baseX = baseX - baseSpacing/2,
-            baseY = baseY,
-            growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f
-        )
-        stem1.points.add(StemPoint(baseX - baseSpacing/2, baseY, baseThickness))
-        stems.add(stem1)
-        
-        // Deuxième tige de la paire
-        val stem2 = LupinStem(
-            maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f),
-            baseX = baseX + baseSpacing/2,
-            baseY = baseY,
-            growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f
-        )
-        stem2.points.add(StemPoint(baseX + baseSpacing/2, baseY, baseThickness))
-        stems.add(stem2)
-        
-        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem1.id)
-        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem2.id)
+        for (i in 0..2) {
+            // Position complètement aléatoire dans un cercle autour du centre
+            val angle = Math.random() * 2 * PI
+            val distance = Math.random() * radius
+            val stemX = baseX + (cos(angle) * distance).toFloat()
+            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 10f  // Variation Y aussi
+            
+            val stem = LupinStem(
+                maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f),
+                baseX = stemX,
+                baseY = stemY,
+                growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f
+            )
+            stem.points.add(StemPoint(stemX, stemY, baseThickness))
+            stems.add(stem)
+            challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
+        }
     }
     
-    private fun createNewStemPair(pairNumber: Int) {
-        val pairSpacing = 45f  // Plus d'espacement entre les paires
-        val stemSpacing = 25f  // Espacement entre les 2 tiges d'une paire
-        val side = if (pairNumber % 2 == 0) 1f else -1f
-        val distance = (pairNumber / 2) * pairSpacing
+    private fun createNewStemGroup(groupNumber: Int) {
+        // Position de base aléatoire pour ce groupe
+        val baseRadius = 60f + groupNumber * 20f
+        val groupAngle = Math.random() * 2 * PI
+        val groupDistance = Math.random() * baseRadius + 30f
         
-        // Position de base pour cette paire
-        val pairBaseX = baseX + (side * distance)
+        val groupBaseX = baseX + (cos(groupAngle) * groupDistance).toFloat()
+        val groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 15f
         
-        val newX1 = pairBaseX - stemSpacing/2
-        val newX2 = pairBaseX + stemSpacing/2
-        
-        // Première tige de la paire
-        val stem1 = LupinStem(
-            maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f),
-            baseX = newX1,
-            baseY = baseY,
-            growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f
-        )
-        stem1.points.add(StemPoint(newX1, baseY, baseThickness))
-        stems.add(stem1)
-        
-        // Deuxième tige de la paire
-        val stem2 = LupinStem(
-            maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f),
-            baseX = newX2,
-            baseY = baseY,
-            growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f
-        )
-        stem2.points.add(StemPoint(newX2, baseY, baseThickness))
-        stems.add(stem2)
-        
-        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem1.id)
-        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem2.id)
+        // 3 tiges dans ce groupe, positions complètement aléatoires
+        for (i in 0..2) {
+            val localRadius = 25f + Math.random().toFloat() * 15f
+            val localAngle = Math.random() * 2 * PI
+            val localDistance = Math.random() * localRadius
+            
+            val stemX = groupBaseX + (cos(localAngle) * localDistance).toFloat()
+            val stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 12f
+            
+            val stem = LupinStem(
+                maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f),
+                baseX = stemX,
+                baseY = stemY,
+                growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f
+            )
+            stem.points.add(StemPoint(stemX, stemY, baseThickness))
+            stems.add(stem)
+            challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
+        }
     }
     
     private fun growOnlyActiveStem(force: Float) {
         if (currentActiveStemIndex < 0) return
         
-        // Faire pousser toutes les tiges de la paire active
-        val stemsInCurrentPair = if (currentActiveStemIndex == 0) {
-            // Paire principale : les 2 premières tiges
-            stems.take(2)
+        // Faire pousser toutes les tiges du groupe actif
+        val stemsInCurrentGroup = if (currentActiveStemIndex == 0) {
+            // Groupe principal : les 3 premières tiges
+            stems.take(3)
         } else {
-            // Autres paires : 2 tiges par paire, en commençant après la paire principale
-            val startIndex = 2 + (currentActiveStemIndex - 1) * 2
-            stems.drop(startIndex).take(2)
+            // Autres groupes : 3 tiges par groupe, en commençant après le groupe principal
+            val startIndex = 3 + (currentActiveStemIndex - 1) * 3
+            stems.drop(startIndex).take(3)
         }
         
-        for (activeStem in stemsInCurrentPair) {
+        for (activeStem in stemsInCurrentGroup) {
             if (activeStem.currentHeight >= activeStem.maxHeight) continue
             
             // COPIE EXACTE de la logique de croissance de PlantStem avec vitesse individuelle
@@ -480,52 +469,69 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         canvas.rotate(leaf.angle)
         
         val folioleCount = leaf.folioleCount.coerceAtMost(leaf.folioleAngles.size)
-        val angleSpread = 70f
+        val angleSpread = 80f  // Plus étalé comme sur la photo
         
         for (i in 0 until folioleCount) {
             val folioleAngle = (i - folioleCount / 2f) * (angleSpread / folioleCount) + leaf.folioleAngles[i]
-            val folioleLength = size * (0.8f + (i % 3) * 0.1f)
-            val folioleWidth = folioleLength * 0.35f
+            val folioleLength = size * (0.9f + (i % 3) * 0.15f)
+            val folioleWidth = folioleLength * 0.25f  // Plus étroit comme sur la photo
             
             canvas.save()
             canvas.rotate(folioleAngle)
             
-            // Foliole plus réaliste avec dégradé
-            paint.color = Color.rgb(34, 139, 34)
+            // Foliole en forme de lancette (plus pointue)
+            paint.color = Color.rgb(50, 150, 50)  // Vert plus vif
             paint.style = Paint.Style.FILL
             
-            // Forme de foliole plus naturelle (ovale allongé)
+            // Forme lancéolée réaliste
             canvas.drawOval(
-                -folioleWidth/2, 0f,
-                folioleWidth/2, folioleLength,
+                -folioleWidth/2, folioleLength * 0.1f,
+                folioleWidth/2, folioleLength * 0.95f,
                 paint
             )
             
-            // Nervure centrale plus prononcée
-            paint.color = Color.rgb(20, 100, 20)
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 2f
-            canvas.drawLine(0f, folioleLength * 0.1f, 0f, folioleLength * 0.9f, paint)
+            // Pointe effilée en haut
+            paint.color = Color.rgb(45, 140, 45)
+            canvas.drawOval(
+                -folioleWidth/4, 0f,
+                folioleWidth/4, folioleLength * 0.2f,
+                paint
+            )
             
-            // Nervures secondaires
-            paint.strokeWidth = 1f
-            paint.color = Color.rgb(25, 110, 25)
-            for (j in 1..3) {
-                val nervureY = folioleLength * (0.2f + j * 0.2f)
-                val nervureWidth = folioleWidth * (0.3f - j * 0.05f)
-                canvas.drawLine(-nervureWidth/2, nervureY, 0f, nervureY * 0.9f, paint)
-                canvas.drawLine(nervureWidth/2, nervureY, 0f, nervureY * 0.9f, paint)
+            // Contour sombre pour bien définir chaque foliole
+            paint.color = Color.rgb(25, 100, 25)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2.5f
+            canvas.drawOval(
+                -folioleWidth/2, folioleLength * 0.1f,
+                folioleWidth/2, folioleLength * 0.95f,
+                paint
+            )
+            
+            // Nervure centrale très marquée
+            paint.color = Color.rgb(20, 90, 20)
+            paint.strokeWidth = 3f
+            canvas.drawLine(0f, folioleLength * 0.15f, 0f, folioleLength * 0.85f, paint)
+            
+            // Nervures secondaires bien définies
+            paint.strokeWidth = 1.5f
+            paint.color = Color.rgb(30, 110, 30)
+            for (j in 1..4) {
+                val nervureY = folioleLength * (0.25f + j * 0.15f)
+                val nervureWidth = folioleWidth * (0.35f - j * 0.06f)
+                canvas.drawLine(-nervureWidth/2, nervureY, 0f, nervureY * 0.95f, paint)
+                canvas.drawLine(nervureWidth/2, nervureY, 0f, nervureY * 0.95f, paint)
             }
             
             paint.style = Paint.Style.FILL
             canvas.restore()
         }
         
-        // Pétiole (tige de la feuille)
-        paint.color = Color.rgb(40, 120, 40)
+        // Pétiole bien marqué
+        paint.color = Color.rgb(35, 110, 35)
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 3f
-        canvas.drawLine(0f, 0f, 0f, -size * 0.2f, paint)
+        paint.strokeWidth = 4f
+        canvas.drawLine(0f, 0f, 0f, -size * 0.25f, paint)
         paint.style = Paint.Style.FILL
         
         canvas.restore()
