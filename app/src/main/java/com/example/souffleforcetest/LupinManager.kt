@@ -101,8 +101,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private val growthRate = 7200f          // 3X plus rapide (2400 * 3)
     private val maxBranches = 21            // 21 tiges max (7 groupes de 3)
     
-    private val baseLeafSize = 83f
-    private val baseFlowerSize = 20f        // 2X plus gros (10 * 2)
+    private val baseLeafSize = 100f         // 20% plus grand (83 * 1.2)
+    private val baseFlowerSize = 40f        // 2X plus gros (20 * 2)
     private val flowerDensity = 12
     
     init {
@@ -227,21 +227,21 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     private fun createMainStem() {
-        // Créer le premier groupe de 3 tiges au centre, positions aléatoires
-        val radius = 40f  // Rayon autour du centre
+        // Créer le premier groupe de 3 tiges au centre, TRÈS espacées
+        val radius = 80f  // Rayon plus grand
         
         for (i in 0..2) {
-            // Position complètement aléatoire dans un cercle autour du centre
+            // Position complètement aléatoire dans un cercle plus grand
             val angle = Math.random() * 2 * PI
-            val distance = Math.random() * radius
+            val distance = Math.random() * radius + 20f  // Distance minimale
             val stemX = baseX + (cos(angle) * distance).toFloat()
-            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 10f  // Variation Y aussi
+            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 20f  // Plus de variation Y
             
             val stem = LupinStem(
-                maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f),
+                maxHeight = screenHeight * maxStemHeight * (0.7f + Math.random().toFloat() * 0.6f), // ÉNORME variation
                 baseX = stemX,
                 baseY = stemY,
-                growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f
+                growthSpeedMultiplier = 0.5f + Math.random().toFloat() * 1.0f  // ÉNORME variation vitesse
             )
             stem.points.add(StemPoint(stemX, stemY, baseThickness))
             stems.add(stem)
@@ -250,28 +250,28 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     private fun createNewStemGroup(groupNumber: Int) {
-        // Position de base aléatoire pour ce groupe
-        val baseRadius = 60f + groupNumber * 20f
+        // Position de base TRÈS éloignée pour ce groupe
+        val baseRadius = 120f + groupNumber * 40f  // Beaucoup plus espacé
         val groupAngle = Math.random() * 2 * PI
-        val groupDistance = Math.random() * baseRadius + 30f
+        val groupDistance = Math.random() * baseRadius + 60f  // Distance minimale plus grande
         
         val groupBaseX = baseX + (cos(groupAngle) * groupDistance).toFloat()
-        val groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 15f
+        val groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 30f  // Plus de variation Y
         
-        // 3 tiges dans ce groupe, positions complètement aléatoires
+        // 3 tiges dans ce groupe, positions TRÈS aléatoires
         for (i in 0..2) {
-            val localRadius = 25f + Math.random().toFloat() * 15f
+            val localRadius = 40f + Math.random().toFloat() * 30f  // Plus espacé localement
             val localAngle = Math.random() * 2 * PI
-            val localDistance = Math.random() * localRadius
+            val localDistance = Math.random() * localRadius + 15f  // Distance minimale
             
             val stemX = groupBaseX + (cos(localAngle) * localDistance).toFloat()
-            val stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 12f
+            val stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 25f
             
             val stem = LupinStem(
-                maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f),
+                maxHeight = screenHeight * maxStemHeight * (0.6f + Math.random().toFloat() * 0.8f), // ÉNORME variation
                 baseX = stemX,
                 baseY = stemY,
-                growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f
+                growthSpeedMultiplier = 0.4f + Math.random().toFloat() * 1.2f  // ÉNORME variation vitesse
             )
             stem.points.add(StemPoint(stemX, stemY, baseThickness))
             stems.add(stem)
@@ -548,52 +548,50 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
                     val colorRgb = flower.color.rgb
                     val size = flower.currentSize
                     
-                    // Fleur en forme de pois (papillonacée) comme vrais lupins
+                    // Fleur conique comme vrais lupins - épi dense vertical
                     paint.color = Color.rgb(colorRgb[0], colorRgb[1], colorRgb[2])
                     
-                    // Étendard (pétale principal en haut)
+                    // Base de la fleur (large)
                     canvas.drawOval(
-                        flower.x - size * 0.6f, flower.y - size * 0.8f,
-                        flower.x + size * 0.6f, flower.y - size * 0.2f, 
+                        flower.x - size * 0.7f, flower.y + size * 0.2f,
+                        flower.x + size * 0.7f, flower.y + size * 0.8f, 
                         paint
                     )
                     
-                    // Ailes (pétales latéraux)
+                    // Milieu de la fleur
                     paint.color = Color.rgb(
-                        (colorRgb[0] * 0.85f).toInt(),
-                        (colorRgb[1] * 0.85f).toInt(),
-                        (colorRgb[2] * 0.85f).toInt()
+                        (colorRgb[0] * 0.9f).toInt(),
+                        (colorRgb[1] * 0.9f).toInt(),
+                        (colorRgb[2] * 0.9f).toInt()
                     )
                     canvas.drawOval(
-                        flower.x - size * 0.8f, flower.y - size * 0.3f,
-                        flower.x - size * 0.1f, flower.y + size * 0.2f,
-                        paint
-                    )
-                    canvas.drawOval(
-                        flower.x + size * 0.1f, flower.y - size * 0.3f,
-                        flower.x + size * 0.8f, flower.y + size * 0.2f,
+                        flower.x - size * 0.5f, flower.y - size * 0.1f,
+                        flower.x + size * 0.5f, flower.y + size * 0.4f,
                         paint
                     )
                     
-                    // Carène (pétale inférieur pointu)
+                    // Pointe conique (étroite)
+                    paint.color = Color.rgb(
+                        (colorRgb[0] * 0.8f).toInt(),
+                        (colorRgb[1] * 0.8f).toInt(),
+                        (colorRgb[2] * 0.8f).toInt()
+                    )
+                    canvas.drawOval(
+                        flower.x - size * 0.3f, flower.y - size * 0.5f,
+                        flower.x + size * 0.3f, flower.y + size * 0.1f,
+                        paint
+                    )
+                    
+                    // Détails sur les côtés pour l'effet de densité
                     paint.color = Color.rgb(
                         (colorRgb[0] * 0.7f).toInt(),
                         (colorRgb[1] * 0.7f).toInt(),
                         (colorRgb[2] * 0.7f).toInt()
                     )
-                    canvas.drawOval(
-                        flower.x - size * 0.3f, flower.y,
-                        flower.x + size * 0.3f, flower.y + size * 0.6f,
-                        paint
-                    )
-                    
-                    // Centre plus sombre
-                    paint.color = Color.rgb(
-                        (colorRgb[0] * 0.5f).toInt(),
-                        (colorRgb[1] * 0.5f).toInt(),
-                        (colorRgb[2] * 0.5f).toInt()
-                    )
-                    canvas.drawCircle(flower.x, flower.y, size * 0.15f, paint)
+                    canvas.drawCircle(flower.x - size * 0.4f, flower.y, size * 0.2f, paint)
+                    canvas.drawCircle(flower.x + size * 0.4f, flower.y, size * 0.2f, paint)
+                    canvas.drawCircle(flower.x - size * 0.3f, flower.y + size * 0.3f, size * 0.15f, paint)
+                    canvas.drawCircle(flower.x + size * 0.3f, flower.y + size * 0.3f, size * 0.15f, paint)
                 }
             }
         }
