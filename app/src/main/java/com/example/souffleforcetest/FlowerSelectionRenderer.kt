@@ -77,8 +77,8 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
                 val lupinX = centerX + spacing / 2f
                 drawFlowerButton(canvas, lupinX, bottomY, flowerButtonRadius, "LUPIN", challengeManager)
             }
-            else -> {
-                // 4+ fleurs - en carré - CORRECTION ICI
+            4 -> {
+                // NOUVEAU: 4 fleurs exactement - en carré
                 val spacing = flowerButtonRadius * 2.8f
                 val positions = listOf(
                     Pair(centerX - spacing / 2f, buttonY - spacing / 2f), // Haut gauche - Marguerite
@@ -87,7 +87,21 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
                     Pair(centerX + spacing / 2f, buttonY + spacing / 2f)  // Bas droite - Iris
                 )
                 
-                // CORRECTION: Utiliser les vraies fleurs débloquées
+                for (i in 0 until unlockedFlowers.size) {
+                    val (x, y) = positions[i]
+                    drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.9f, unlockedFlowers[i], challengeManager)
+                }
+            }
+            else -> {
+                // 5+ fleurs - en carré avec plus
+                val spacing = flowerButtonRadius * 2.8f
+                val positions = listOf(
+                    Pair(centerX - spacing / 2f, buttonY - spacing / 2f),
+                    Pair(centerX + spacing / 2f, buttonY - spacing / 2f),
+                    Pair(centerX - spacing / 2f, buttonY + spacing / 2f),
+                    Pair(centerX + spacing / 2f, buttonY + spacing / 2f)
+                )
+                
                 for (i in 0 until minOf(unlockedFlowers.size, 4)) {
                     val (x, y) = positions[i]
                     drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.9f, unlockedFlowers[i], challengeManager)
