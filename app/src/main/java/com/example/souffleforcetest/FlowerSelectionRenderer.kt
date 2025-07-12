@@ -78,34 +78,44 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
                 drawFlowerButton(canvas, lupinX, bottomY, flowerButtonRadius, "LUPIN", challengeManager)
             }
             4 -> {
-                // NOUVEAU: 4 fleurs exactement - en carré
+                // 4 fleurs exactement - en carré - COMME POUR LE CAS 3 !
                 val spacing = flowerButtonRadius * 2.8f
-                val positions = listOf(
-                    Pair(centerX - spacing / 2f, buttonY - spacing / 2f), // Haut gauche - Marguerite
-                    Pair(centerX + spacing / 2f, buttonY - spacing / 2f), // Haut droite - Rose
-                    Pair(centerX - spacing / 2f, buttonY + spacing / 2f), // Bas gauche - Lupin
-                    Pair(centerX + spacing / 2f, buttonY + spacing / 2f)  // Bas droite - Iris
-                )
                 
-                for (i in 0 until unlockedFlowers.size) {
-                    val (x, y) = positions[i]
-                    drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.9f, unlockedFlowers[i], challengeManager)
-                }
+                // Marguerite en haut à gauche
+                val margueriteX = centerX - spacing / 2f
+                val margueriteY = buttonY - spacing / 2f
+                drawFlowerButton(canvas, margueriteX, margueriteY, flowerButtonRadius * 0.9f, "MARGUERITE", challengeManager)
+                
+                // Rose en haut à droite
+                val roseX = centerX + spacing / 2f
+                val roseY = buttonY - spacing / 2f
+                drawFlowerButton(canvas, roseX, roseY, flowerButtonRadius * 0.9f, "ROSE", challengeManager)
+                
+                // Lupin en bas à gauche
+                val lupinX = centerX - spacing / 2f
+                val lupinY = buttonY + spacing / 2f
+                drawFlowerButton(canvas, lupinX, lupinY, flowerButtonRadius * 0.9f, "LUPIN", challengeManager)
+                
+                // Iris en bas à droite
+                val irisX = centerX + spacing / 2f
+                val irisY = buttonY + spacing / 2f
+                drawFlowerButton(canvas, irisX, irisY, flowerButtonRadius * 0.9f, "IRIS", challengeManager)
             }
-            else -> {
-                // 5+ fleurs - en carré avec plus
-                val spacing = flowerButtonRadius * 2.8f
-                val positions = listOf(
-                    Pair(centerX - spacing / 2f, buttonY - spacing / 2f),
-                    Pair(centerX + spacing / 2f, buttonY - spacing / 2f),
-                    Pair(centerX - spacing / 2f, buttonY + spacing / 2f),
-                    Pair(centerX + spacing / 2f, buttonY + spacing / 2f)
-                )
+            5 -> {
+                // 5 fleurs avec orchidée - disposition spéciale (pour plus tard)
+                val spacing = flowerButtonRadius * 2.5f
                 
-                for (i in 0 until minOf(unlockedFlowers.size, 4)) {
-                    val (x, y) = positions[i]
-                    drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.9f, unlockedFlowers[i], challengeManager)
-                }
+                // Top row: Marguerite, Rose, Lupin
+                val topY = buttonY - spacing * 0.3f
+                drawFlowerButton(canvas, centerX - spacing, topY, flowerButtonRadius * 0.8f, "MARGUERITE", challengeManager)
+                drawFlowerButton(canvas, centerX, topY, flowerButtonRadius * 0.8f, "ROSE", challengeManager)
+                drawFlowerButton(canvas, centerX + spacing, topY, flowerButtonRadius * 0.8f, "LUPIN", challengeManager)
+                
+                // Bottom row: Iris, Orchidée
+                val bottomY = buttonY + spacing * 0.3f
+                val bottomSpacing = spacing * 0.8f
+                drawFlowerButton(canvas, centerX - bottomSpacing / 2f, bottomY, flowerButtonRadius * 0.8f, "IRIS", challengeManager)
+                drawFlowerButton(canvas, centerX + bottomSpacing / 2f, bottomY, flowerButtonRadius * 0.8f, "ORCHIDEE", challengeManager)
             }
         }
     }
