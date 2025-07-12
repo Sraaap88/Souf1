@@ -33,7 +33,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             "MARGUERITE" -> "MARGUERITE"
             "ROSE" -> "ROSIER"
             "LUPIN" -> "LUPIN"
-            "IRIS" -> "IRIS"
+            "IRIS" -> "IRIS"  // NOUVEAU: Ajouter l'iris
             else -> "MARGUERITE" // Fallback
         }
         
@@ -44,7 +44,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             "MARGUERITE" -> challengeManager.getMargueriteChallenges()
             "ROSE" -> challengeManager.getRoseChallenges()
             "LUPIN" -> challengeManager.getLupinChallenges()
-            "IRIS" -> emptyList() // À implémenter plus tard
+            "IRIS" -> challengeManager.getIrisChallenges()  // NOUVEAU: Ajouter l'iris
             else -> challengeManager.getMargueriteChallenges() // Fallback
         }
         
@@ -131,7 +131,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             "MARGUERITE" -> "Marguerite"
             "ROSE" -> "Rosier"
             "LUPIN" -> "Lupin"
-            "IRIS" -> "Iris"
+            "IRIS" -> "Iris"  // NOUVEAU: Ajouter l'iris
             else -> "Plante"
         }
         canvas.drawText(displayName, screenWidth / 2f, screenHeight * 0.32f, textPaint)
@@ -170,6 +170,21 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                 textPaint.isFakeBoldText = false
                 canvas.drawText("Astuce: saccades pour créer des divisions", screenWidth / 2f, screenHeight * 0.62f, textPaint)
             }
+            // NOUVEAU: Conseils pour l'iris
+            challenge?.id == 1 && flowerType == "IRIS" -> {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = 55f
+                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.isFakeBoldText = false
+                canvas.drawText("Astuce: tiges droites élancées au centre", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+            }
+            challenge?.id == 2 && flowerType == "IRIS" -> {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = 55f
+                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.isFakeBoldText = false
+                canvas.drawText("Astuce: saccades pour ramifications", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+            }
         }
         
         // Compte à rebours
@@ -204,7 +219,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                 "MARGUERITE" -> "Marguerite"
                 "ROSE" -> "Rosier"
                 "LUPIN" -> "Lupin"
-                "IRIS" -> "Iris"
+                "IRIS" -> "Iris"  // NOUVEAU: Ajouter l'iris
                 else -> "Plante"
             }
             canvas.drawText("$displayName - ${result.challenge.title}", screenWidth / 2f, screenHeight * 0.42f, textPaint)
@@ -238,6 +253,25 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                     textPaint.color = 0xFFFFD700.toInt()
                     canvas.drawText("Expert en multiplication des rosiers!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
                 }
+                // NOUVEAU: Messages pour l'iris
+                result.challenge.id == 1 && result.success && flowerType == "IRIS" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Élégance parfaite des iris!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
+                result.challenge.id == 2 && result.success && flowerType == "IRIS" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Maître des ramifications d'iris!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
+                result.challenge.id == 3 && result.success && flowerType == "IRIS" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Jardinier expert en iris!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
             }
             
             // Message de déblocage si applicable
@@ -260,6 +294,13 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                         textPaint.textSize = 55f
                         textPaint.color = 0xFF4169E1.toInt() // Bleu
                         canvas.drawText("🌺 IRIS DÉBLOQUÉ! 🌺", screenWidth / 2f, screenHeight * 0.75f, textPaint)
+                    }
+                    // NOUVEAU: Message de déblocage pour l'iris
+                    flowerType == "IRIS" && result.challenge.id == 3 -> {
+                        textPaint.textAlign = Paint.Align.CENTER
+                        textPaint.textSize = 55f
+                        textPaint.color = 0xFFFF1493.toInt() // Rose profond
+                        canvas.drawText("🌸 ORCHIDÉE DÉBLOQUÉE! 🌸", screenWidth / 2f, screenHeight * 0.75f, textPaint)
                     }
                 }
             }
