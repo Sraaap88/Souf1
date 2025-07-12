@@ -8,7 +8,7 @@ import kotlin.math.*
 class BudManager(private val plantStem: PlantStem) {
     
     // ==================== DATA CLASSES ====================
-    
+     
     data class Bud(
         val x: Float,
         val y: Float,
