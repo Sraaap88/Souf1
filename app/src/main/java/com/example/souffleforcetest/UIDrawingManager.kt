@@ -40,7 +40,7 @@ class UIDrawingManager(
         }
     }
     
-    // ==================== ÉCRAN DE SÉLECTION DES FLEURS ====================
+    // ==================== ÉCRAN DE SÉLECTION DES FLEURS AVEC ESPACEMENT CORRIGÉ ====================
     
     private fun drawFlowerSelectionScreen(canvas: Canvas) {
         val paint = Paint().apply {
@@ -55,121 +55,123 @@ class UIDrawingManager(
         paint.textSize = 120f
         paint.color = 0xFFFFFFFF.toInt()
         paint.isFakeBoldText = true
-        canvas.drawText("CHOISIR", screenWidth / 2f, screenHeight * 0.2f, paint)
-        canvas.drawText("FLEUR", screenWidth / 2f, screenHeight * 0.28f, paint)
+        canvas.drawText("CHOISIR", screenWidth / 2f, screenHeight * 0.18f, paint)
+        canvas.drawText("FLEUR", screenWidth / 2f, screenHeight * 0.26f, paint)
         
         // Obtenir les fleurs débloquées
         val unlockedFlowers = getUnlockedFlowers()
         
-        // Dessiner les fleurs selon le nombre débloqué
+        // Dessiner les fleurs selon le nombre débloqué avec BEAUCOUP plus d'espace
         when (unlockedFlowers.size) {
-            1 -> drawSingleFlower(canvas, paint)
-            2 -> drawTwoFlowers(canvas, paint, unlockedFlowers)
-            3 -> drawThreeFlowers(canvas, paint, unlockedFlowers)
-            else -> drawFourFlowers(canvas, paint, unlockedFlowers)
+            1 -> drawSingleFlowerFixed(canvas, paint)
+            2 -> drawTwoFlowersFixed(canvas, paint, unlockedFlowers)
+            3 -> drawThreeFlowersFixed(canvas, paint, unlockedFlowers)
+            else -> drawFourFlowersFixed(canvas, paint, unlockedFlowers)
         }
         
-        // Instructions
+        // Instructions plus bas
         paint.textSize = 50f
         paint.color = 0xFFCCCCCC.toInt()
         paint.isFakeBoldText = false
-        canvas.drawText("Touchez une fleur pour la sélectionner", screenWidth / 2f, screenHeight * 0.85f, paint)
+        canvas.drawText("Touchez une fleur pour la sélectionner", screenWidth / 2f, screenHeight * 0.9f, paint)
     }
     
-    private fun drawSingleFlower(canvas: Canvas, paint: Paint) {
-        val flowerRadius = screenWidth * 0.18f
+    private fun drawSingleFlowerFixed(canvas: Canvas, paint: Paint) {
+        val flowerRadius = screenWidth * 0.15f  // Réduit
         val centerX = screenWidth / 2f
-        val centerY = screenHeight / 2f
+        val centerY = screenHeight * 0.5f
         
         drawMargueriteIcon(canvas, paint, centerX, centerY, flowerRadius)
         
         paint.textSize = 60f
         paint.color = 0xFFFFD700.toInt()
-        canvas.drawText("MARGUERITE", centerX, centerY + flowerRadius + 80f, paint)
+        canvas.drawText("MARGUERITE", centerX, centerY + flowerRadius + 120f, paint) // Plus d'espace
     }
     
-    private fun drawTwoFlowers(canvas: Canvas, paint: Paint, unlockedFlowers: List<String>) {
-        val flowerRadius = screenWidth * 0.18f
-        val spacing = flowerRadius * 2.8f
+    private fun drawTwoFlowersFixed(canvas: Canvas, paint: Paint, unlockedFlowers: List<String>) {
+        val flowerRadius = screenWidth * 0.14f  // Réduit
+        val spacing = screenWidth * 0.45f       // BEAUCOUP plus d'espace
         val centerX = screenWidth / 2f
-        val centerY = screenHeight / 2f
+        val centerY = screenHeight * 0.5f
         
         // Marguerite (gauche)
         val margueriteX = centerX - spacing / 2f
         drawMargueriteIcon(canvas, paint, margueriteX, centerY, flowerRadius)
         paint.textSize = 50f
         paint.color = 0xFFFFD700.toInt()
-        canvas.drawText("MARGUERITE", margueriteX, centerY + flowerRadius + 60f, paint)
+        canvas.drawText("MARGUERITE", margueriteX, centerY + flowerRadius + 100f, paint) // Plus d'espace
         
         // Rose (droite)
         val roseX = centerX + spacing / 2f
         drawRoseIcon(canvas, paint, roseX, centerY, flowerRadius)
         paint.color = 0xFFFF69B4.toInt()
-        canvas.drawText("ROSIER", roseX, centerY + flowerRadius + 60f, paint)
+        canvas.drawText("ROSIER", roseX, centerY + flowerRadius + 100f, paint) // Plus d'espace
     }
     
-    private fun drawThreeFlowers(canvas: Canvas, paint: Paint, unlockedFlowers: List<String>) {
-        val flowerRadius = screenWidth * 0.18f
-        val spacing = flowerRadius * 2.0f
+    private fun drawThreeFlowersFixed(canvas: Canvas, paint: Paint, unlockedFlowers: List<String>) {
+        val flowerRadius = screenWidth * 0.12f  // Réduit
+        val spacingHorizontal = screenWidth * 0.4f  // BEAUCOUP plus d'espace horizontal
+        val spacingVertical = screenHeight * 0.2f   // BEAUCOUP plus d'espace vertical
         val centerX = screenWidth / 2f
-        val centerY = screenHeight / 2f
-        val topY = centerY - spacing * 0.3f
-        val bottomY = centerY + spacing * 0.3f
+        val centerY = screenHeight * 0.5f
+        val topY = centerY - spacingVertical / 2f
+        val bottomY = centerY + spacingVertical / 2f
         
         // Marguerite (haut centre)
         drawMargueriteIcon(canvas, paint, centerX, topY, flowerRadius)
         paint.textSize = 45f
         paint.color = 0xFFFFD700.toInt()
-        canvas.drawText("MARGUERITE", centerX, topY + flowerRadius + 50f, paint)
+        canvas.drawText("MARGUERITE", centerX, topY + flowerRadius + 80f, paint) // Plus d'espace
         
         // Rose (bas gauche)
-        val roseX = centerX - spacing / 2f
+        val roseX = centerX - spacingHorizontal / 2f
         drawRoseIcon(canvas, paint, roseX, bottomY, flowerRadius)
         paint.color = 0xFFFF69B4.toInt()
-        canvas.drawText("ROSIER", roseX, bottomY + flowerRadius + 50f, paint)
+        canvas.drawText("ROSIER", roseX, bottomY + flowerRadius + 80f, paint) // Plus d'espace
         
         // Lupin (bas droite)
-        val lupinX = centerX + spacing / 2f
+        val lupinX = centerX + spacingHorizontal / 2f
         drawLupinIcon(canvas, paint, lupinX, bottomY, flowerRadius)
         paint.color = 0xFF9370DB.toInt()
-        canvas.drawText("LUPIN", lupinX, bottomY + flowerRadius + 50f, paint)
+        canvas.drawText("LUPIN", lupinX, bottomY + flowerRadius + 80f, paint) // Plus d'espace
     }
     
-    private fun drawFourFlowers(canvas: Canvas, paint: Paint, unlockedFlowers: List<String>) {
-        val flowerRadius = screenWidth * 0.15f
-        val spacing = flowerRadius * 2.2f
+    private fun drawFourFlowersFixed(canvas: Canvas, paint: Paint, unlockedFlowers: List<String>) {
+        val flowerRadius = screenWidth * 0.1f   // Réduit encore
+        val spacingHorizontal = screenWidth * 0.35f  // BEAUCOUP plus d'espace horizontal
+        val spacingVertical = screenHeight * 0.18f   // BEAUCOUP plus d'espace vertical
         val centerX = screenWidth / 2f
-        val centerY = screenHeight / 2f
-        val topY = centerY - spacing * 0.4f
-        val bottomY = centerY + spacing * 0.4f
+        val centerY = screenHeight * 0.52f
+        val topY = centerY - spacingVertical / 2f
+        val bottomY = centerY + spacingVertical / 2f
         
         // Marguerite (haut gauche)
-        val margueriteX = centerX - spacing * 0.5f
+        val margueriteX = centerX - spacingHorizontal / 2f
         drawMargueriteIcon(canvas, paint, margueriteX, topY, flowerRadius)
-        paint.textSize = 40f
+        paint.textSize = 38f  // Texte plus petit
         paint.color = 0xFFFFD700.toInt()
-        canvas.drawText("MARGUERITE", margueriteX, topY + flowerRadius + 45f, paint)
+        canvas.drawText("MARGUERITE", margueriteX, topY + flowerRadius + 70f, paint) // Plus d'espace
         
         // Rose (haut droite)
-        val roseX = centerX + spacing * 0.5f
+        val roseX = centerX + spacingHorizontal / 2f
         drawRoseIcon(canvas, paint, roseX, topY, flowerRadius)
         paint.color = 0xFFFF69B4.toInt()
-        canvas.drawText("ROSIER", roseX, topY + flowerRadius + 45f, paint)
+        canvas.drawText("ROSIER", roseX, topY + flowerRadius + 70f, paint) // Plus d'espace
         
         // Lupin (bas gauche)
-        val lupinX = centerX - spacing * 0.5f
+        val lupinX = centerX - spacingHorizontal / 2f
         drawLupinIcon(canvas, paint, lupinX, bottomY, flowerRadius)
         paint.color = 0xFF9370DB.toInt()
-        canvas.drawText("LUPIN", lupinX, bottomY + flowerRadius + 45f, paint)
+        canvas.drawText("LUPIN", lupinX, bottomY + flowerRadius + 70f, paint) // Plus d'espace
         
         // Iris (bas droite)
-        val irisX = centerX + spacing * 0.5f
+        val irisX = centerX + spacingHorizontal / 2f
         drawIrisIcon(canvas, paint, irisX, bottomY, flowerRadius)
         paint.color = 0xFF4169E1.toInt()
-        canvas.drawText("IRIS", irisX, bottomY + flowerRadius + 45f, paint)
+        canvas.drawText("IRIS", irisX, bottomY + flowerRadius + 70f, paint) // Plus d'espace
     }
     
-    // ==================== ICÔNES DES FLEURS ====================
+    // ==================== ICÔNES DES FLEURS (INCHANGÉES) ====================
     
     private fun drawMargueriteIcon(canvas: Canvas, paint: Paint, x: Float, y: Float, radius: Float) {
         // Centre jaune
@@ -341,7 +343,7 @@ class UIDrawingManager(
         return flowers
     }
     
-    // ==================== AUTRES ÉCRANS ====================
+    // ==================== AUTRES ÉCRANS (INCHANGÉS) ====================
     
     private fun drawModeChoiceScreen(canvas: Canvas) {
         val paint = Paint().apply {
