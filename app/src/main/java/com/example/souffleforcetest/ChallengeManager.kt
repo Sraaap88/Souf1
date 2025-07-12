@@ -97,6 +97,8 @@ class ChallengeManager(private val context: Context? = null) {
         currentFlowerType = flowerType
     }
     
+    fun getCurrentFlowerType(): String = currentFlowerType
+    
     fun getCurrentChallenge(): ChallengeDefinitions.Challenge? = currentChallenge
     fun getCurrentChallengeBrief(): String? = currentChallenge?.briefText
     
