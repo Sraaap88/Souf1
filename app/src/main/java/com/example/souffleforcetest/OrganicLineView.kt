@@ -36,7 +36,8 @@ class OrganicLineView @JvmOverloads constructor(
     
     private var plantStem: PlantStem? = null
     private var roseBushManager: RoseBushManager? = null
-    private var lupinManager: LupinManager? = null  // NOUVEAU: Gestionnaire du lupin
+    private var lupinManager: LupinManager? = null
+    private var irisManager: IrisManager? = null  // NOUVEAU: Gestionnaire de l'iris
     private lateinit var uiDrawing: UIDrawingManager
     private val challengeManager = ChallengeManager(context)
     private var selectedChallengeId = -1
@@ -65,14 +66,16 @@ class OrganicLineView @JvmOverloads constructor(
         
         plantStem = PlantStem(w, h)
         roseBushManager = RoseBushManager(w, h)
-        lupinManager = LupinManager(w, h)  // NOUVEAU: Initialiser le gestionnaire lupin
+        lupinManager = LupinManager(w, h)
+        irisManager = IrisManager(w, h)  // NOUVEAU: Initialiser le gestionnaire iris
         uiDrawing = UIDrawingManager(context, w, h, challengeManager)
         
         // Injecter le ChallengeManager dans les gestionnaires
         challengeManager.updateScreenDimensions(w, h)
         plantStem?.getFlowerManager()?.setChallengeManager(challengeManager)
         roseBushManager?.setChallengeManager(challengeManager)
-        lupinManager?.setChallengeManager(challengeManager)  // NOUVEAU
+        lupinManager?.setChallengeManager(challengeManager)
+        irisManager?.setChallengeManager(challengeManager)  // NOUVEAU
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -85,7 +88,8 @@ class OrganicLineView @JvmOverloads constructor(
         selectedFlowerType = "MARGUERITE"
         plantStem?.resetStem()
         roseBushManager?.reset()
-        lupinManager?.reset()  // NOUVEAU: Reset du lupin
+        lupinManager?.reset()
+        irisManager?.reset()  // NOUVEAU: Reset de l'iris
         
         // Reset de la séquence de cheat
         cheatTapCount = 0
@@ -97,62 +101,81 @@ class OrganicLineView @JvmOverloads constructor(
     fun updateForce(force: Float) {
         updateLightState()
         
-        if (selectedFlowerType == "MARGUERITE") {
-            // Logique existante pour la marguerite
-            if (lightState == LightState.GREEN_GROW) {
-                val phaseTime = System.currentTimeMillis() - stateStartTime
-                plantStem?.processStemGrowth(force, phaseTime)
+        when (selectedFlowerType) {
+            "MARGUERITE" -> {
+                // Logique existante pour la marguerite
+                if (lightState == LightState.GREEN_GROW) {
+                    val phaseTime = System.currentTimeMillis() - stateStartTime
+                    plantStem?.processStemGrowth(force, phaseTime)
+                }
+                
+                if (lightState == LightState.GREEN_LEAVES) {
+                    plantStem?.processLeavesGrowth(force)
+                }
+                
+                if (lightState == LightState.GREEN_FLOWER) {
+                    plantStem?.processFlowerGrowth(force)
+                }
+                
+                if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
+                    showResetButton = true
+                }
             }
-            
-            if (lightState == LightState.GREEN_LEAVES) {
-                plantStem?.processLeavesGrowth(force)
+            "ROSE" -> {
+                // Logique pour le rosier
+                if (lightState == LightState.GREEN_GROW) {
+                    roseBushManager?.processStemGrowth(force)
+                }
+                
+                if (lightState == LightState.GREEN_LEAVES) {
+                    roseBushManager?.processLeavesGrowth(force)
+                }
+                
+                if (lightState == LightState.GREEN_FLOWER) {
+                    roseBushManager?.processFlowerGrowth(force)
+                }
+                
+                if (!showResetButton) {
+                    showResetButton = true
+                }
             }
-            
-            if (lightState == LightState.GREEN_FLOWER) {
-                plantStem?.processFlowerGrowth(force)
+            "LUPIN" -> {
+                // Logique pour le lupin
+                if (lightState == LightState.GREEN_GROW) {
+                    lupinManager?.processStemGrowth(force)
+                }
+                
+                if (lightState == LightState.GREEN_LEAVES) {
+                    lupinManager?.processLeavesGrowth(force)
+                }
+                
+                if (lightState == LightState.GREEN_FLOWER) {
+                    lupinManager?.processFlowerGrowth(force)
+                }
+                
+                if (!showResetButton) {
+                    showResetButton = true
+                }
             }
-            
-            if (!showResetButton && (plantStem?.getStemHeight() ?: 0f) > 30f) {
-                showResetButton = true
-            }
-        } else if (selectedFlowerType == "ROSE") {
-            // Logique pour le rosier
-            if (lightState == LightState.GREEN_GROW) {
-                roseBushManager?.processStemGrowth(force)
-            }
-            
-            if (lightState == LightState.GREEN_LEAVES) {
-                roseBushManager?.processLeavesGrowth(force)
-            }
-            
-            if (lightState == LightState.GREEN_FLOWER) {
-                roseBushManager?.processFlowerGrowth(force)
-            }
-            
-            // Bouton reset pour le rosier
-            if (!showResetButton) {
-                showResetButton = true
-            }
-        } else if (selectedFlowerType == "LUPIN") {
-            // NOUVEAU: Logique pour le lupin
-            if (lightState == LightState.GREEN_GROW) {
-                lupinManager?.processStemGrowth(force)
-            }
-            
-            if (lightState == LightState.GREEN_LEAVES) {
-                lupinManager?.processLeavesGrowth(force)
-            }
-            
-            if (lightState == LightState.GREEN_FLOWER) {
-                lupinManager?.processFlowerGrowth(force)
-            }
-            
-            // Bouton reset pour le lupin
-            if (!showResetButton) {
-                showResetButton = true
+            "IRIS" -> {
+                // NOUVEAU: Logique pour l'iris
+                if (lightState == LightState.GREEN_GROW) {
+                    irisManager?.processStemGrowth(force)
+                }
+                
+                if (lightState == LightState.GREEN_LEAVES) {
+                    irisManager?.processLeavesGrowth(force)
+                }
+                
+                if (lightState == LightState.GREEN_FLOWER) {
+                    irisManager?.processFlowerGrowth(force)
+                }
+                
+                if (!showResetButton) {
+                    showResetButton = true
+                }
             }
         }
-        // TODO: Ajouter IRIS, etc. ici plus tard
         
         // Mettre à jour le défi si en mode DÉFI
         if (selectedMode == "DÉFI" && challengeManager.getCurrentChallenge() != null) {
@@ -257,14 +280,12 @@ class OrganicLineView @JvmOverloads constructor(
             lightState == LightState.GREEN_FLOWER || 
             lightState == LightState.RED) {
             
-            if (selectedFlowerType == "MARGUERITE") {
-                drawPlantStem(canvas)
-            } else if (selectedFlowerType == "ROSE") {
-                drawRoseBush(canvas)
-            } else if (selectedFlowerType == "LUPIN") {
-                drawLupin(canvas)  // NOUVEAU: Dessiner le lupin
+            when (selectedFlowerType) {
+                "MARGUERITE" -> drawPlantStem(canvas)
+                "ROSE" -> drawRoseBush(canvas)
+                "LUPIN" -> drawLupin(canvas)
+                "IRIS" -> drawIris(canvas)  // NOUVEAU: Dessiner l'iris
             }
-            // TODO: Ajouter IRIS, etc. ici plus tard
         }
         
         // Déléguer tout l'affichage UI au UIDrawingManager
@@ -322,7 +343,6 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // NOUVEAU: Fonction de dessin pour le lupin
     private fun drawLupin(canvas: Canvas) {
         lupinManager?.let { manager ->
             val stemPaint = Paint().apply {
@@ -342,6 +362,30 @@ class OrganicLineView @JvmOverloads constructor(
             }
             
             manager.drawLupin(canvas, stemPaint, leafPaint, flowerPaint)
+        }
+    }
+    
+    // NOUVEAU: Fonction de dessin pour l'iris
+    private fun drawIris(canvas: Canvas) {
+        irisManager?.let { manager ->
+            val stemPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.STROKE
+                strokeCap = Paint.Cap.ROUND
+            }
+            
+            val leafPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.FILL
+            }
+            
+            val flowerPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.FILL
+            }
+            
+            val renderer = IrisRenderer()
+            renderer.drawIris(canvas, stemPaint, leafPaint, flowerPaint, manager.getStems(), manager.getFlowers())
         }
     }
     
@@ -441,8 +485,8 @@ class OrganicLineView @JvmOverloads constructor(
                 goToModeChoice()
                 return true
             }
-        } else if (unlockedFlowers.size >= 3) {
-            // 3+ fleurs : triangle
+        } else if (unlockedFlowers.size == 3) {
+            // 3 fleurs : triangle
             val flowerButtonRadius = width * 0.18f
             val spacing = flowerButtonRadius * 2.0f
             val centerX = width / 2f
@@ -481,6 +525,33 @@ class OrganicLineView @JvmOverloads constructor(
                 goToModeChoice()
                 return true
             }
+        } else if (unlockedFlowers.size >= 4) {
+            // NOUVEAU: 4+ fleurs - en carré
+            val flowerButtonRadius = width * 0.18f
+            val spacing = flowerButtonRadius * 3f
+            val centerX = width / 2f
+            val buttonY = height / 2f
+            val positions = listOf(
+                Pair(centerX - spacing / 2f, buttonY - spacing / 2f), // Haut gauche - Marguerite
+                Pair(centerX + spacing / 2f, buttonY - spacing / 2f), // Haut droite - Rose
+                Pair(centerX - spacing / 2f, buttonY + spacing / 2f), // Bas gauche - Lupin
+                Pair(centerX + spacing / 2f, buttonY + spacing / 2f)  // Bas droite - Iris
+            )
+            
+            val flowerTypes = listOf("MARGUERITE", "ROSE", "LUPIN", "IRIS")
+            
+            for (i in unlockedFlowers.indices.take(4)) {
+                val (x, y) = positions[i]
+                val dx = event.x - x
+                val dy = event.y - y
+                val distance = sqrt(dx * dx + dy * dy)
+                
+                if (distance <= flowerButtonRadius * 1.5f) {
+                    selectedFlowerType = flowerTypes[i]
+                    goToModeChoice()
+                    return true
+                }
+            }
         }
         
         return false
@@ -497,10 +568,9 @@ class OrganicLineView @JvmOverloads constructor(
             flowers.add("LUPIN")
         }
         
-        // Retirer IRIS pour l'instant car pas encore implémenté
-        // if (challengeManager.isFlowerUnlocked("IRIS")) {
-        //     flowers.add("IRIS")
-        // }
+        if (challengeManager.isFlowerUnlocked("IRIS")) {
+            flowers.add("IRIS")  // NOUVEAU: Inclure l'iris
+        }
         
         return flowers
     }
@@ -609,14 +679,12 @@ class OrganicLineView @JvmOverloads constructor(
             if (event.x >= buttonLeft && event.x <= buttonRight && 
                 event.y >= buttonTop && event.y <= buttonBottom) {
                 
-                // CORRECTION: Cette ligne a été supprimée car redondante
-                // challengeManager.setCurrentFlowerType(selectedFlowerType)  // <-- SUPPRIMÉE
-                
                 // Choisir les défis selon la fleur sélectionnée
                 val challenges = when (selectedFlowerType) {
                     "MARGUERITE" -> challengeManager.getMargueriteChallenges()
                     "ROSE" -> challengeManager.getRoseChallenges()
                     "LUPIN" -> challengeManager.getLupinChallenges()
+                    "IRIS" -> challengeManager.getIrisChallenges()  // NOUVEAU
                     else -> challengeManager.getMargueriteChallenges()
                 }
                 
@@ -641,7 +709,10 @@ class OrganicLineView @JvmOverloads constructor(
                 roseBushManager?.initialize(width / 2f, height * 0.85f)
             }
             "LUPIN" -> {
-                lupinManager?.initialize(width / 2f, height * 0.85f)  // NOUVEAU
+                lupinManager?.initialize(width / 2f, height * 0.85f)
+            }
+            "IRIS" -> {
+                irisManager?.initialize(width / 2f, height * 0.85f)  // NOUVEAU
             }
             // La marguerite s'initialise automatiquement dans PlantStem
         }
