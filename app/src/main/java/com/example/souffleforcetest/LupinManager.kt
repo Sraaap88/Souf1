@@ -227,28 +227,27 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     private fun createMainStem() {
-        // Créer la première paire de tiges au centre avec variations
-        val baseVariation1 = (Math.random().toFloat() - 0.5f) * 15f
-        val baseVariation2 = (Math.random().toFloat() - 0.5f) * 15f
+        // Créer la première paire de tiges au centre avec plus d'espacement
+        val baseSpacing = 30f  // Espacement entre les 2 tiges de la paire
         
         // Première tige de la paire
         val stem1 = LupinStem(
-            maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f), // Hauteur variable
-            baseX = baseX + baseVariation1,
+            maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f),
+            baseX = baseX - baseSpacing/2,
             baseY = baseY,
-            growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f // Vitesse variable
+            growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f
         )
-        stem1.points.add(StemPoint(baseX + baseVariation1, baseY, baseThickness))
+        stem1.points.add(StemPoint(baseX - baseSpacing/2, baseY, baseThickness))
         stems.add(stem1)
         
         // Deuxième tige de la paire
         val stem2 = LupinStem(
-            maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f), // Hauteur variable
-            baseX = baseX + baseVariation2,
+            maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f),
+            baseX = baseX + baseSpacing/2,
             baseY = baseY,
-            growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f // Vitesse variable
+            growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f
         )
-        stem2.points.add(StemPoint(baseX + baseVariation2, baseY, baseThickness))
+        stem2.points.add(StemPoint(baseX + baseSpacing/2, baseY, baseThickness))
         stems.add(stem2)
         
         challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem1.id)
@@ -256,36 +255,33 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     private fun createNewStemPair(pairNumber: Int) {
-        val spacing = 25f
+        val pairSpacing = 45f  // Plus d'espacement entre les paires
+        val stemSpacing = 25f  // Espacement entre les 2 tiges d'une paire
         val side = if (pairNumber % 2 == 0) 1f else -1f
-        val distance = (pairNumber / 2) * spacing
+        val distance = (pairNumber / 2) * pairSpacing
         
         // Position de base pour cette paire
         val pairBaseX = baseX + (side * distance)
         
-        // Variations individuelles pour chaque tige de la paire
-        val variation1 = (Math.random().toFloat() - 0.5f) * 20f
-        val variation2 = (Math.random().toFloat() - 0.5f) * 20f
-        
-        val newX1 = pairBaseX + variation1
-        val newX2 = pairBaseX + variation2
+        val newX1 = pairBaseX - stemSpacing/2
+        val newX2 = pairBaseX + stemSpacing/2
         
         // Première tige de la paire
         val stem1 = LupinStem(
-            maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f), // Hauteur très variable
+            maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f),
             baseX = newX1,
             baseY = baseY,
-            growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f // Vitesse très variable
+            growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f
         )
         stem1.points.add(StemPoint(newX1, baseY, baseThickness))
         stems.add(stem1)
         
         // Deuxième tige de la paire
         val stem2 = LupinStem(
-            maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f), // Hauteur très variable
+            maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f),
             baseX = newX2,
             baseY = baseY,
-            growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f // Vitesse très variable
+            growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f
         )
         stem2.points.add(StemPoint(newX2, baseY, baseThickness))
         stems.add(stem2)
