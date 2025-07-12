@@ -83,9 +83,9 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     // ==================== PARAMÈTRES DE CROISSANCE ====================
     
-    private val stemGrowthRate = 1800f     // Plus lent que les autres plantes
-    private val leafGrowthRate = 600f
-    private val flowerGrowthRate = 400f
+    private val stemGrowthRate = 2340f     // AUGMENTÉ de 30% (était 1800f)
+    private val leafGrowthRate = 780f      // AUGMENTÉ de 30% (était 600f)
+    private val flowerGrowthRate = 520f    // AUGMENTÉ de 30% (était 400f)
     
     // Tailles
     private val baseStemThickness = 12f
