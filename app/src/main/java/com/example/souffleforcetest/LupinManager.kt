@@ -98,11 +98,11 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private val maxStemHeight = 0.75f       // EXACTEMENT comme PlantStem
     private val baseThickness = 17.5f       // 30% plus fin (25 * 0.7)
     private val tipThickness = 5.6f         // 30% plus fin (8 * 0.7)
-    private val growthRate = 4800f          // 2X plus rapide (2400 * 2)
+    private val growthRate = 7200f          // 3X plus rapide (2400 * 3)
     private val maxBranches = 6             // EXACTEMENT comme PlantStem
     
     private val baseLeafSize = 83f
-    private val baseFlowerSize = 12.5f      // 25% plus gros (10 * 1.25)
+    private val baseFlowerSize = 20f        // 2X plus gros (10 * 2)
     private val flowerDensity = 12
     
     init {
