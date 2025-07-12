@@ -75,28 +75,25 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
     
     fun drawFlowerChoice(canvas: Canvas, challengeManager: ChallengeManager) {
         // Titre
-        flowerTextPaint.textSize = 120f  // Réduit de 150f à 120f pour plus d'espace
+        flowerTextPaint.textSize = 150f
         flowerTextPaint.color = 0xFFFFFFFF.toInt()
         flowerTextPaint.isFakeBoldText = true
-        canvas.drawText("CHOISIR FLEUR", screenWidth / 2f, screenHeight * 0.15f, flowerTextPaint)  // Monté plus haut
+        canvas.drawText("CHOISIR FLEUR", screenWidth / 2f, screenHeight * 0.25f, flowerTextPaint)
         
         // Obtenir les fleurs débloquées
         val unlockedFlowers = getUnlockedFlowersList(challengeManager)
-        val flowerButtonRadius = screenWidth * 0.12f  // Réduit de 0.18f à 0.12f pour éviter les superpositions
+        val flowerButtonRadius = screenWidth * 0.18f  // AUGMENTÉ de 0.12f à 0.18f pour plus grandes images
+        val centerX = screenWidth / 2f
+        val buttonY = screenHeight / 2f
         
         when (unlockedFlowers.size) {
             1 -> {
                 // Seulement marguerite - centrée
-                val centerX = screenWidth / 2f
-                val buttonY = screenHeight * 0.45f  // Centré verticalement avec plus d'espace
                 drawFlowerButton(canvas, centerX, buttonY, flowerButtonRadius, "MARGUERITE", challengeManager)
             }
             2 -> {
-                // Marguerite + Rose - côte à côte avec plus d'espace
-                val centerX = screenWidth / 2f
-                val buttonY = screenHeight * 0.45f
-                val spacing = flowerButtonRadius * 3.5f  // Augmenté pour éviter superposition
-                
+                // Marguerite + Rose - côte à côte
+                val spacing = flowerButtonRadius * 3.5f
                 val margueriteX = centerX - spacing / 2f
                 val roseX = centerX + spacing / 2f
                 
@@ -104,11 +101,10 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 drawFlowerButton(canvas, roseX, buttonY, flowerButtonRadius, "ROSE", challengeManager)
             }
             3 -> {
-                // Marguerite + Rose + Lupin - triangle bien espacé
-                val centerX = screenWidth / 2f
-                val topY = screenHeight * 0.35f      // Plus haut
-                val bottomY = screenHeight * 0.58f    // Plus bas, avec espace pour les noms
-                val spacing = flowerButtonRadius * 3.2f
+                // Marguerite + Rose + Lupin - en triangle, ajusté pour images plus grandes
+                val spacing = flowerButtonRadius * 3.0f
+                val topY = buttonY - spacing * 0.4f
+                val bottomY = buttonY + spacing * 0.4f
                 
                 // Marguerite en haut au centre
                 drawFlowerButton(canvas, centerX, topY, flowerButtonRadius, "MARGUERITE", challengeManager)
@@ -121,43 +117,20 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 val lupinX = centerX + spacing / 2f
                 drawFlowerButton(canvas, lupinX, bottomY, flowerButtonRadius, "LUPIN", challengeManager)
             }
-            4 -> {
-                // 4 fleurs - carré bien espacé
-                val centerX = screenWidth / 2f
-                val centerY = screenHeight * 0.45f
-                val spacing = flowerButtonRadius * 3.0f
-                
+            else -> {
+                // 4+ fleurs - en carré ou plus (pour futures fleurs)
+                val spacing = flowerButtonRadius * 3f
                 val positions = listOf(
-                    Pair(centerX - spacing / 2f, centerY - spacing / 2.5f), // Haut gauche
-                    Pair(centerX + spacing / 2f, centerY - spacing / 2.5f), // Haut droite  
-                    Pair(centerX - spacing / 2f, centerY + spacing / 2.5f), // Bas gauche
-                    Pair(centerX + spacing / 2f, centerY + spacing / 2.5f)  // Bas droite
+                    Pair(centerX - spacing / 2f, buttonY - spacing / 2f), // Haut gauche
+                    Pair(centerX + spacing / 2f, buttonY - spacing / 2f), // Haut droite  
+                    Pair(centerX - spacing / 2f, buttonY + spacing / 2f), // Bas gauche
+                    Pair(centerX + spacing / 2f, buttonY + spacing / 2f)  // Bas droite
                 )
                 
                 val flowerTypes = listOf("MARGUERITE", "ROSE", "LUPIN", "IRIS")
                 for (i in unlockedFlowers.indices.take(4)) {
                     val (x, y) = positions[i]
-                    drawFlowerButton(canvas, x, y, flowerButtonRadius, flowerTypes[i], challengeManager)
-                }
-            }
-            else -> {
-                // 5 fleurs - disposition en croix optimisée
-                val centerX = screenWidth / 2f
-                val centerY = screenHeight * 0.45f
-                val spacing = flowerButtonRadius * 2.8f
-                
-                val positions = listOf(
-                    Pair(centerX, centerY - spacing),                    // Marguerite - centre haut
-                    Pair(centerX - spacing, centerY),                   // Rose - gauche
-                    Pair(centerX + spacing, centerY),                   // Lupin - droite
-                    Pair(centerX - spacing / 1.4f, centerY + spacing),  // Iris - bas gauche
-                    Pair(centerX + spacing / 1.4f, centerY + spacing)   // Orchidée - bas droite
-                )
-                
-                val flowerTypes = listOf("MARGUERITE", "ROSE", "LUPIN", "IRIS", "ORCHIDEE")
-                for (i in unlockedFlowers.indices.take(5)) {
-                    val (x, y) = positions[i]
-                    drawFlowerButton(canvas, x, y, flowerButtonRadius, flowerTypes[i], challengeManager)
+                    drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.9f, flowerTypes[i], challengeManager)
                 }
             }
         }
@@ -170,121 +143,56 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
             "MARGUERITE" -> {
                 // Toujours débloquée
                 drawMiniDaisy(canvas, x, y, radius * 1.5f)
-                
-                // Nom en dessous avec plus d'espace
-                flowerTextPaint.textSize = 32f  // Réduit de 40f à 32f
-                flowerTextPaint.color = 0xFFFFFFFF.toInt()
-                flowerTextPaint.isFakeBoldText = false
-                canvas.drawText("MARGUERITE", x, y + radius + 80f, flowerTextPaint)  // Plus d'espace
             }
             "ROSE" -> {
                 if (isUnlocked) {
                     // Rose débloquée
-                    flowerTextPaint.textSize = radius * 1.4f  // Réduit pour éviter débordement
+                    flowerTextPaint.textSize = radius * 1.6f
                     flowerTextPaint.color = 0xFFFF69B4.toInt()  // Rose
                     canvas.drawText("🌹", x, y + 15f, flowerTextPaint)
-                    
-                    // Nom en dessous
-                    flowerTextPaint.textSize = 32f
-                    flowerTextPaint.color = 0xFFFFFFFF.toInt()
-                    flowerTextPaint.isFakeBoldText = false
-                    canvas.drawText("ROSE", x, y + radius + 80f, flowerTextPaint)
                 } else {
+                    // Rose verrouillée
                     drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
                 }
             }
             "LUPIN" -> {
                 if (isUnlocked) {
-                    // Lupin débloqué - représentation améliorée
-                    flowerTextPaint.style = Paint.Style.FILL
-                    flowerTextPaint.color = 0xFF9370DB.toInt()  // Violet
+                    // Lupin débloqué - MEILLEURE REPRÉSENTATION
+                    flowerTextPaint.textSize = radius * 1.4f
+                    flowerTextPaint.color = 0xFF9370DB.toInt()  // Violet (couleur typique du lupin)
                     
-                    // Dessiner l'épi de lupin
-                    val spikeHeight = radius * 1.0f  // Réduit pour éviter débordement
-                    val pointCount = 6  // Moins de points pour plus de clarté
+                    // Dessiner plusieurs petits points pour simuler l'épi
+                    val spikeHeight = radius * 1.2f
+                    val pointCount = 8
                     for (i in 0 until pointCount) {
                         val pointY = y - spikeHeight/2f + (i * spikeHeight / pointCount)
-                        val pointSize = radius * 0.12f * (1f - (i.toFloat() / pointCount) * 0.2f)
+                        val pointSize = radius * 0.15f * (1f - (i.toFloat() / pointCount) * 0.3f) // Plus petit vers le haut
+                        
+                        flowerTextPaint.style = Paint.Style.FILL
                         canvas.drawCircle(x, pointY, pointSize, flowerTextPaint)
                     }
                     
                     // Tige
                     flowerTextPaint.style = Paint.Style.STROKE
-                    flowerTextPaint.strokeWidth = radius * 0.04f
+                    flowerTextPaint.strokeWidth = radius * 0.05f
                     flowerTextPaint.color = 0xFF228B22.toInt()  // Vert
-                    canvas.drawLine(x, y + spikeHeight/2f, x, y + radius * 0.8f, flowerTextPaint)
-                    flowerTextPaint.style = Paint.Style.FILL
+                    canvas.drawLine(x, y + spikeHeight/2f, x, y + radius, flowerTextPaint)
                     
-                    // Nom en dessous
-                    flowerTextPaint.textSize = 32f
-                    flowerTextPaint.color = 0xFFFFFFFF.toInt()
-                    flowerTextPaint.isFakeBoldText = false
-                    canvas.drawText("LUPIN", x, y + radius + 80f, flowerTextPaint)
+                    // Reset du style
+                    flowerTextPaint.style = Paint.Style.FILL
                 } else {
+                    // Lupin verrouillé
                     drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
                 }
             }
             "IRIS" -> {
                 if (isUnlocked) {
-                    // Iris débloqué - représentation stylisée
-                    flowerTextPaint.style = Paint.Style.FILL
+                    // Iris débloqué (pour le futur)
+                    flowerTextPaint.textSize = radius * 1.6f
                     flowerTextPaint.color = 0xFF4B0082.toInt()  // Indigo
-                    
-                    // Dessiner une forme d'iris stylisée
-                    val irisSize = radius * 0.8f
-                    
-                    // Pétales supérieurs
-                    canvas.drawOval(x - irisSize/3f, y - irisSize/2f, x + irisSize/3f, y, flowerTextPaint)
-                    
-                    // Pétales inférieurs
-                    flowerTextPaint.color = 0xFF6A5ACD.toInt()  // Violet ardoise plus clair
-                    canvas.drawOval(x - irisSize/2f, y, x + irisSize/2f, y + irisSize/2f, flowerTextPaint)
-                    
-                    // Centre
-                    flowerTextPaint.color = 0xFFFFD700.toInt()  // Doré
-                    canvas.drawCircle(x, y, irisSize * 0.15f, flowerTextPaint)
-                    
-                    // Nom en dessous
-                    flowerTextPaint.textSize = 32f
-                    flowerTextPaint.color = 0xFFFFFFFF.toInt()
-                    flowerTextPaint.isFakeBoldText = false
-                    canvas.drawText("IRIS", x, y + radius + 80f, flowerTextPaint)
+                    canvas.drawText("🌷", x, y + 15f, flowerTextPaint)  // Tulipe comme approximation
                 } else {
-                    drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
-                }
-            }
-            "ORCHIDEE" -> {
-                if (isUnlocked) {
-                    // Orchidée débloquée - représentation élégante
-                    flowerTextPaint.style = Paint.Style.FILL
-                    
-                    val orchidSize = radius * 0.9f
-                    
-                    // Pétales extérieurs (rose/magenta)
-                    flowerTextPaint.color = 0xFFDA70D6.toInt()  // Orchid
-                    for (i in 0..2) {
-                        val angle = i * 120f
-                        val petalX = x + kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat() * orchidSize * 0.3f
-                        val petalY = y + kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat() * orchidSize * 0.3f
-                        canvas.drawOval(petalX - orchidSize/6f, petalY - orchidSize/3f, 
-                                      petalX + orchidSize/6f, petalY + orchidSize/3f, flowerTextPaint)
-                    }
-                    
-                    // Labelle (pétale central caractéristique)
-                    flowerTextPaint.color = 0xFFFF1493.toInt()  // Deep pink
-                    canvas.drawOval(x - orchidSize/4f, y + orchidSize/6f, 
-                                  x + orchidSize/4f, y + orchidSize/2f, flowerTextPaint)
-                    
-                    // Centre
-                    flowerTextPaint.color = 0xFFFFFFE0.toInt()  // Crème
-                    canvas.drawCircle(x, y, orchidSize * 0.1f, flowerTextPaint)
-                    
-                    // Nom en dessous
-                    flowerTextPaint.textSize = 28f  // Plus petit car nom plus long
-                    flowerTextPaint.color = 0xFFFFFFFF.toInt()
-                    flowerTextPaint.isFakeBoldText = false
-                    canvas.drawText("ORCHIDÉE", x, y + radius + 80f, flowerTextPaint)
-                } else {
+                    // Iris verrouillé
                     drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
                 }
             }
@@ -293,15 +201,9 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
     
     private fun drawLockedFlower(canvas: Canvas, x: Float, y: Float, radius: Float, text: String) {
         // Cadenas
-        flowerTextPaint.textSize = radius * 1.2f  // Réduit pour éviter débordement
+        flowerTextPaint.textSize = radius * 1.4f
         flowerTextPaint.color = 0xAA888888.toInt()  // Gris
         canvas.drawText("🔒", x, y + 15f, flowerTextPaint)
-        
-        // Texte en dessous
-        flowerTextPaint.textSize = 28f  // Réduit
-        flowerTextPaint.color = 0xAA888888.toInt()  // Gris
-        flowerTextPaint.isFakeBoldText = false
-        canvas.drawText(text, x, y + radius + 80f, flowerTextPaint)
     }
     
     private fun getUnlockedFlowersList(challengeManager: ChallengeManager): List<String> {
@@ -315,13 +217,10 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
             flowers.add("LUPIN")
         }
         
-        if (challengeManager.isFlowerUnlocked("IRIS")) {
-            flowers.add("IRIS")
-        }
-        
-        if (challengeManager.isFlowerUnlocked("ORCHIDEE")) {
-            flowers.add("ORCHIDEE")
-        }
+        // Retirer IRIS pour l'instant car pas encore implémenté
+        // if (challengeManager.isFlowerUnlocked("IRIS")) {
+        //     flowers.add("IRIS")
+        // }
         
         return flowers
     }
@@ -471,7 +370,7 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 }
             }
         } else {
-            // Zones pour autres fleurs - bande de 2 pouces (~192px) au centre
+            // Zones pour rosier et lupin - bande de 2 pouces (~192px) au centre
             val zoneHeight = 192f  // 2 pouces
             zoneTop = (screenHeight - zoneHeight) / 2f
             zoneBottom = zoneTop + zoneHeight
@@ -523,7 +422,6 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 challengeManager.getMargueriteChallenges().any { it == currentChallenge } -> "MARGUERITE"
                 challengeManager.getRoseChallenges().any { it == currentChallenge } -> "ROSIER"
                 challengeManager.getLupinChallenges().any { it == currentChallenge } -> "LUPIN"
-                // Pour IRIS et ORCHIDÉE, on ajoutera les références quand les méthodes existeront
                 else -> "MARGUERITE"
             }
         } else {
