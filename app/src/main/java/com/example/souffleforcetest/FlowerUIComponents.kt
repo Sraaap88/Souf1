@@ -523,15 +523,12 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 challengeManager.getMargueriteChallenges().any { it == currentChallenge } -> "MARGUERITE"
                 challengeManager.getRoseChallenges().any { it == currentChallenge } -> "ROSIER"
                 challengeManager.getLupinChallenges().any { it == currentChallenge } -> "LUPIN"
-                challengeManager.getIrisChallenges().any { it == currentChallenge } -> "IRIS"
-                challengeManager.getOrchideeChallenges().any { it == currentChallenge } -> "ORCHIDEE"
+                // Pour IRIS et ORCHIDÉE, on ajoutera les références quand les méthodes existeront
                 else -> "MARGUERITE"
             }
         } else {
             // Fallback: détecter selon les fleurs débloquées
             when {
-                challengeManager.isFlowerUnlocked("ORCHIDEE") -> "ORCHIDEE"
-                challengeManager.isFlowerUnlocked("IRIS") -> "IRIS"
                 challengeManager.isFlowerUnlocked("LUPIN") -> "LUPIN"
                 challengeManager.isFlowerUnlocked("ROSE") -> "ROSIER"  
                 else -> "MARGUERITE"
