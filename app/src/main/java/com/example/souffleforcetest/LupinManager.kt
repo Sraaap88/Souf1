@@ -436,26 +436,48 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         for (i in 0 until folioleCount) {
             val folioleAngle = (i - folioleCount / 2f) * (angleSpread / folioleCount) + leaf.folioleAngles[i]
             val folioleLength = size * (0.8f + (i % 3) * 0.1f)
-            val folioleWidth = folioleLength * 0.3f
+            val folioleWidth = folioleLength * 0.35f
             
             canvas.save()
             canvas.rotate(folioleAngle)
             
+            // Foliole plus réaliste avec dégradé
             paint.color = Color.rgb(34, 139, 34)
+            paint.style = Paint.Style.FILL
+            
+            // Forme de foliole plus naturelle (ovale allongé)
             canvas.drawOval(
                 -folioleWidth/2, 0f,
                 folioleWidth/2, folioleLength,
                 paint
             )
             
+            // Nervure centrale plus prononcée
             paint.color = Color.rgb(20, 100, 20)
             paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 1.5f
-            canvas.drawLine(0f, 0f, 0f, folioleLength, paint)
-            paint.style = Paint.Style.FILL
+            paint.strokeWidth = 2f
+            canvas.drawLine(0f, folioleLength * 0.1f, 0f, folioleLength * 0.9f, paint)
             
+            // Nervures secondaires
+            paint.strokeWidth = 1f
+            paint.color = Color.rgb(25, 110, 25)
+            for (j in 1..3) {
+                val nervureY = folioleLength * (0.2f + j * 0.2f)
+                val nervureWidth = folioleWidth * (0.3f - j * 0.05f)
+                canvas.drawLine(-nervureWidth/2, nervureY, 0f, nervureY * 0.9f, paint)
+                canvas.drawLine(nervureWidth/2, nervureY, 0f, nervureY * 0.9f, paint)
+            }
+            
+            paint.style = Paint.Style.FILL
             canvas.restore()
         }
+        
+        // Pétiole (tige de la feuille)
+        paint.color = Color.rgb(40, 120, 40)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 3f
+        canvas.drawLine(0f, 0f, 0f, -size * 0.2f, paint)
+        paint.style = Paint.Style.FILL
         
         canvas.restore()
     }
@@ -469,27 +491,54 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             for (flower in stem.flowerSpike.flowers) {
                 if (flower.currentSize > 0) {
                     val colorRgb = flower.color.rgb
-                    paint.color = Color.rgb(colorRgb[0], colorRgb[1], colorRgb[2])
-                    
                     val size = flower.currentSize
                     
-                    canvas.drawCircle(flower.x, flower.y, size * 1.2f, paint)
+                    // Fleur en forme de pois (papillonacée) comme vrais lupins
+                    paint.color = Color.rgb(colorRgb[0], colorRgb[1], colorRgb[2])
                     
-                    paint.color = Color.rgb(
-                        (colorRgb[0] * 0.8f).toInt(),
-                        (colorRgb[1] * 0.8f).toInt(),
-                        (colorRgb[2] * 0.8f).toInt()
+                    // Étendard (pétale principal en haut)
+                    canvas.drawOval(
+                        flower.x - size * 0.6f, flower.y - size * 0.8f,
+                        flower.x + size * 0.6f, flower.y - size * 0.2f, 
+                        paint
                     )
-                    canvas.drawCircle(flower.x - size * 0.7f, flower.y + size * 0.4f, size * 0.7f, paint)
-                    canvas.drawCircle(flower.x + size * 0.7f, flower.y + size * 0.4f, size * 0.7f, paint)
                     
+                    // Ailes (pétales latéraux)
                     paint.color = Color.rgb(
-                        (colorRgb[0] * 0.6f).toInt(),
-                        (colorRgb[1] * 0.6f).toInt(),
-                        (colorRgb[2] * 0.6f).toInt()
+                        (colorRgb[0] * 0.85f).toInt(),
+                        (colorRgb[1] * 0.85f).toInt(),
+                        (colorRgb[2] * 0.85f).toInt()
                     )
-                    canvas.drawCircle(flower.x, flower.y - size * 0.3f, size * 0.4f, paint)
-                    canvas.drawCircle(flower.x, flower.y + size * 0.5f, size * 0.3f, paint)
+                    canvas.drawOval(
+                        flower.x - size * 0.8f, flower.y - size * 0.3f,
+                        flower.x - size * 0.1f, flower.y + size * 0.2f,
+                        paint
+                    )
+                    canvas.drawOval(
+                        flower.x + size * 0.1f, flower.y - size * 0.3f,
+                        flower.x + size * 0.8f, flower.y + size * 0.2f,
+                        paint
+                    )
+                    
+                    // Carène (pétale inférieur pointu)
+                    paint.color = Color.rgb(
+                        (colorRgb[0] * 0.7f).toInt(),
+                        (colorRgb[1] * 0.7f).toInt(),
+                        (colorRgb[2] * 0.7f).toInt()
+                    )
+                    canvas.drawOval(
+                        flower.x - size * 0.3f, flower.y,
+                        flower.x + size * 0.3f, flower.y + size * 0.6f,
+                        paint
+                    )
+                    
+                    // Centre plus sombre
+                    paint.color = Color.rgb(
+                        (colorRgb[0] * 0.5f).toInt(),
+                        (colorRgb[1] * 0.5f).toInt(),
+                        (colorRgb[2] * 0.5f).toInt()
+                    )
+                    canvas.drawCircle(flower.x, flower.y, size * 0.15f, paint)
                 }
             }
         }
