@@ -67,7 +67,6 @@ class PlantRenderManager(
     // ==================== FONCTIONS DE RENDU POUR MARGUERITES ====================
     
     private fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>) {
-        val stem = plantStem ?: return
         val paint = Paint().apply {
             isAntiAlias = true
             color = Color.rgb(34, 139, 34)
@@ -76,22 +75,19 @@ class PlantRenderManager(
         
         for (leaf in leaves) {
             if (leaf.currentSize > 0) {
-                // Obtenir la position sur la tige
-                val leafPoint = stem.getStemPointAtRatio(leaf.heightRatio)
-                leafPoint?.let { point ->
-                    canvas.save()
-                    canvas.translate(point.x, point.y)
-                    canvas.rotate(leaf.angle)
-                    
-                    val size = leaf.currentSize
-                    canvas.drawOval(
-                        -size/2, -size/4,
-                        size/2, size/4,
-                        paint
-                    )
-                    
-                    canvas.restore()
-                }
+                // Utiliser directement les coordonnées x, y de la feuille
+                canvas.save()
+                canvas.translate(leaf.x, leaf.y)
+                canvas.rotate(leaf.angle)
+                
+                val size = leaf.currentSize
+                canvas.drawOval(
+                    -size/2, -size/4,
+                    size/2, size/4,
+                    paint
+                )
+                
+                canvas.restore()
             }
         }
     }
@@ -103,7 +99,8 @@ class PlantRenderManager(
         }
         
         for (flower in flowers) {
-            if (flower.currentSize > 0 && (flower.orientation == 1 || flower.orientation == 2)) {
+            if (flower.currentSize > 0) {
+                // Version simplifiée sans orientation - toutes les fleurs en arrière-plan
                 paint.color = Color.rgb(255, 255, 255)
                 canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.6f, paint)
                 
@@ -120,7 +117,8 @@ class PlantRenderManager(
         }
         
         for (flower in flowers) {
-            if (flower.currentSize > 0 && (flower.orientation == 3 || flower.orientation == 4)) {
+            if (flower.currentSize > 0) {
+                // Version simplifiée - dessiner les pétales détaillés pour toutes les fleurs
                 for (i in 0..11) {
                     val angle = i * 30f * PI / 180f
                     val petalX = flower.x + cos(angle).toFloat() * flower.currentSize * 0.7f
