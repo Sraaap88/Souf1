@@ -414,50 +414,78 @@ class OrganicLineView @JvmOverloads constructor(
                 return true
             }
         } else if (unlockedFlowers.size >= 2) {
-            // Marguerite + Rose (et plus tard d'autres) - centrées ensemble
-            val flowerButtonRadius = width * 0.15f
-            val spacing = flowerButtonRadius * 3f
-            val centerX = width / 2f
-            val buttonY = height / 2f
+            // Marguerite + Rose (et plus tard d'autres) - gestion selon le nombre
+            val flowerButtonRadius = width * 0.18f  // AUGMENTÉ pour correspondre à FlowerUIComponents
             
-            // Marguerite (gauche)
-            val margueriteX = centerX - spacing / 2f
-            val margueriteDx = event.x - margueriteX
-            val margueriteDy = event.y - buttonY
-            val margueriteDistance = sqrt(margueriteDx * margueriteDx + margueriteDy * margueriteDy)
-            
-            // Rose (droite)
-            val roseX = centerX + spacing / 2f
-            val roseDx = event.x - roseX
-            val roseDy = event.y - buttonY
-            val roseDistance = sqrt(roseDx * roseDx + roseDy * roseDy)
-            
-            if (margueriteDistance <= flowerButtonRadius * 1.5f) {
-                selectedFlowerType = "MARGUERITE"
-                goToModeChoice()
-                return true
-            } else if (roseDistance <= flowerButtonRadius * 1.5f) {
-                selectedFlowerType = "ROSE"
-                goToModeChoice()
-                return true
-            }
-            
-            // NOUVEAU: Lupin (si débloqué) - position centrale ou à droite selon le nombre de fleurs
-            if (unlockedFlowers.size >= 3) {
-                // 3 fleurs ou plus : Lupin au centre-droite
-                val lupinX = centerX + spacing / 4f
+            if (unlockedFlowers.size == 2) {
+                // 2 fleurs : côte à côte
+                val spacing = flowerButtonRadius * 2.8f
+                val centerX = width / 2f
+                val buttonY = height / 2f
+                
+                // Marguerite (gauche)
+                val margueriteX = centerX - spacing / 2f
+                val margueriteDx = event.x - margueriteX
+                val margueriteDy = event.y - buttonY
+                val margueriteDistance = sqrt(margueriteDx * margueriteDx + margueriteDy * margueriteDy)
+                
+                // Rose (droite)
+                val roseX = centerX + spacing / 2f
+                val roseDx = event.x - roseX
+                val roseDy = event.y - buttonY
+                val roseDistance = sqrt(roseDx * roseDx + roseDy * roseDy)
+                
+                if (margueriteDistance <= flowerButtonRadius * 1.5f) {
+                    selectedFlowerType = "MARGUERITE"
+                    goToModeChoice()
+                    return true
+                } else if (roseDistance <= flowerButtonRadius * 1.5f) {
+                    selectedFlowerType = "ROSE"
+                    goToModeChoice()
+                    return true
+                }
+            } else if (unlockedFlowers.size >= 3) {
+                // 3+ fleurs : triangle
+                val spacing = flowerButtonRadius * 2.0f  // Correspond à FlowerUIComponents
+                val centerX = width / 2f
+                val buttonY = height / 2f
+                val topY = buttonY - spacing * 0.3f
+                val bottomY = buttonY + spacing * 0.3f
+                
+                // Marguerite (haut centre)
+                val margueriteX = centerX
+                val margueriteDx = event.x - margueriteX
+                val margueriteDy = event.y - topY
+                val margueriteDistance = sqrt(margueriteDx * margueriteDx + margueriteDy * margueriteDy)
+                
+                // Rose (bas gauche)
+                val roseX = centerX - spacing / 2f
+                val roseDx = event.x - roseX
+                val roseDy = event.y - bottomY
+                val roseDistance = sqrt(roseDx * roseDx + roseDy * roseDy)
+                
+                // Lupin (bas droite)
+                val lupinX = centerX + spacing / 2f
                 val lupinDx = event.x - lupinX
-                val lupinDy = event.y - buttonY
+                val lupinDy = event.y - bottomY
                 val lupinDistance = sqrt(lupinDx * lupinDx + lupinDy * lupinDy)
                 
-                if (lupinDistance <= flowerButtonRadius * 1.5f) {
+                if (margueriteDistance <= flowerButtonRadius * 1.5f) {
+                    selectedFlowerType = "MARGUERITE"
+                    goToModeChoice()
+                    return true
+                } else if (roseDistance <= flowerButtonRadius * 1.5f) {
+                    selectedFlowerType = "ROSE"
+                    goToModeChoice()
+                    return true
+                } else if (lupinDistance <= flowerButtonRadius * 1.5f && challengeManager.isFlowerUnlocked("LUPIN")) {
                     selectedFlowerType = "LUPIN"
                     goToModeChoice()
                     return true
                 }
             }
             
-            // TODO: Ajouter LUPIN, IRIS, etc. ici plus tard
+            // TODO: Ajouter IRIS, etc. ici plus tard
         }
         
         return false
