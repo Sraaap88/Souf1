@@ -152,7 +152,7 @@ class OrganicLineView @JvmOverloads constructor(
                 showResetButton = true
             }
         }
-        // TODO: Ajouter LUPIN, IRIS, etc. ici plus tard
+        // TODO: Ajouter IRIS, etc. ici plus tard
         
         // Mettre à jour le défi si en mode DÉFI
         if (selectedMode == "DÉFI" && challengeManager.getCurrentChallenge() != null) {
@@ -264,7 +264,7 @@ class OrganicLineView @JvmOverloads constructor(
             } else if (selectedFlowerType == "LUPIN") {
                 drawLupin(canvas)  // NOUVEAU: Dessiner le lupin
             }
-            // TODO: Ajouter LUPIN, IRIS, etc. ici plus tard
+            // TODO: Ajouter IRIS, etc. ici plus tard
         }
         
         // Déléguer tout l'affichage UI au UIDrawingManager
@@ -511,7 +511,7 @@ class OrganicLineView @JvmOverloads constructor(
         invalidate()
     }
     
-    // ==================== NOUVEAU: CHOIX DE MODE (2ème ÉCRAN) ====================
+    // ==================== CORRECTION: CHOIX DE MODE (2ème ÉCRAN) ====================
     
     private fun handleModeChoiceClick(event: MotionEvent): Boolean {
         // Calculer positions des boutons ZEN/DÉFI - VRAIMENT CENTRER L'ENSEMBLE
@@ -542,6 +542,8 @@ class OrganicLineView @JvmOverloads constructor(
         } else if (defiDistance <= buttonRadius) {
             // Mode DÉFI sélectionné - aller à la sélection de défi
             selectedMode = "DÉFI"
+            // CORRECTION: Informer le ChallengeManager du type de fleur MAINTENANT
+            challengeManager.setCurrentFlowerType(selectedFlowerType)
             lightState = LightState.CHALLENGE_SELECTION
             stateStartTime = System.currentTimeMillis()
             return true
@@ -588,6 +590,8 @@ class OrganicLineView @JvmOverloads constructor(
         invalidate()
     }
     
+    // ==================== CORRECTION: SÉLECTION DE DÉFI ====================
+    
     private fun handleChallengeSelectionClick(event: MotionEvent): Boolean {
         // Zone des 3 boutons de défi (calculée dans UIDrawingManager)
         val buttonWidth = width * 0.25f
@@ -605,7 +609,8 @@ class OrganicLineView @JvmOverloads constructor(
             if (event.x >= buttonLeft && event.x <= buttonRight && 
                 event.y >= buttonTop && event.y <= buttonBottom) {
                 
-                challengeManager.setCurrentFlowerType(selectedFlowerType)
+                // CORRECTION: Cette ligne a été supprimée car redondante
+                // challengeManager.setCurrentFlowerType(selectedFlowerType)  // <-- SUPPRIMÉE
                 
                 // Choisir les défis selon la fleur sélectionnée
                 val challenges = when (selectedFlowerType) {
