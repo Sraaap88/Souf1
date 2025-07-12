@@ -96,12 +96,12 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     private val forceThreshold = 0.15f      // EXACTEMENT comme PlantStem
     private val maxStemHeight = 0.75f       // EXACTEMENT comme PlantStem
-    private val baseThickness = 17.5f       // 30% plus fin (25 * 0.7)
-    private val tipThickness = 5.6f         // 30% plus fin (8 * 0.7)
+    private val baseThickness = 13.1f       // 25% plus fin (17.5 * 0.75)
+    private val tipThickness = 4.2f         // 25% plus fin (5.6 * 0.75)
     private val growthRate = 7200f          // 3X plus rapide (2400 * 3)
     private val maxBranches = 21            // 21 tiges max (7 groupes de 3)
     
-    private val baseLeafSize = 100f         // 20% plus grand (83 * 1.2)
+    private val baseLeafSize = 125f         // 25% plus grand (100 * 1.25)
     private val baseFlowerSize = 40f        // 2X plus gros (20 * 2)
     private val flowerDensity = 12
     
@@ -227,21 +227,21 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     private fun createMainStem() {
-        // Créer le premier groupe de 3 tiges au centre, TRÈS espacées
-        val radius = 80f  // Rayon plus grand
+        // Créer le premier groupe de 3 tiges au centre, ÉNORMÉMENT espacées
+        val radius = 160f  // 2X plus grand (80f * 2)
         
         for (i in 0..2) {
-            // Position complètement aléatoire dans un cercle plus grand
+            // Position complètement aléatoire dans un cercle énorme, très espacées
             val angle = Math.random() * 2 * PI
-            val distance = Math.random() * radius + 20f  // Distance minimale
+            val distance = Math.random() * radius + 80f  // Distance minimale 2X plus grande (40f * 2)
             val stemX = baseX + (cos(angle) * distance).toFloat()
-            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 20f  // Plus de variation Y
+            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 40f  // Plus de variation Y
             
             val stem = LupinStem(
-                maxHeight = screenHeight * maxStemHeight * (0.7f + Math.random().toFloat() * 0.6f), // ÉNORME variation
+                maxHeight = screenHeight * maxStemHeight * (0.7f + Math.random().toFloat() * 0.6f),
                 baseX = stemX,
                 baseY = stemY,
-                growthSpeedMultiplier = 0.5f + Math.random().toFloat() * 1.0f  // ÉNORME variation vitesse
+                growthSpeedMultiplier = 0.5f + Math.random().toFloat() * 1.0f
             )
             stem.points.add(StemPoint(stemX, stemY, baseThickness))
             stems.add(stem)
@@ -250,28 +250,28 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     private fun createNewStemGroup(groupNumber: Int) {
-        // Position de base TRÈS éloignée pour ce groupe
-        val baseRadius = 120f + groupNumber * 40f  // Beaucoup plus espacé
+        // Position de base ÉNORMÉMENT éloignée pour ce groupe
+        val baseRadius = 240f + groupNumber * 80f  // 2X plus espacé (120f * 2)
         val groupAngle = Math.random() * 2 * PI
-        val groupDistance = Math.random() * baseRadius + 60f  // Distance minimale plus grande
+        val groupDistance = Math.random() * baseRadius + 120f  // Distance minimale 2X plus grande
         
         val groupBaseX = baseX + (cos(groupAngle) * groupDistance).toFloat()
-        val groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 30f  // Plus de variation Y
+        val groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 60f  // Plus de variation Y
         
-        // 3 tiges dans ce groupe, positions TRÈS aléatoires
+        // 3 tiges dans ce groupe, positions ÉNORMÉMENT espacées entre elles
         for (i in 0..2) {
-            val localRadius = 40f + Math.random().toFloat() * 30f  // Plus espacé localement
+            val localRadius = 160f + Math.random().toFloat() * 120f  // 2X plus espacé localement (80f * 2)
             val localAngle = Math.random() * 2 * PI
-            val localDistance = Math.random() * localRadius + 15f  // Distance minimale
+            val localDistance = Math.random() * localRadius + 60f  // Distance minimale 2X plus grande (30f * 2)
             
             val stemX = groupBaseX + (cos(localAngle) * localDistance).toFloat()
-            val stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 25f
+            val stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 50f
             
             val stem = LupinStem(
-                maxHeight = screenHeight * maxStemHeight * (0.6f + Math.random().toFloat() * 0.8f), // ÉNORME variation
+                maxHeight = screenHeight * maxStemHeight * (0.6f + Math.random().toFloat() * 0.8f),
                 baseX = stemX,
                 baseY = stemY,
-                growthSpeedMultiplier = 0.4f + Math.random().toFloat() * 1.2f  // ÉNORME variation vitesse
+                growthSpeedMultiplier = 0.4f + Math.random().toFloat() * 1.2f
             )
             stem.points.add(StemPoint(stemX, stemY, baseThickness))
             stems.add(stem)
@@ -548,50 +548,110 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
                     val colorRgb = flower.color.rgb
                     val size = flower.currentSize
                     
-                    // Fleur conique comme vrais lupins - épi dense vertical
+                    // Fleur conique TRÈS définie - chaque pétale visible
+                    
+                    // Pétale central (étendard) - forme conique
                     paint.color = Color.rgb(colorRgb[0], colorRgb[1], colorRgb[2])
-                    
-                    // Base de la fleur (large)
                     canvas.drawOval(
-                        flower.x - size * 0.7f, flower.y + size * 0.2f,
-                        flower.x + size * 0.7f, flower.y + size * 0.8f, 
+                        flower.x - size * 0.4f, flower.y - size * 0.6f,
+                        flower.x + size * 0.4f, flower.y + size * 0.1f, 
                         paint
                     )
                     
-                    // Milieu de la fleur
+                    // Contour sombre pour définir le pétale central
                     paint.color = Color.rgb(
-                        (colorRgb[0] * 0.9f).toInt(),
-                        (colorRgb[1] * 0.9f).toInt(),
-                        (colorRgb[2] * 0.9f).toInt()
+                        (colorRgb[0] * 0.6f).toInt(),
+                        (colorRgb[1] * 0.6f).toInt(),
+                        (colorRgb[2] * 0.6f).toInt()
                     )
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = 2f
                     canvas.drawOval(
-                        flower.x - size * 0.5f, flower.y - size * 0.1f,
-                        flower.x + size * 0.5f, flower.y + size * 0.4f,
+                        flower.x - size * 0.4f, flower.y - size * 0.6f,
+                        flower.x + size * 0.4f, flower.y + size * 0.1f, 
                         paint
                     )
+                    paint.style = Paint.Style.FILL
                     
-                    // Pointe conique (étroite)
+                    // Pétales latéraux (ailes) - bien définis
                     paint.color = Color.rgb(
-                        (colorRgb[0] * 0.8f).toInt(),
-                        (colorRgb[1] * 0.8f).toInt(),
-                        (colorRgb[2] * 0.8f).toInt()
+                        (colorRgb[0] * 0.85f).toInt(),
+                        (colorRgb[1] * 0.85f).toInt(),
+                        (colorRgb[2] * 0.85f).toInt()
                     )
+                    
+                    // Aile gauche
                     canvas.drawOval(
-                        flower.x - size * 0.3f, flower.y - size * 0.5f,
-                        flower.x + size * 0.3f, flower.y + size * 0.1f,
+                        flower.x - size * 0.7f, flower.y - size * 0.2f,
+                        flower.x - size * 0.1f, flower.y + size * 0.3f,
                         paint
                     )
-                    
-                    // Détails sur les côtés pour l'effet de densité
+                    // Contour aile gauche
                     paint.color = Color.rgb(
-                        (colorRgb[0] * 0.7f).toInt(),
-                        (colorRgb[1] * 0.7f).toInt(),
-                        (colorRgb[2] * 0.7f).toInt()
+                        (colorRgb[0] * 0.5f).toInt(),
+                        (colorRgb[1] * 0.5f).toInt(),
+                        (colorRgb[2] * 0.5f).toInt()
                     )
-                    canvas.drawCircle(flower.x - size * 0.4f, flower.y, size * 0.2f, paint)
-                    canvas.drawCircle(flower.x + size * 0.4f, flower.y, size * 0.2f, paint)
-                    canvas.drawCircle(flower.x - size * 0.3f, flower.y + size * 0.3f, size * 0.15f, paint)
-                    canvas.drawCircle(flower.x + size * 0.3f, flower.y + size * 0.3f, size * 0.15f, paint)
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = 1.5f
+                    canvas.drawOval(
+                        flower.x - size * 0.7f, flower.y - size * 0.2f,
+                        flower.x - size * 0.1f, flower.y + size * 0.3f,
+                        paint
+                    )
+                    paint.style = Paint.Style.FILL
+                    
+                    // Aile droite
+                    paint.color = Color.rgb(
+                        (colorRgb[0] * 0.85f).toInt(),
+                        (colorRgb[1] * 0.85f).toInt(),
+                        (colorRgb[2] * 0.85f).toInt()
+                    )
+                    canvas.drawOval(
+                        flower.x + size * 0.1f, flower.y - size * 0.2f,
+                        flower.x + size * 0.7f, flower.y + size * 0.3f,
+                        paint
+                    )
+                    // Contour aile droite
+                    paint.color = Color.rgb(
+                        (colorRgb[0] * 0.5f).toInt(),
+                        (colorRgb[1] * 0.5f).toInt(),
+                        (colorRgb[2] * 0.5f).toInt()
+                    )
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = 1.5f
+                    canvas.drawOval(
+                        flower.x + size * 0.1f, flower.y - size * 0.2f,
+                        flower.x + size * 0.7f, flower.y + size * 0.3f,
+                        paint
+                    )
+                    paint.style = Paint.Style.FILL
+                    
+                    // Carène (pétale inférieur) - forme conique pointue
+                    paint.color = Color.rgb(
+                        (colorRgb[0] * 0.75f).toInt(),
+                        (colorRgb[1] * 0.75f).toInt(),
+                        (colorRgb[2] * 0.75f).toInt()
+                    )
+                    canvas.drawOval(
+                        flower.x - size * 0.25f, flower.y + size * 0.1f,
+                        flower.x + size * 0.25f, flower.y + size * 0.5f,
+                        paint
+                    )
+                    // Contour carène
+                    paint.color = Color.rgb(
+                        (colorRgb[0] * 0.4f).toInt(),
+                        (colorRgb[1] * 0.4f).toInt(),
+                        (colorRgb[2] * 0.4f).toInt()
+                    )
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = 1.5f
+                    canvas.drawOval(
+                        flower.x - size * 0.25f, flower.y + size * 0.1f,
+                        flower.x + size * 0.25f, flower.y + size * 0.5f,
+                        paint
+                    )
+                    paint.style = Paint.Style.FILL
                 }
             }
         }
