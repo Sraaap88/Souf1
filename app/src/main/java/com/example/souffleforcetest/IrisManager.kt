@@ -94,14 +94,17 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     fun processStemGrowth(force: Float) {
-        // CORRECTION: Créer les tiges SEULEMENT quand on souffle fort
-        if (stems.isEmpty() && force > forceThreshold) {
-            createInitialStemGroup(baseX, baseY)
-            saccadeCount = 1
-            currentActiveStemGroup = 0
-            lastSaccadeTime = System.currentTimeMillis()
-            isCurrentlyBreathing = true
-            println("Iris: Tiges initiales créées !")
+        // COPIER EXACTEMENT LA LOGIQUE DU LUPIN
+        if (stems.isEmpty()) {
+            createMainStemGroup()
+            
+            if (force > forceThreshold) {
+                saccadeCount = 1
+                currentActiveStemGroup = 0
+                lastSaccadeTime = System.currentTimeMillis()
+                isCurrentlyBreathing = true
+                println("Iris: Groupe principal activé")
+            }
         }
         
         detectSaccadesAndActivateGroups(force, System.currentTimeMillis())
@@ -111,6 +114,38 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
         }
         
         lastForce = force
+    }
+    
+    // COPIER LA LOGIQUE LUPIN POUR CRÉER LES TIGES PRINCIPALES
+    private fun createMainStemGroup() {
+        val stemCount = 3 + Random.nextInt(4) // 3 à 6 tiges comme Lupin
+        val radius = 160f // Espacement comme Lupin mais réduit pour iris
+        
+        for (i in 0 until stemCount) {
+            val angle = Random.nextFloat() * 2 * PI
+            val distance = Random.nextFloat() * radius + 80f
+            var stemX = baseX + (cos(angle) * distance).toFloat()
+            var stemY = baseY + (Random.nextFloat() - 0.5f) * 40f
+            
+            stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
+            
+            val heightVariation = 0.6f + Random.nextFloat() * 0.8f
+            val maxHeight = screenHeight * maxStemHeight * heightVariation
+            
+            val stem = IrisStem(
+                id = nextStemId++,
+                startPoint = PointF(stemX, stemY),
+                currentPoint = PointF(stemX, stemY),
+                baseAngle = Random.nextFloat() * 10f - 5f,
+                growthSpeed = baseGrowthSpeed + Random.nextFloat() * 2f,
+                maxHeight = maxHeight,
+                curvature = Random.nextFloat() * 0.2f + 0.1f
+            )
+            stem.segments.add(PointF(stemX, stemY))
+            stems.add(stem)
+            
+            println("Iris: Tige créée à ($stemX, $stemY)")
+        }
     }
     
     fun processLeavesGrowth(force: Float) {
