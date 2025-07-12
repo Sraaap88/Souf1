@@ -492,7 +492,9 @@ class UIDrawingManager(
         )
     }
     
-    // ==================== FONCTIONS DE RENDU POUR PLANTES - VERSION CORRIGÉE ====================
+    // ==================== FONCTIONS DE RENDU POUR PLANTES ====================
+    // Note: Ces fonctions sont gardées pour compatibilité avec les marguerites
+    // Chaque fleur spécialisée (Iris, Rose, Lupin) gère son propre rendu
     
     fun drawMainStem(canvas: Canvas, mainStem: List<PlantStem.StemPoint>) {
         val paint = Paint().apply {
@@ -526,77 +528,6 @@ class UIDrawingManager(
                     paint.strokeWidth = p1.thickness
                     canvas.drawLine(p1.x, p1.y, p2.x, p2.y, paint)
                 }
-            }
-        }
-    }
-    
-    // VERSION CORRIGÉE - supprime les références aux propriétés manquantes
-    fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>) {
-        val paint = Paint().apply {
-            isAntiAlias = true
-            color = Color.rgb(34, 139, 34)
-            style = Paint.Style.FILL
-        }
-        
-        for (leaf in leaves) {
-            if (leaf.currentSize > 0) {
-                // Utilise directement les propriétés x, y disponibles dans la classe Leaf
-                canvas.save()
-                canvas.translate(leaf.x, leaf.y)
-                canvas.rotate(leaf.angle)
-                
-                val size = leaf.currentSize
-                canvas.drawOval(
-                    -size/2, -size/4,
-                    size/2, size/4,
-                    paint
-                )
-                
-                canvas.restore()
-            }
-        }
-    }
-    
-    // VERSION CORRIGÉE - supprime les références aux propriétés orientation manquantes
-    fun drawBackgroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
-        val paint = Paint().apply {
-            isAntiAlias = true
-            style = Paint.Style.FILL
-        }
-        
-        for (flower in flowers) {
-            if (flower.currentSize > 0) {
-                // Dessine simplement toutes les fleurs en arrière-plan
-                paint.color = Color.rgb(255, 255, 255)
-                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.6f, paint)
-                
-                paint.color = Color.rgb(255, 215, 0)
-                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.3f, paint)
-            }
-        }
-    }
-    
-    // VERSION CORRIGÉE - supprime les références aux propriétés orientation manquantes
-    fun drawForegroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>) {
-        val paint = Paint().apply {
-            isAntiAlias = true
-            style = Paint.Style.FILL
-        }
-        
-        for (flower in flowers) {
-            if (flower.currentSize > 0) {
-                // Dessine les pétales détaillés pour toutes les fleurs
-                for (i in 0..11) {
-                    val angle = i * 30f * PI / 180f
-                    val petalX = flower.x + cos(angle).toFloat() * flower.currentSize * 0.7f
-                    val petalY = flower.y + sin(angle).toFloat() * flower.currentSize * 0.7f
-                    
-                    paint.color = Color.rgb(255, 255, 255)
-                    canvas.drawCircle(petalX, petalY, flower.currentSize * 0.2f, paint)
-                }
-                
-                paint.color = Color.rgb(255, 215, 0)
-                canvas.drawCircle(flower.x, flower.y, flower.currentSize * 0.3f, paint)
             }
         }
     }
