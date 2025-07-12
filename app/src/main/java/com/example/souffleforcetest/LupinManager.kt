@@ -99,7 +99,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private val baseThickness = 17.5f       // 30% plus fin (25 * 0.7)
     private val tipThickness = 5.6f         // 30% plus fin (8 * 0.7)
     private val growthRate = 7200f          // 3X plus rapide (2400 * 3)
-    private val maxBranches = 6             // EXACTEMENT comme PlantStem
+    private val maxBranches = 14            // 14 tiges max (7 paires)
     
     private val baseLeafSize = 83f
     private val baseFlowerSize = 20f        // 2X plus gros (10 * 2)
@@ -182,7 +182,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     // ==================== SYSTÈME COPIÉ DE PLANTSTEM ====================
     
     private fun setupRandomStemOrder() {
-        // Créer un pool des 7 tiges possibles (0=principale, 1-6=branches)
+        // Créer un pool des 7 paires de tiges possibles (0=principale, 1-6=paires)
         stemOrderPool = mutableListOf(0, 1, 2, 3, 4, 5, 6)
         stemOrderPool.shuffle() // Mélanger l'ordre de façon aléatoire
     }
@@ -211,81 +211,133 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     private fun activateNextStemInOrder() {
         if (saccadeCount <= stemOrderPool.size) {
-            // Prendre la tige suivante dans l'ordre aléatoire
-            val stemTypeToActivate = stemOrderPool[saccadeCount - 1]
+            // Prendre la paire suivante dans l'ordre aléatoire
+            val pairTypeToActivate = stemOrderPool[saccadeCount - 1]
             currentActiveStemIndex = saccadeCount - 1
             
-            if (stemTypeToActivate == 0) {
-                // Tige principale (déjà créée)
-                println("Saccade $saccadeCount: Tige PRINCIPALE activée")
+            if (pairTypeToActivate == 0) {
+                // Paire principale (déjà créée)
+                println("Saccade $saccadeCount: Paire PRINCIPALE activée")
             } else {
-                // Créer la nouvelle tige à côté
-                println("Saccade $saccadeCount: Nouvelle tige $stemTypeToActivate créée")
-                createNewStemBeside(stemTypeToActivate)
+                // Créer une nouvelle paire de tiges à côté
+                println("Saccade $saccadeCount: Nouvelle paire $pairTypeToActivate créée")
+                createNewStemPair(pairTypeToActivate)
             }
         }
     }
     
     private fun createMainStem() {
-        val stem = LupinStem(
-            maxHeight = screenHeight * maxStemHeight,
-            baseX = baseX,
-            baseY = baseY
+        // Créer la première paire de tiges au centre avec variations
+        val baseVariation1 = (Math.random().toFloat() - 0.5f) * 15f
+        val baseVariation2 = (Math.random().toFloat() - 0.5f) * 15f
+        
+        // Première tige de la paire
+        val stem1 = LupinStem(
+            maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f), // Hauteur variable
+            baseX = baseX + baseVariation1,
+            baseY = baseY,
+            growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f // Vitesse variable
         )
-        stem.points.add(StemPoint(baseX, baseY, baseThickness))
-        stems.add(stem)
-        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
+        stem1.points.add(StemPoint(baseX + baseVariation1, baseY, baseThickness))
+        stems.add(stem1)
+        
+        // Deuxième tige de la paire
+        val stem2 = LupinStem(
+            maxHeight = screenHeight * maxStemHeight * (0.9f + Math.random().toFloat() * 0.2f), // Hauteur variable
+            baseX = baseX + baseVariation2,
+            baseY = baseY,
+            growthSpeedMultiplier = 0.9f + Math.random().toFloat() * 0.2f // Vitesse variable
+        )
+        stem2.points.add(StemPoint(baseX + baseVariation2, baseY, baseThickness))
+        stems.add(stem2)
+        
+        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem1.id)
+        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem2.id)
     }
     
-    private fun createNewStemBeside(stemNumber: Int) {
-        val spacing = 40f
-        val side = if (stemNumber % 2 == 0) 1f else -1f
-        val distance = (stemNumber / 2) * spacing
-        val newX = baseX + (side * distance) + (Math.random().toFloat() - 0.5f) * 20f
+    private fun createNewStemPair(pairNumber: Int) {
+        val spacing = 25f
+        val side = if (pairNumber % 2 == 0) 1f else -1f
+        val distance = (pairNumber / 2) * spacing
         
-        val stem = LupinStem(
-            maxHeight = screenHeight * maxStemHeight,
-            baseX = newX,
-            baseY = baseY
+        // Position de base pour cette paire
+        val pairBaseX = baseX + (side * distance)
+        
+        // Variations individuelles pour chaque tige de la paire
+        val variation1 = (Math.random().toFloat() - 0.5f) * 20f
+        val variation2 = (Math.random().toFloat() - 0.5f) * 20f
+        
+        val newX1 = pairBaseX + variation1
+        val newX2 = pairBaseX + variation2
+        
+        // Première tige de la paire
+        val stem1 = LupinStem(
+            maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f), // Hauteur très variable
+            baseX = newX1,
+            baseY = baseY,
+            growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f // Vitesse très variable
         )
-        stem.points.add(StemPoint(newX, baseY, baseThickness))
-        stems.add(stem)
-        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
+        stem1.points.add(StemPoint(newX1, baseY, baseThickness))
+        stems.add(stem1)
+        
+        // Deuxième tige de la paire
+        val stem2 = LupinStem(
+            maxHeight = screenHeight * maxStemHeight * (0.85f + Math.random().toFloat() * 0.3f), // Hauteur très variable
+            baseX = newX2,
+            baseY = baseY,
+            growthSpeedMultiplier = 0.8f + Math.random().toFloat() * 0.4f // Vitesse très variable
+        )
+        stem2.points.add(StemPoint(newX2, baseY, baseThickness))
+        stems.add(stem2)
+        
+        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem1.id)
+        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem2.id)
     }
     
     private fun growOnlyActiveStem(force: Float) {
-        if (currentActiveStemIndex < 0 || currentActiveStemIndex >= stems.size) return
+        if (currentActiveStemIndex < 0) return
         
-        val activeStem = stems[currentActiveStemIndex]
-        if (activeStem.currentHeight >= activeStem.maxHeight) return
+        // Faire pousser toutes les tiges de la paire active
+        val stemsInCurrentPair = if (currentActiveStemIndex == 0) {
+            // Paire principale : les 2 premières tiges
+            stems.take(2)
+        } else {
+            // Autres paires : 2 tiges par paire, en commençant après la paire principale
+            val startIndex = 2 + (currentActiveStemIndex - 1) * 2
+            stems.drop(startIndex).take(2)
+        }
         
-        // COPIE EXACTE de la logique de croissance de PlantStem
-        val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
-        val qualityMultiplier = 0.5f + forceStability * 0.5f
-        
-        val growthProgress = activeStem.currentHeight / activeStem.maxHeight
-        val progressCurve = 1f - growthProgress * growthProgress
-        val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f
-        
-        if (adjustedGrowth > 0) {
-            activeStem.currentHeight += adjustedGrowth
+        for (activeStem in stemsInCurrentPair) {
+            if (activeStem.currentHeight >= activeStem.maxHeight) continue
             
-            val lastPoint = activeStem.points.lastOrNull() ?: return
-            val segmentHeight = 7f + (Math.random() * 2f).toFloat()
-            val segments = (adjustedGrowth / segmentHeight).toInt().coerceAtLeast(1)
+            // COPIE EXACTE de la logique de croissance de PlantStem avec vitesse individuelle
+            val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
+            val qualityMultiplier = 0.5f + forceStability * 0.5f
             
-            for (i in 1..segments) {
-                val currentHeight = activeStem.currentHeight - adjustedGrowth + (adjustedGrowth * i / segments)
-                val progressFromBase = currentHeight / activeStem.maxHeight
+            val growthProgress = activeStem.currentHeight / activeStem.maxHeight
+            val progressCurve = 1f - growthProgress * growthProgress
+            val adjustedGrowth = force * qualityMultiplier * progressCurve * growthRate * 0.008f * activeStem.growthSpeedMultiplier
+            
+            if (adjustedGrowth > 0) {
+                activeStem.currentHeight += adjustedGrowth
                 
-                val thicknessProgress = progressFromBase * 0.4f
-                val thickness = baseThickness * (1f - thicknessProgress)
+                val lastPoint = activeStem.points.lastOrNull() ?: continue
+                val segmentHeight = 7f + (Math.random() * 2f).toFloat()
+                val segments = (adjustedGrowth / segmentHeight).toInt().coerceAtLeast(1)
                 
-                val currentX = activeStem.baseX + (Math.random().toFloat() - 0.5f) * 3f
-                val currentY = baseY - currentHeight
-                
-                val newPoint = StemPoint(currentX, currentY, thickness)
-                activeStem.points.add(newPoint)
+                for (i in 1..segments) {
+                    val currentHeight = activeStem.currentHeight - adjustedGrowth + (adjustedGrowth * i / segments)
+                    val progressFromBase = currentHeight / activeStem.maxHeight
+                    
+                    val thicknessProgress = progressFromBase * 0.4f
+                    val thickness = baseThickness * (1f - thicknessProgress)
+                    
+                    val currentX = activeStem.baseX + (Math.random().toFloat() - 0.5f) * 3f
+                    val currentY = baseY - currentHeight
+                    
+                    val newPoint = StemPoint(currentX, currentY, thickness)
+                    activeStem.points.add(newPoint)
+                }
             }
         }
     }
@@ -336,7 +388,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             if (stem.points.size < 2) continue
             if (stem.flowerSpike.hasStartedBlooming) continue
             
-            if (stem.currentHeight > stem.maxHeight * 0.6f) {
+            // Fleurs BEAUCOUP plus faciles - dès 40% de hauteur
+            if (stem.currentHeight > stem.maxHeight * 0.4f) {
                 createFlowersOnSpike(stem)
                 stem.flowerSpike.hasStartedBlooming = true
             }
