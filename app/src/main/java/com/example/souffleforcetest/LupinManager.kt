@@ -80,27 +80,28 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     private var challengeManager: ChallengeManager? = null
     
-    // ==================== PARAMÈTRES ÉQUILIBRÉS QUI MARCHENT ====================
+    // ==================== PARAMÈTRES ÉQUILIBRÉS COMME PLANTSTEM ====================
     
-    // Croissance bien visible et rapide
-    private val stemGrowthRate = 8000f      // Bien plus rapide qu'avant
-    private val leafGrowthRate = 1200f      // Croissance visible
-    private val flowerGrowthRate = 1000f    // Floraison rapide
+    // Croissance calquée sur PlantStem
+    private val stemGrowthRate = 2400f      // Même que PlantStem
+    private val leafGrowthRate = 800f       // Proportionnel
+    private val flowerGrowthRate = 600f     // Proportionnel
     
-    // Tailles pour progression visible sur de grandes tiges
-    private val baseStemThickness = 12f     // Plus épais pour les grandes tiges
-    private val segmentLength = 25f         // Segments plus longs
-    private val baseLeafSize = 55f          // Feuilles plus grandes
-    private val baseFlowerSize = 8f         // Fleurs plus visibles
+    // Tailles proportionnelles
+    private val baseStemThickness = 12f
+    private val segmentLength = 25f
+    private val baseLeafSize = 55f
+    private val baseFlowerSize = 8f
     
     // Paramètres équilibrés
-    private val maxStems = 5
-    private val stemSpacing = 35f
-            private val flowerDensity = 12          // Plus de fleurs sur les grands épis
+    private val maxStems = 7                // Augmenté à 7 tiges max
+    private val baseStemSpacing = 35f       // Espacement de base
+    private val flowerDensity = 12
     
-    // Seuils anti-bruit ambiant
-    private val spikeThreshold = 0.08f      // Assez haut pour éviter le bruit
-    private val spikeMinInterval = 300L     // Délai pour éviter les fausses détections
+    // Seuils IDENTIQUES à PlantStem
+    private val forceThreshold = 0.15f      // MÊME que PlantStem !
+    private val spikeThreshold = 0.08f
+    private val spikeMinInterval = 300L
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -148,11 +149,12 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private fun detectSpikeAndCreateStem(force: Float) {
         val currentTime = System.currentTimeMillis()
         val forceIncrease = force - lastForce
-        val isSpike = forceIncrease > spikeThreshold && force > 0.05f  // Force minimale pour éviter le bruit
+        val isSpike = forceIncrease > spikeThreshold && force > forceThreshold  // Utilise forceThreshold comme PlantStem
         val canCreateStem = currentTime - lastSpikeTime > spikeMinInterval
         
         if (isSpike && canCreateStem && stems.size < maxStems) {
-            val newStemX = baseX + (stems.size - 2) * stemSpacing + (Math.random().toFloat() - 0.5f) * 20f
+            // Position réaliste pour bouquet naturel
+            val newStemX = calculateRealisticStemPosition(stems.size)
             createNewStem(newStemX, baseY)
             lastSpikeTime = currentTime
         }
@@ -178,11 +180,11 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private fun growLatestStem(force: Float) {
         val latestStem = stems.lastOrNull() ?: return
         
-        // SEUIL RAISONNABLE - pas trop sensible au bruit ambiant
-        if (latestStem.isActive && force > 0.015f && latestStem.currentHeight < latestStem.maxHeight) {
+        // SEUIL IDENTIQUE À PLANTSTEM
+        if (latestStem.isActive && force > forceThreshold && latestStem.currentHeight < latestStem.maxHeight) {
             
-            // CROISSANCE RAPIDE ET VISIBLE
-            val baseGrowth = force * stemGrowthRate * 0.12f  // Bien plus rapide
+            // CROISSANCE CALQUÉE SUR PLANTSTEM
+            val baseGrowth = force * stemGrowthRate * 0.008f  // Même multiplicateur que PlantStem
             val individualGrowth = baseGrowth * latestStem.growthSpeedMultiplier
             latestStem.currentHeight = (latestStem.currentHeight + individualGrowth).coerceAtMost(latestStem.maxHeight)
             
@@ -206,6 +208,25 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             if (latestStem.currentHeight >= latestStem.maxHeight * 0.95f) {
                 latestStem.isActive = false
             }
+        }
+    }
+    
+    // ==================== POSITIONNEMENT RÉALISTE DES TIGES ====================
+    
+    private fun calculateRealisticStemPosition(stemIndex: Int): Float {
+        // Position selon un bouquet naturel asymétrique
+        return when (stemIndex) {
+            0 -> baseX                                          // Centre
+            1 -> baseX + baseStemSpacing * 0.8f                // Droite proche
+            2 -> baseX - baseStemSpacing * 1.1f                // Gauche moyen
+            3 -> baseX + baseStemSpacing * 1.6f                // Droite moyen  
+            4 -> baseX - baseStemSpacing * 0.5f                // Gauche proche
+            5 -> baseX + baseStemSpacing * 2.3f                // Droite loin
+            6 -> baseX - baseStemSpacing * 1.9f                // Gauche loin
+            else -> baseX + (Math.random().toFloat() - 0.5f) * baseStemSpacing * 3f
+        }.let { x ->
+            // Ajouter variation naturelle ±8px
+            x + (Math.random().toFloat() - 0.5f) * 16f
         }
     }
     
@@ -242,8 +263,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     private fun growExistingLeaves(force: Float) {
         for (leaf in leaves) {
-            if (leaf.currentSize < leaf.maxSize && force > 0.015f) {
-                val growth = force * leafGrowthRate * 0.06f  // Croissance visible
+            if (leaf.currentSize < leaf.maxSize && force > forceThreshold) {
+                val growth = force * leafGrowthRate * 0.008f  // Même ratio que PlantStem
                 leaf.currentSize = (leaf.currentSize + growth).coerceAtMost(leaf.maxSize)
             }
         }
@@ -295,8 +316,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             if (!stem.flowerSpike.hasStartedBlooming) continue
             
             for (flower in stem.flowerSpike.flowers) {
-                if (flower.currentSize < flower.maxSize && force > 0.015f) {
-                    val growth = force * flowerGrowthRate * 0.08f  // Croissance visible
+                if (flower.currentSize < flower.maxSize && force > forceThreshold) {
+                    val growth = force * flowerGrowthRate * 0.008f  // Même ratio que PlantStem
                     flower.currentSize = (flower.currentSize + growth).coerceAtMost(flower.maxSize)
                     
                     // Notification dès que la fleur commence à être visible
