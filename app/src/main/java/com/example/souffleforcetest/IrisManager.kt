@@ -120,12 +120,14 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     private fun createMainStemGroup() {
         val stemCount = 3 + Random.nextInt(4) // 3 à 6 tiges comme Lupin
         val radius = 160f // Espacement comme Lupin mais réduit pour iris
+        val centerX = screenWidth / 2f
+        val centerY = screenHeight * 0.85f
         
         for (i in 0 until stemCount) {
             val angle = Random.nextFloat() * 2 * PI
             val distance = Random.nextFloat() * radius + 80f
-            var stemX = baseX + (cos(angle) * distance).toFloat()
-            var stemY = baseY + (Random.nextFloat() - 0.5f) * 40f
+            var stemX = centerX + (cos(angle) * distance).toFloat()
+            var stemY = centerY + (Random.nextFloat() - 0.5f) * 40f
             
             stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             
