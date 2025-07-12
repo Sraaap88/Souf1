@@ -384,6 +384,7 @@ class OrganicLineView @JvmOverloads constructor(
                 style = Paint.Style.FILL
             }
             
+            // APPELER LE RENDERER IRIS !
             val renderer = IrisRenderer()
             renderer.drawIris(canvas, stemPaint, leafPaint, flowerPaint, manager.getStems(), manager.getFlowers())
         }
