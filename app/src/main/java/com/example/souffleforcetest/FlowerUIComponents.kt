@@ -82,7 +82,7 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
         
         // Obtenir les fleurs débloquées
         val unlockedFlowers = getUnlockedFlowersList(challengeManager)
-        val flowerButtonRadius = screenWidth * 0.12f  // Légèrement réduit pour faire de la place
+        val flowerButtonRadius = screenWidth * 0.18f  // AUGMENTÉ de 0.12f à 0.18f pour plus grandes images
         val centerX = screenWidth / 2f
         val buttonY = screenHeight / 2f
         
@@ -101,10 +101,10 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 drawFlowerButton(canvas, roseX, buttonY, flowerButtonRadius, "ROSE", challengeManager)
             }
             3 -> {
-                // Marguerite + Rose + Lupin - en triangle
-                val spacing = flowerButtonRadius * 2.2f
-                val topY = buttonY - spacing * 0.4f
-                val bottomY = buttonY + spacing * 0.4f
+                // Marguerite + Rose + Lupin - en triangle, ajusté pour images plus grandes
+                val spacing = flowerButtonRadius * 2.0f  // RÉDUIT de 2.2f à 2.0f pour s'adapter aux plus grandes images
+                val topY = buttonY - spacing * 0.3f      // RÉDUIT pour éviter débordement
+                val bottomY = buttonY + spacing * 0.3f
                 
                 // Marguerite en haut au centre
                 drawFlowerButton(canvas, centerX, topY, flowerButtonRadius, "MARGUERITE", challengeManager)
@@ -169,10 +169,29 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
             }
             "LUPIN" -> {
                 if (isUnlocked) {
-                    // Lupin débloqué
-                    flowerTextPaint.textSize = radius * 1.6f
+                    // Lupin débloqué - MEILLEURE REPRÉSENTATION
+                    flowerTextPaint.textSize = radius * 1.4f
                     flowerTextPaint.color = 0xFF9370DB.toInt()  // Violet (couleur typique du lupin)
-                    canvas.drawText("🌾", x, y + 15f, flowerTextPaint)  // Épi de blé comme approximation
+                    
+                    // Dessiner plusieurs petits points pour simuler l'épi
+                    val spikeHeight = radius * 1.2f
+                    val pointCount = 8
+                    for (i in 0 until pointCount) {
+                        val pointY = y - spikeHeight/2f + (i * spikeHeight / pointCount)
+                        val pointSize = radius * 0.15f * (1f - (i.toFloat() / pointCount) * 0.3f) // Plus petit vers le haut
+                        
+                        flowerTextPaint.style = Paint.Style.FILL
+                        canvas.drawCircle(x, pointY, pointSize, flowerTextPaint)
+                    }
+                    
+                    // Tige
+                    flowerTextPaint.style = Paint.Style.STROKE
+                    flowerTextPaint.strokeWidth = radius * 0.05f
+                    flowerTextPaint.color = 0xFF228B22.toInt()  // Vert
+                    canvas.drawLine(x, y + spikeHeight/2f, x, y + radius, flowerTextPaint)
+                    
+                    // Reset du style
+                    flowerTextPaint.style = Paint.Style.FILL
                     
                     // Nom en dessous
                     flowerTextPaint.textSize = 40f
