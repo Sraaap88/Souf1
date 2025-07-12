@@ -247,9 +247,10 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
             flowers.add("LUPIN")
         }
         
-        if (challengeManager.isFlowerUnlocked("IRIS")) {
-            flowers.add("IRIS")
-        }
+        // Retirer IRIS pour l'instant car pas encore implémenté
+        // if (challengeManager.isFlowerUnlocked("IRIS")) {
+        //     flowers.add("IRIS")
+        // }
         
         return flowers
     }
