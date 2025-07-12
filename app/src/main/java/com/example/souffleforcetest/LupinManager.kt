@@ -4,82 +4,96 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import kotlin.math.*
 
-class LupinManager(private val screenWidth: Int, private val screenHeight: Int) {
-    
-    // ==================== DATA CLASSES ====================
-    
-    data class LupinStem(
-        val points: MutableList<StemPoint> = mutableListOf(),
-        var currentHeight: Float = 0f,
-        val maxHeight: Float,
-        val baseX: Float,
-        val baseY: Float,
-        var isActive: Boolean = true,
-        val id: String = generateStemId(),
-        val growthSpeedMultiplier: Float = generateRandomGrowthSpeed(),
-        val flowerSpike: FlowerSpike = FlowerSpike()
-    )
-    
-    data class StemPoint(
-        val x: Float,
-        val y: Float,
-        val thickness: Float
-    )
-    
-    data class FlowerSpike(
-        val flowers: MutableList<LupinFlower> = mutableListOf(),
-        var currentLength: Float = 0f,
-        val maxLength: Float = 150f,
-        var hasStartedBlooming: Boolean = false
-    )
-    
-    data class LupinFlower(
-        val x: Float,
-        val y: Float,
-        val positionOnSpike: Float,
-        var currentSize: Float = 0f,
-        val maxSize: Float,
-        val color: FlowerColor,
-        val id: String = generateFlowerId()
-    )
-    
-    data class LupinLeaf(
-        val stemIndex: Int,
-        val heightRatio: Float,
-        var currentSize: Float = 0f,
-        val maxSize: Float,
-        val angle: Float,
-        val folioleCount: Int = 5 + (Math.random() * 4).toInt(),
-        val folioleAngles: List<Float> = generateFolioleAngles()
-    ) {
-        companion object {
-            private fun generateFolioleAngles(): List<Float> {
-                return (0..8).map { Math.random().toFloat() * 30f - 15f }
-            }
+// ==================== DATA CLASSES ====================
+
+data class LupinStem(
+    val points: MutableList<StemPoint> = mutableListOf(),
+    var currentHeight: Float = 0f,
+    val maxHeight: Float,
+    val baseX: Float,
+    val baseY: Float,
+    var isActive: Boolean = true,
+    val id: String = generateStemId(),
+    val growthSpeedMultiplier: Float = generateRandomGrowthSpeed(),
+    val flowerSpike: FlowerSpike = FlowerSpike(),
+    val basalShoots: MutableList<BasalShoot> = mutableListOf()
+)
+
+data class StemPoint(
+    val x: Float,
+    val y: Float,
+    val thickness: Float
+)
+
+data class FlowerSpike(
+    val flowers: MutableList<LupinFlower> = mutableListOf(),
+    var currentLength: Float = 0f,
+    val maxLength: Float = 150f,
+    var hasStartedBlooming: Boolean = false
+)
+
+data class LupinFlower(
+    val x: Float,
+    val y: Float,
+    val positionOnSpike: Float,
+    var currentSize: Float = 0f,
+    val maxSize: Float,
+    val color: FlowerColor,
+    val id: String = generateFlowerId()
+)
+
+data class BasalShoot(
+    val points: MutableList<StemPoint> = mutableListOf(),
+    var currentHeight: Float = 0f,
+    val maxHeight: Float,
+    val baseX: Float,
+    val baseY: Float,
+    val angle: Float,
+    val id: String = generateStemId()
+)
+
+data class LupinLeaf(
+    val stemIndex: Int,
+    val heightRatio: Float,
+    var currentSize: Float = 0f,
+    val maxSize: Float,
+    val angle: Float,
+    val folioleCount: Int = 5 + (Math.random() * 4).toInt(),
+    val folioleAngles: List<Float> = generateFolioleAngles(),
+    val isBasalShoot: Boolean = false,
+    val basalShootIndex: Int = -1,
+    val isSubFloral: Boolean = false
+) {
+    companion object {
+        private fun generateFolioleAngles(): List<Float> {
+            return (0..8).map { Math.random().toFloat() * 30f - 15f }
         }
     }
+}
+
+enum class FlowerColor(val rgb: IntArray) {
+    PURPLE(intArrayOf(138, 43, 226)),
+    BLUE(intArrayOf(65, 105, 225)),
+    PINK(intArrayOf(255, 20, 147)),
+    WHITE(intArrayOf(248, 248, 255)),
+    YELLOW(intArrayOf(255, 215, 0))
+}
+
+// ==================== MÉCANIQUES DE CROISSANCE ====================
+
+class LupinManager(private val screenWidth: Int, private val screenHeight: Int) {
     
-    enum class FlowerColor(val rgb: IntArray) {
-        PURPLE(intArrayOf(138, 43, 226)),
-        BLUE(intArrayOf(65, 105, 225)),
-        PINK(intArrayOf(255, 20, 147)),
-        WHITE(intArrayOf(248, 248, 255)),
-        YELLOW(intArrayOf(255, 215, 0))
-    }
-    
-    // ==================== VARIABLES PRINCIPALES ====================
-    
+    // Variables principales
     private val stems = mutableListOf<LupinStem>()
     private val leaves = mutableListOf<LupinLeaf>()
+    private val renderer = LupinRenderer() // Référence au renderer
     
     private var baseX = 0f
     private var baseY = 0f
     private var lastForce = 0f
-    
     private var challengeManager: ChallengeManager? = null
     
-    // ==================== SYSTÈME ORDRE ALÉATOIRE ====================
-    
+    // Système ordre aléatoire
     private var saccadeCount = 0
     private var isCurrentlyBreathing = false
     private var lastSaccadeTime = 0L
@@ -90,10 +104,9 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private var stemOrderPool = mutableListOf<Int>()
     private var currentActiveStemIndex = -1
     
-    // ==================== PARAMÈTRES ====================
-    
+    // Paramètres de croissance
     private val forceThreshold = 0.15f
-    private val maxStemHeight = 0.6f
+    private val maxStemHeight = 0.5f // Limité à 50% de l'écran
     private val baseThickness = 13.1f
     private val tipThickness = 4.2f
     private val growthRate = 7200f
@@ -103,8 +116,13 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private val baseFlowerSize = 40f
     private val flowerDensity = 12
     
-    // Instance du renderer
-    private val renderer = LupinRenderer()
+    // Paramètres pour petites tiges basales
+    private val basalShootCount = 3
+    private val basalShootMaxHeight = 80f
+    private val basalShootAngleSpread = 45f
+    
+    // Marges pour éviter les bords
+    private val marginFromEdges = screenWidth * 0.15f
     
     init {
         setupRandomStemOrder()
@@ -143,11 +161,14 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             growOnlyActiveStem(force)
         }
         
+        growBasalShoots(force)
         lastForce = force
     }
     
     fun processLeavesGrowth(force: Float) {
         createLeavesOnStems()
+        createLeavesOnBasalShoots()
+        createSubFloralLeaves()
         growExistingLeaves(force)
     }
     
@@ -169,12 +190,11 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     fun drawLupin(canvas: Canvas, stemPaint: Paint, leafPaint: Paint, flowerPaint: Paint) {
-        renderer.drawStems(canvas, stemPaint, stems)
-        renderer.drawLeaves(canvas, leafPaint, leaves, stems)
-        renderer.drawFlowerSpikes(canvas, flowerPaint, stems)
+        // Déléguer le rendu au LupinRenderer
+        renderer.drawLupin(canvas, stemPaint, leafPaint, flowerPaint, stems, leaves)
     }
     
-    // ==================== GESTION DES TIGES ====================
+    // ==================== SYSTÈME ORDRE ALÉATOIRE ====================
     
     private fun setupRandomStemOrder() {
         stemOrderPool = mutableListOf(0, 1, 2, 3, 4, 5, 6)
@@ -190,7 +210,6 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
                 saccadeCount++
                 lastSaccadeTime = currentTime
                 isCurrentlyBreathing = true
-                
                 activateNextStemInOrder()
             }
         }
@@ -214,83 +233,128 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         }
     }
     
+    // ==================== CRÉATION DES TIGES ====================
+    
     private fun createMainStem() {
-        val stemCount = 2 + (Math.random() * 4).toInt()
-        val safeMargin = screenWidth * 0.15f
+        val stemCount = 2 + (Math.random() * 4).toInt() // 2 à 5 tiges
+        val radius = 160f
         
         for (i in 0 until stemCount) {
-            val stemX = safeMargin + Math.random().toFloat() * (screenWidth - 2 * safeMargin)
-            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 30f
+            val angle = Math.random() * 2 * PI
+            val distance = Math.random() * radius + 80f
+            var stemX = baseX + (cos(angle) * distance).toFloat()
+            var stemY = baseY + (Math.random().toFloat() - 0.5f) * 40f
+            
+            stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
+            
+            val heightVariation = 0.6f + Math.random().toFloat() * 0.8f
+            val maxHeight = screenHeight * maxStemHeight * heightVariation
             
             val stem = LupinStem(
-                maxHeight = screenHeight * maxStemHeight * (0.8f + Math.random().toFloat() * 0.4f),
+                maxHeight = maxHeight,
                 baseX = stemX,
                 baseY = stemY,
-                growthSpeedMultiplier = 0.7f + Math.random().toFloat() * 0.6f
+                growthSpeedMultiplier = 0.5f + Math.random().toFloat() * 1.0f
             )
             stem.points.add(StemPoint(stemX, stemY, baseThickness))
             stems.add(stem)
-            challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
             
-            createBasalStems(stemX, stemY, stem.id)
+            createBasalShootsForStem(stem)
+            challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
         }
     }
     
     private fun createNewStemGroup(groupNumber: Int) {
+        val baseRadius = 240f + groupNumber * 80f
+        val groupAngle = Math.random() * 2 * PI
+        val groupDistance = Math.random() * baseRadius + 120f
+        
+        var groupBaseX = baseX + (cos(groupAngle) * groupDistance).toFloat()
+        var groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 60f
+        
+        groupBaseX = groupBaseX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
+        
         val stemCount = 2 + (Math.random() * 4).toInt()
-        val safeMargin = screenWidth * 0.15f
         
         for (i in 0 until stemCount) {
-            val stemX = safeMargin + Math.random().toFloat() * (screenWidth - 2 * safeMargin)
-            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 40f
+            val localRadius = 160f + Math.random().toFloat() * 120f
+            val localAngle = Math.random() * 2 * PI
+            val localDistance = Math.random() * localRadius + 60f
+            
+            var stemX = groupBaseX + (cos(localAngle) * localDistance).toFloat()
+            var stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 50f
+            
+            stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
+            
+            val heightVariation = 0.6f + Math.random().toFloat() * 0.8f
+            val maxHeight = screenHeight * maxStemHeight * heightVariation
             
             val stem = LupinStem(
-                maxHeight = screenHeight * maxStemHeight * (0.8f + Math.random().toFloat() * 0.4f),
+                maxHeight = maxHeight,
                 baseX = stemX,
                 baseY = stemY,
-                growthSpeedMultiplier = 0.7f + Math.random().toFloat() * 0.6f
+                growthSpeedMultiplier = 0.4f + Math.random().toFloat() * 1.2f
             )
             stem.points.add(StemPoint(stemX, stemY, baseThickness))
             stems.add(stem)
-            challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
             
-            createBasalStems(stemX, stemY, stem.id)
+            createBasalShootsForStem(stem)
+            challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
         }
     }
     
-    private fun createBasalStems(mainStemX: Float, mainStemY: Float, mainStemId: String) {
-        for (i in 0..2) {
-            val angle = (Math.random() - 0.5) * 60f
-            val distance = 15f + Math.random().toFloat() * 10f
+    // ==================== PETITES TIGES BASALES ====================
+    
+    private fun createBasalShootsForStem(stem: LupinStem) {
+        for (i in 0 until basalShootCount) {
+            val angle = (i - 1) * (basalShootAngleSpread / (basalShootCount - 1)) + 
+                       (Math.random().toFloat() - 0.5f) * 10f
+            val shootHeight = basalShootMaxHeight * (0.7f + Math.random().toFloat() * 0.6f)
             
-            val basalX = mainStemX + cos(Math.toRadians(angle.toDouble())).toFloat() * distance
-            val basalY = mainStemY + (Math.random().toFloat() - 0.5f) * 8f
-            
-            val basalStem = LupinStem(
-                maxHeight = 40f + Math.random().toFloat() * 20f,
-                baseX = basalX,
-                baseY = basalY,
-                growthSpeedMultiplier = 1.2f + Math.random().toFloat() * 0.3f
+            val basalShoot = BasalShoot(
+                maxHeight = shootHeight,
+                baseX = stem.baseX,
+                baseY = stem.baseY,
+                angle = angle
             )
-            basalStem.points.add(StemPoint(basalX, basalY, baseThickness * 0.6f))
-            stems.add(basalStem)
+            basalShoot.points.add(StemPoint(stem.baseX, stem.baseY, baseThickness * 0.6f))
+            stem.basalShoots.add(basalShoot)
         }
     }
+    
+    private fun growBasalShoots(force: Float) {
+        if (force <= forceThreshold) return
+        
+        for (stem in stems) {
+            for (basalShoot in stem.basalShoots) {
+                if (basalShoot.currentHeight >= basalShoot.maxHeight) continue
+                
+                val growth = force * 300f * 0.008f
+                basalShoot.currentHeight += growth
+                
+                if (growth > 0) {
+                    val angleRad = Math.toRadians(basalShoot.angle.toDouble())
+                    val newX = basalShoot.baseX + (sin(angleRad) * basalShoot.currentHeight).toFloat()
+                    val newY = basalShoot.baseY - (cos(angleRad) * basalShoot.currentHeight * 0.3f).toFloat()
+                    val thickness = baseThickness * 0.6f * (1f - basalShoot.currentHeight / basalShoot.maxHeight * 0.5f)
+                    
+                    basalShoot.points.add(StemPoint(newX, newY, thickness))
+                }
+            }
+        }
+    }
+    
+    // ==================== CROISSANCE DES TIGES ACTIVES ====================
     
     private fun growOnlyActiveStem(force: Float) {
         if (currentActiveStemIndex < 0) return
         
         val stemsInCurrentGroup = if (currentActiveStemIndex == 0) {
-            val firstGroupSize = stems.indexOfFirst { it.maxHeight < 80f }
-            if (firstGroupSize == -1) stems else stems.take(firstGroupSize)
+            val mainGroupSize = getMainGroupSize()
+            stems.take(mainGroupSize)
         } else {
-            val previousGroupsSize = calculatePreviousGroupsSize(currentActiveStemIndex - 1)
-            val currentGroupStart = previousGroupsSize
-            val currentGroupEnd = stems.indexOfFirst { stem ->
-                stems.indexOf(stem) > currentGroupStart && stem.maxHeight < 80f
-            }
-            if (currentGroupEnd == -1) stems.drop(currentGroupStart) 
-            else stems.subList(currentGroupStart, currentGroupEnd)
+            val (startIndex, groupSize) = getGroupIndexAndSize(currentActiveStemIndex)
+            stems.drop(startIndex).take(groupSize)
         }
         
         for (activeStem in stemsInCurrentGroup) {
@@ -327,46 +391,109 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         }
     }
     
-    private fun calculatePreviousGroupsSize(groupIndex: Int): Int {
-        return stems.count { it.maxHeight >= 80f }
+    private fun getMainGroupSize(): Int {
+        var count = 0
+        for (stem in stems) {
+            if (stem.baseX >= marginFromEdges && stem.baseX <= screenWidth - marginFromEdges) {
+                count++
+            } else {
+                break
+            }
+        }
+        return count.coerceAtLeast(2).coerceAtMost(5)
     }
     
-    // ==================== GESTION DES FEUILLES ====================
+    private fun getGroupIndexAndSize(groupIndex: Int): Pair<Int, Int> {
+        val mainGroupSize = getMainGroupSize()
+        val startIndex = mainGroupSize + (groupIndex - 1) * 3
+        return Pair(startIndex, (2 + (Math.random() * 4).toInt()).coerceAtMost(stems.size - startIndex))
+    }
+    
+    // ==================== CRÉATION ET CROISSANCE DES FEUILLES ====================
     
     private fun createLeavesOnStems() {
         for ((index, stem) in stems.withIndex()) {
             if (stem.points.size < 2) continue
             
-            val existingLeaves = leaves.filter { it.stemIndex == index }
+            val existingLeaves = leaves.filter { 
+                it.stemIndex == index && !it.isBasalShoot && !it.isSubFloral 
+            }
             if (existingLeaves.isNotEmpty()) continue
             
-            if (stem.currentHeight < 30f) continue
+            if (stem.currentHeight < 40f) continue
             
-            val leafCount = if (stem.maxHeight < 80f) {
-                1 + (Math.random() * 2).toInt()
-            } else {
-                4 + (Math.random() * 2).toInt()
-            }
+            val leafCount = 3
             
             for (i in 0 until leafCount) {
-                val heightRatio = if (stem.maxHeight < 80f) {
-                    0.6f + (i.toFloat() / leafCount) * 0.4f
-                } else {
-                    if (i >= leafCount - 2) {
-                        0.85f + (i - leafCount + 2) * 0.05f
-                    } else {
-                        0.3f + (i.toFloat() / (leafCount - 2)) * 0.5f
-                    }
-                }
-                
-                val size = baseLeafSize * (if (stem.maxHeight < 80f) 0.6f else 1f) + Math.random().toFloat() * 10f
-                val angle = Math.random().toFloat() * 40f - 20f
+                val heightRatio = 0.3f + (i.toFloat() / leafCount) * 0.4f
+                val size = baseLeafSize + Math.random().toFloat() * 10f
+                val angle = (Math.random().toFloat() - 0.5f) * 40f // Angle plus droit
                 
                 val leaf = LupinLeaf(
                     stemIndex = index,
                     heightRatio = heightRatio,
                     maxSize = size,
                     angle = angle
+                )
+                
+                leaves.add(leaf)
+            }
+        }
+    }
+    
+    private fun createLeavesOnBasalShoots() {
+        for ((stemIndex, stem) in stems.withIndex()) {
+            for ((shootIndex, basalShoot) in stem.basalShoots.withIndex()) {
+                if (basalShoot.points.size < 2) continue
+                if (basalShoot.currentHeight < 20f) continue
+                
+                val existingLeaves = leaves.filter { 
+                    it.isBasalShoot && it.stemIndex == stemIndex && it.basalShootIndex == shootIndex 
+                }
+                if (existingLeaves.isNotEmpty()) continue
+                
+                val leafCount = 1 + (Math.random() * 2).toInt()
+                for (i in 0 until leafCount) {
+                    val heightRatio = 0.5f + (i.toFloat() / leafCount) * 0.4f
+                    val size = baseLeafSize * 0.6f + Math.random().toFloat() * 5f
+                    val angle = (Math.random().toFloat() - 0.5f) * 40f
+                    
+                    val leaf = LupinLeaf(
+                        stemIndex = stemIndex,
+                        heightRatio = heightRatio,
+                        maxSize = size,
+                        angle = angle,
+                        isBasalShoot = true,
+                        basalShootIndex = shootIndex
+                    )
+                    
+                    leaves.add(leaf)
+                }
+            }
+        }
+    }
+    
+    private fun createSubFloralLeaves() {
+        for ((stemIndex, stem) in stems.withIndex()) {
+            if (!stem.flowerSpike.hasStartedBlooming) continue
+            
+            val existingSubFloralLeaves = leaves.filter { 
+                it.stemIndex == stemIndex && it.isSubFloral 
+            }
+            if (existingSubFloralLeaves.isNotEmpty()) continue
+            
+            val leafCount = 2 + (Math.random() * 2).toInt()
+            for (i in 0 until leafCount) {
+                val heightRatio = 0.8f + (i.toFloat() / leafCount) * 0.15f
+                val size = baseLeafSize * 0.8f + Math.random().toFloat() * 8f
+                val angle = (Math.random().toFloat() - 0.5f) * 30f
+                
+                val leaf = LupinLeaf(
+                    stemIndex = stemIndex,
+                    heightRatio = heightRatio,
+                    maxSize = size,
+                    angle = angle,
+                    isSubFloral = true
                 )
                 
                 leaves.add(leaf)
@@ -383,7 +510,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         }
     }
     
-    // ==================== GESTION DES FLEURS ====================
+    // ==================== CRÉATION ET CROISSANCE DES FLEURS ====================
     
     private fun createFlowerSpikes() {
         for (stem in stems) {
@@ -442,46 +569,21 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     // ==================== UTILITAIRES ====================
     
-    fun getStemPointAtHeight(stem: LupinStem, heightRatio: Float): StemPoint? {
-        if (stem.points.size < 2) return null
-        
-        val targetHeight = stem.currentHeight * heightRatio
-        var currentHeight = 0f
-        
-        for (i in 1 until stem.points.size) {
-            val segmentHeight = stem.points[i-1].y - stem.points[i].y
-            if (currentHeight + segmentHeight >= targetHeight) {
-                val segmentRatio = (targetHeight - currentHeight) / segmentHeight
-                val p1 = stem.points[i-1]
-                val p2 = stem.points[i]
-                
-                val x = p1.x + (p2.x - p1.x) * segmentRatio
-                val y = p1.y + (p2.y - p1.y) * segmentRatio
-                val thickness = p1.thickness + (p2.thickness - p1.thickness) * segmentRatio
-                
-                return StemPoint(x, y, thickness)
-            }
-            currentHeight += segmentHeight
-        }
-        
-        return stem.points.lastOrNull()
-    }
-    
     companion object {
         private var stemIdCounter = 0
         private var flowerIdCounter = 0
         
-        private fun generateStemId(): String {
+        fun generateStemId(): String {
             stemIdCounter++
             return "lupinstem_$stemIdCounter"
         }
         
-        private fun generateFlowerId(): String {
+        fun generateFlowerId(): String {
             flowerIdCounter++
             return "lupinflower_$flowerIdCounter"
         }
         
-        private fun generateRandomGrowthSpeed(): Float {
+        fun generateRandomGrowthSpeed(): Float {
             val variation = 0.1f
             return 1.0f + (Math.random().toFloat() - 0.5f) * 2 * variation
         }
