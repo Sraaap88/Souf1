@@ -669,11 +669,11 @@ class ChallengeDefinitions {
 
     // ==================== NOUVELLES FONCTIONS POUR IRIS ET ORCHIDÉE ====================
     
-    fun getIrisChallenges(): List<Challenge> {
+    fun getAllIrisChallenges(): List<Challenge> {
         return irisChallenges
     }
     
-    fun getOrchideeChallenges(): List<Challenge> {
+    fun getAllOrchideeChallenges(): List<Challenge> {
         return orchideeChallenges
     }
 }
