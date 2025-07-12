@@ -4,7 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
 import kotlin.math.*
- 
+     
 class BudManager(private val plantStem: PlantStem) {
     
     // ==================== DATA CLASSES ====================
