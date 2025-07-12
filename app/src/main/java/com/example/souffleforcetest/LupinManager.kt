@@ -3,7 +3,7 @@ package com.example.souffleforcetest
 import android.graphics.Canvas
 import android.graphics.Paint
 import kotlin.math.*
-
+ 
 // ==================== DATA CLASSES ====================
 
 data class LupinStem(
