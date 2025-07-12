@@ -163,8 +163,6 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             val newStemX = baseX + (stems.size - 2) * stemSpacing + (Math.random().toFloat() - 0.5f) * 15f
             createNewStem(newStemX, baseY)
             lastSpikeTime = currentTime
-            
-            println("Lupin - Nouvelle tige créée! Total: ${stems.size}/$maxStems")
         }
     }
     
@@ -223,7 +221,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         }
     }
     
-    // ==================== FEUILLES FACILES ====================
+    // ==================== FEUILLES TRÈS FACILES ====================
     
     private fun createLeavesOnStems() {
         for ((index, stem) in stems.withIndex()) {
@@ -263,7 +261,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         }
     }
     
-    // ==================== FLEURS FACILES ====================
+    // ==================== FLEURS TRÈS FACILES ====================
     
     private fun createFlowerSpikes() {
         for (stem in stems) {
