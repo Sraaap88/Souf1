@@ -271,8 +271,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             if (stem.points.size < 2) continue
             if (stem.flowerSpike.hasStartedBlooming) continue
             
-            // Commencer la floraison quand la tige atteint 80% de sa hauteur
-            if (!stem.isActive && stem.currentHeight > stem.maxHeight * 0.8f) {
+            // Commencer la floraison quand la tige atteint 50% de sa hauteur
+            if (!stem.isActive && stem.currentHeight > stem.maxHeight * 0.5f) {
                 createFlowersOnSpike(stem)
                 stem.flowerSpike.hasStartedBlooming = true
             }
