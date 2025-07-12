@@ -615,7 +615,7 @@ class ChallengeManager(private val context: Context? = null) {
         unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
         unlockedFlowers.add(UnlockedFlower("ROSE", "Débloquée par cheat code"))
         unlockedFlowers.add(UnlockedFlower("LUPIN", "Débloqué par cheat code"))
-        unlockedFlowers.add(UnlockedFlower("IRIS", "Débloqué par cheat code"))  // NOUVEAU
+        unlockedFlowers.add(UnlockedFlower("IRIS", "Débloqué par cheat code"))  // AJOUTÉ !
         
         saveChallengeProgress()
         
