@@ -24,7 +24,7 @@ class ChallengeDefinitions {
     private val margueriteHandler = MargueriteChallengeHandler()
     private val roseHandler = RoseChallengeHandler()
     private val lupinHandler = LupinChallengeHandler()
-    private val irisHandler = IrisChallengeHandler()
+    private val irisHandler = IrisChallengeHandler()  // NOUVEAU: Handler pour l'iris
     private val orchideeHandler = OrchideeChallengeHandler()
     private val zoneHelper = ChallengeZoneHelper()
     
@@ -99,6 +99,7 @@ class ChallengeDefinitions {
         )
     )
 
+    // NOUVEAU: Défis pour l'iris
     val irisChallenges = listOf(
         Challenge(
             id = 1,
@@ -179,7 +180,7 @@ class ChallengeDefinitions {
         return roseHandler.getFailMessage(challengeId, roseFlowersInZone, roseDivisions, roseTotalFlowers, roseFlowersInZoneDefi3)
     }
     
-    // ==================== LOGIQUE LUPIN MODIFIÉE ====================
+    // ==================== LOGIQUE LUPIN ====================
     
     fun updateLupinChallenge(challengeId: Int, force: Float, plantState: String, challengeData: MutableMap<String, Any>) {
         lupinHandler.updateChallenge(challengeId, force, plantState, challengeData)
@@ -197,6 +198,7 @@ class ChallengeDefinitions {
         return lupinHandler.getFailMessage(challengeId, lupinSpikeColors, lupinCompleteStems, lupinFlowers)
     }
     
+    // NOUVEAU: Logique pour l'iris
     fun updateIrisChallenge(challengeId: Int, force: Float, plantState: String, challengeData: MutableMap<String, Any>) {
         irisHandler.updateChallenge(challengeId, force, plantState, challengeData)
     }
@@ -229,7 +231,7 @@ class ChallengeDefinitions {
         return orchideeHandler.getFailMessage(challengeId, orchideeFlowers, orchideeRamifications, orchideeInZone)
     }
     
-    // ==================== GESTION DES ZONES MODIFIÉE ====================
+    // ==================== GESTION DES ZONES ====================
     
     fun isInMargueriteZone(flowerY: Float, screenHeight: Float, challengeId: Int): Boolean {
         return zoneHelper.isInMargueriteZone(flowerY, screenHeight, challengeId)
@@ -245,6 +247,11 @@ class ChallengeDefinitions {
     
     fun isInLupinZone(flowerY: Float, screenHeight: Float, challengeId: Int): Boolean {
         return zoneHelper.isInLupinZone(flowerY, screenHeight, challengeId)
+    }
+    
+    // NOUVEAU: Zone pour l'iris
+    fun isInIrisZone(flowerY: Float, screenHeight: Float): Boolean {
+        return zoneHelper.isInIrisZone(flowerY, screenHeight)
     }
     
     // ==================== DÉBLOCAGE DES DÉFIS ====================
@@ -266,7 +273,7 @@ class ChallengeDefinitions {
                 2 -> "LUPIN" to 3
                 else -> null
             }
-            "IRIS" -> when (completedId) {
+            "IRIS" -> when (completedId) {  // NOUVEAU: Défis iris
                 1 -> "IRIS" to 2
                 2 -> "IRIS" to 3
                 else -> null
@@ -284,7 +291,7 @@ class ChallengeDefinitions {
         return when {
             currentFlowerType == "MARGUERITE" && completedChallengeId == 3 -> "ROSE"
             currentFlowerType == "ROSE" && completedChallengeId == 3 -> "LUPIN"
-            currentFlowerType == "LUPIN" && completedChallengeId == 3 -> "IRIS"
+            currentFlowerType == "LUPIN" && completedChallengeId == 3 -> "IRIS"  // NOUVEAU: Débloque l'iris
             currentFlowerType == "IRIS" && completedChallengeId == 3 -> "ORCHIDEE"
             else -> null
         }
@@ -297,7 +304,7 @@ class ChallengeDefinitions {
             "MARGUERITE" -> margueriteChallenges
             "ROSE" -> roseChallenges
             "LUPIN" -> lupinChallenges
-            "IRIS" -> irisChallenges
+            "IRIS" -> irisChallenges  // NOUVEAU: Retourner les défis iris
             "ORCHIDEE" -> orchideeChallenges
             else -> margueriteChallenges
         }
