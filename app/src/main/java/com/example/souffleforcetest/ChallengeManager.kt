@@ -171,20 +171,20 @@ class ChallengeManager(private val context: Context? = null) {
                 if (definitions.isInRoseZone(flowerY, screenHeight)) {
                     if (!roseData.roseFlowersInZone.contains(flowerId)) {
                         roseData.roseFlowersInZone.add(flowerId)
-                        println("Rosier - Fleur dans la zone! Total: ${roseData.roseFlowersInZone.size}/4")
+                        println("Rosier - Fleur dans la zone! Total: ${roseData.roseFlowersInZone.size}/6")
                     }
                 }
             }
             3 -> {
                 if (!roseData.roseTotalFlowers.contains(flowerId)) {
                     roseData.roseTotalFlowers.add(flowerId)
-                    println("Rosier - Fleur totale! Total: ${roseData.roseTotalFlowers.size}/8")
+                    println("Rosier - Fleur totale! Total: ${roseData.roseTotalFlowers.size}/15")
                 }
                 
                 if (definitions.isInRoseZone(flowerY, screenHeight)) {
                     if (!roseData.roseFlowersInZoneDefi3.contains(flowerId)) {
                         roseData.roseFlowersInZoneDefi3.add(flowerId)
-                        println("Rosier - Fleur en zone défi 3! Total: ${roseData.roseFlowersInZoneDefi3.size}/3")
+                        println("Rosier - Fleur en zone défi 3! Total: ${roseData.roseFlowersInZoneDefi3.size}/5")
                     }
                 }
             }
@@ -219,10 +219,21 @@ class ChallengeManager(private val context: Context? = null) {
     fun notifyDivisionCreated(divisionId: String) {
         val challenge = currentChallenge ?: return
         
-        if (currentFlowerType == "ROSE" && challenge.id == 2) {
-            if (!roseData.roseDivisions.contains(divisionId)) {
-                roseData.roseDivisions.add(divisionId)
-                println("Rosier - Division créée! Total: ${roseData.roseDivisions.size}/6")
+        if (currentFlowerType == "ROSE") {
+            when (challenge.id) {
+                2 -> {
+                    if (!roseData.roseDivisions.contains(divisionId)) {
+                        roseData.roseDivisions.add(divisionId)
+                        println("Rosier - Division créée! Total: ${roseData.roseDivisions.size}/10")
+                    }
+                }
+                3 -> {
+                    // NOUVEAU: Le défi 3 compte aussi les divisions
+                    if (!roseData.roseDivisions.contains(divisionId)) {
+                        roseData.roseDivisions.add(divisionId)
+                        println("Rosier - Division défi 3! Total: ${roseData.roseDivisions.size}/8")
+                    }
+                }
             }
         }
     }
