@@ -547,20 +547,21 @@ class ChallengeManager(private val context: Context? = null) {
         loadFlowerChallenges(prefs, "marguerite", definitions.margueriteChallenges)
         loadFlowerChallenges(prefs, "rose", definitions.roseChallenges)
         loadFlowerChallenges(prefs, "lupin", definitions.lupinChallenges)
-        loadFlowerChallenges(prefs, "iris", definitions.irisChallenges)  // NOUVEAU
+        loadFlowerChallenges(prefs, "iris", definitions.irisChallenges)
         
-        // Charger les fleurs débloquées SEULEMENT SI PAS DÉJÀ INITIALISÉES
-        if (unlockedFlowers.size <= 1) {
-            val flowerCount = prefs.getInt("unlocked_flowers_count", 1)
-            for (i in 0 until flowerCount) {
-                val flowerType = prefs.getString("unlocked_flower_${i}_type", null)
-                val unlockedBy = prefs.getString("unlocked_flower_${i}_unlocked_by", null)
-                val dateUnlocked = prefs.getLong("unlocked_flower_${i}_date", System.currentTimeMillis())
-                
-                if (flowerType != null && unlockedBy != null && flowerType != "MARGUERITE") {
-                    if (unlockedFlowers.none { it.flowerType == flowerType }) {
-                        unlockedFlowers.add(UnlockedFlower(flowerType, unlockedBy, dateUnlocked))
-                    }
+        // Charger les fleurs débloquées
+        unlockedFlowers.clear()
+        unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
+        
+        val flowerCount = prefs.getInt("unlocked_flowers_count", 1)
+        for (i in 0 until flowerCount) {
+            val flowerType = prefs.getString("unlocked_flower_${i}_type", null)
+            val unlockedBy = prefs.getString("unlocked_flower_${i}_unlocked_by", null)
+            val dateUnlocked = prefs.getLong("unlocked_flower_${i}_date", System.currentTimeMillis())
+            
+            if (flowerType != null && unlockedBy != null && flowerType != "MARGUERITE") {
+                if (unlockedFlowers.none { it.flowerType == flowerType }) {
+                    unlockedFlowers.add(UnlockedFlower(flowerType, unlockedBy, dateUnlocked))
                 }
             }
         }
