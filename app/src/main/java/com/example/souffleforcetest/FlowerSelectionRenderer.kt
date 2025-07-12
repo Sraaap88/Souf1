@@ -78,19 +78,19 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
                 drawFlowerButton(canvas, lupinX, bottomY, flowerButtonRadius, "LUPIN", challengeManager)
             }
             else -> {
-                // 4+ fleurs - en carré
-                val spacing = flowerButtonRadius * 3f
+                // 4+ fleurs - en carré - CORRECTION ICI
+                val spacing = flowerButtonRadius * 2.8f
                 val positions = listOf(
-                    Pair(centerX - spacing / 2f, buttonY - spacing / 2f), // Haut gauche
-                    Pair(centerX + spacing / 2f, buttonY - spacing / 2f), // Haut droite  
-                    Pair(centerX - spacing / 2f, buttonY + spacing / 2f), // Bas gauche
-                    Pair(centerX + spacing / 2f, buttonY + spacing / 2f)  // Bas droite
+                    Pair(centerX - spacing / 2f, buttonY - spacing / 2f), // Haut gauche - Marguerite
+                    Pair(centerX + spacing / 2f, buttonY - spacing / 2f), // Haut droite - Rose
+                    Pair(centerX - spacing / 2f, buttonY + spacing / 2f), // Bas gauche - Lupin
+                    Pair(centerX + spacing / 2f, buttonY + spacing / 2f)  // Bas droite - Iris
                 )
                 
-                val flowerTypes = listOf("MARGUERITE", "ROSE", "LUPIN", "IRIS")
-                for (i in unlockedFlowers.indices.take(4)) {
+                // CORRECTION: Utiliser les vraies fleurs débloquées
+                for (i in 0 until minOf(unlockedFlowers.size, 4)) {
                     val (x, y) = positions[i]
-                    drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.9f, flowerTypes[i], challengeManager)
+                    drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.9f, unlockedFlowers[i], challengeManager)
                 }
             }
         }
@@ -147,52 +147,10 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
             }
             "IRIS" -> {
                 if (isUnlocked) {
-                    // Iris débloqué - Représentation stylisée avec 3 pétales
-                    canvas.save()
-                    canvas.translate(x, y)
-                    
-                    // Couleur violette/bleue de l'iris
+                    // Iris débloqué - Version simplifiée
+                    flowerTextPaint.textSize = radius * 1.6f
                     flowerTextPaint.color = 0xFF4B0082.toInt()  // Indigo
-                    flowerTextPaint.style = Paint.Style.FILL
-                    
-                    // Dessiner 3 pétales caractéristiques de l'iris
-                    for (i in 0..2) {
-                        val angle = i * 120f // 3 pétales à 120° chacun
-                        canvas.save()
-                        canvas.rotate(angle)
-                        
-                        // Pétale supérieur (étendard) - plus droit
-                        canvas.drawOval(
-                            -radius * 0.15f, -radius * 0.6f,
-                            radius * 0.15f, -radius * 0.1f,
-                            flowerTextPaint
-                        )
-                        
-                        // Pétale inférieur (chute) - plus arrondi
-                        flowerTextPaint.color = 0xFF6A5ACD.toInt()  // Bleu ardoise
-                        canvas.drawOval(
-                            -radius * 0.2f, radius * 0.1f,
-                            radius * 0.2f, radius * 0.4f,
-                            flowerTextPaint
-                        )
-                        
-                        flowerTextPaint.color = 0xFF4B0082.toInt()  // Retour à l'indigo
-                        canvas.restore()
-                    }
-                    
-                    // Centre jaune
-                    flowerTextPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawCircle(0f, 0f, radius * 0.08f, flowerTextPaint)
-                    
-                    // Tige droite élancée
-                    flowerTextPaint.color = 0xFF228B22.toInt()  // Vert
-                    flowerTextPaint.style = Paint.Style.STROKE
-                    flowerTextPaint.strokeWidth = radius * 0.04f
-                    canvas.drawLine(0f, radius * 0.4f, 0f, radius * 0.8f, flowerTextPaint)
-                    
-                    // Reset du style
-                    flowerTextPaint.style = Paint.Style.FILL
-                    canvas.restore()
+                    canvas.drawText("🌷", x, y + 15f, flowerTextPaint)
                 } else {
                     // Iris verrouillé
                     drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
