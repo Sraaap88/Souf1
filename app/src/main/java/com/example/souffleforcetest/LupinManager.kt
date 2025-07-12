@@ -63,7 +63,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     enum class FlowerColor(val rgb: IntArray) {
         PURPLE(intArrayOf(138, 43, 226)),    // Violet
         BLUE(intArrayOf(65, 105, 225)),      // Bleu royal
-        PINK(intArrayOf(255, 20, 147)),      // Rose fuchsia
+        PINK(intArrayOf(255, 20, 147),       // Rose fuchsia
         WHITE(intArrayOf(248, 248, 255)),    // Blanc cassé
         YELLOW(intArrayOf(255, 215, 0))      // Jaune doré
     }
@@ -75,6 +75,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     private var baseX = 0f
     private var baseY = 0f
+    private var lastForce = 0f
+    private var lastSpikeTime = 0L
     
     // Référence au gestionnaire de défis
     private var challengeManager: ChallengeManager? = null
@@ -92,9 +94,13 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     private val baseFlowerSize = 8f        // Petites fleurs individuelles
     
     // Paramètres spécifiques au lupin
-    private val stemCount = 2 + (Math.random() * 2).toInt() // 2-3 tiges principales
-    private val stemSpacing = 80f          // Espacement entre tiges
+    private val maxStems = 5               // Maximum 5 tiges
+    private val stemSpacing = 60f          // Espacement entre tiges
     private val flowerDensity = 12         // Nombre de fleurs par épi
+    
+    // Paramètres pour saccades
+    private val spikeThreshold = 0.4f      // Seuil pour détecter une saccade
+    private val spikeMinInterval = 500L    // Minimum entre saccades (500ms)
     
     // ==================== FONCTIONS PUBLIQUES ====================
     
@@ -106,30 +112,18 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         baseX = centerX
         baseY = bottomY
         
-        // Créer 2-3 tiges principales du lupin
-        for (i in 0 until stemCount) {
-            val offsetX = (i - stemCount / 2f) * stemSpacing
-            val stemX = baseX + offsetX + (Math.random().toFloat() - 0.5f) * 30f // Légère variation
-            
-            val stem = LupinStem(
-                maxHeight = screenHeight * 0.6f + Math.random().toFloat() * screenHeight * 0.2f,
-                baseX = stemX,
-                baseY = bottomY
-            )
-            
-            // Point de base
-            stem.points.add(StemPoint(stemX, bottomY, baseStemThickness))
-            // Deuxième point pour commencer la croissance
-            val secondY = bottomY - segmentLength * 0.3f
-            stem.points.add(StemPoint(stemX, secondY, baseStemThickness * 0.98f))
-            stem.currentHeight = segmentLength * 0.3f
-            
-            stems.add(stem)
-        }
+        // Créer UNE SEULE tige au début
+        createNewStem(baseX, baseY)
     }
     
     fun processStemGrowth(force: Float) {
-        growStems(force)
+        // Détecter les saccades pour créer de nouvelles tiges
+        detectSpikeAndCreateStem(force)
+        
+        // Faire pousser seulement la tige la plus récente (la dernière ajoutée)
+        growLatestStem(force)
+        
+        lastForce = force
     }
     
     fun processLeavesGrowth(force: Float) {
@@ -145,6 +139,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     fun reset() {
         stems.clear()
         leaves.clear()
+        lastForce = 0f
+        lastSpikeTime = 0L
     }
     
     fun drawLupin(canvas: Canvas, stemPaint: Paint, leafPaint: Paint, flowerPaint: Paint) {
@@ -155,36 +151,75 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     
     // ==================== CROISSANCE DES TIGES ====================
     
-    private fun growStems(force: Float) {
-        for (stem in stems.filter { it.isActive }) {
-            if (force > 0.15f && stem.currentHeight < stem.maxHeight) {
-                // Croissance proportionnelle à la force ET à la vitesse individuelle
-                val baseGrowth = force * stemGrowthRate * 0.020f
-                val individualGrowth = baseGrowth * stem.growthSpeedMultiplier
-                stem.currentHeight = (stem.currentHeight + individualGrowth).coerceAtMost(stem.maxHeight)
+    private fun detectSpikeAndCreateStem(force: Float) {
+        val currentTime = System.currentTimeMillis()
+        
+        // Détecter une saccade
+        val forceIncrease = force - lastForce
+        val isSpike = forceIncrease > spikeThreshold && force > 0.4f
+        val canCreateStem = currentTime - lastSpikeTime > spikeMinInterval
+        
+        if (isSpike && canCreateStem && stems.size < maxStems) {
+            // Créer une nouvelle tige depuis le sol
+            val newStemX = baseX + (stems.size - 2) * stemSpacing + (Math.random().toFloat() - 0.5f) * 30f
+            createNewStem(newStemX, baseY)
+            lastSpikeTime = currentTime
+            
+            println("Lupin - Nouvelle tige créée! Total: ${stems.size}/$maxStems")
+        }
+    }
+    
+    private fun createNewStem(stemX: Float, stemY: Float) {
+        val stem = LupinStem(
+            maxHeight = screenHeight * 0.6f + Math.random().toFloat() * screenHeight * 0.2f,
+            baseX = stemX,
+            baseY = stemY
+        )
+        
+        // Point de base
+        stem.points.add(StemPoint(stemX, stemY, baseStemThickness))
+        // Deuxième point pour commencer la croissance
+        val secondY = stemY - segmentLength * 0.3f
+        stem.points.add(StemPoint(stemX, secondY, baseStemThickness * 0.98f))
+        stem.currentHeight = segmentLength * 0.3f
+        
+        stems.add(stem)
+        
+        // Notifier le challenge manager qu'une tige complète a été créée
+        challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
+    }
+    
+    private fun growLatestStem(force: Float) {
+        // Faire pousser seulement la dernière tige ajoutée
+        val latestStem = stems.lastOrNull() ?: return
+        
+        if (latestStem.isActive && force > 0.15f && latestStem.currentHeight < latestStem.maxHeight) {
+            // Croissance proportionnelle à la force ET à la vitesse individuelle
+            val baseGrowth = force * stemGrowthRate * 0.020f
+            val individualGrowth = baseGrowth * latestStem.growthSpeedMultiplier
+            latestStem.currentHeight = (latestStem.currentHeight + individualGrowth).coerceAtMost(latestStem.maxHeight)
+            
+            // Ajouter un nouveau point si nécessaire
+            if (latestStem.points.size >= 2 && latestStem.currentHeight >= latestStem.points.size * segmentLength) {
+                val lastPoint = latestStem.points.last()
                 
-                // Ajouter un nouveau point si nécessaire
-                if (stem.points.size >= 2 && stem.currentHeight >= stem.points.size * segmentLength) {
-                    val lastPoint = stem.points.last()
-                    
-                    // Les lupins poussent très droit avec une légère variation naturelle
-                    val randomOffset = (Math.random().toFloat() - 0.5f) * 4f
-                    val newX = stem.baseX + randomOffset
-                    val newY = lastPoint.y - segmentLength
-                    val newThickness = (lastPoint.thickness * 0.98f).coerceAtLeast(4f)
-                    
-                    // Vérifier que ça reste dans l'écran
-                    if (newX >= 0 && newX <= screenWidth && newY >= 0) {
-                        stem.points.add(StemPoint(newX, newY, newThickness))
-                    } else {
-                        stem.isActive = false
-                    }
-                }
+                // Les lupins poussent très droit avec une légère variation naturelle
+                val randomOffset = (Math.random().toFloat() - 0.5f) * 4f
+                val newX = latestStem.baseX + randomOffset
+                val newY = lastPoint.y - segmentLength
+                val newThickness = (lastPoint.thickness * 0.98f).coerceAtLeast(4f)
                 
-                // Arrêter quand on atteint la hauteur max
-                if (stem.currentHeight >= stem.maxHeight * 0.95f) {
-                    stem.isActive = false
+                // Vérifier que ça reste dans l'écran
+                if (newX >= 0 && newX <= screenWidth && newY >= 0) {
+                    latestStem.points.add(StemPoint(newX, newY, newThickness))
+                } else {
+                    latestStem.isActive = false
                 }
+            }
+            
+            // Arrêter quand on atteint la hauteur max
+            if (latestStem.currentHeight >= latestStem.maxHeight * 0.95f) {
+                latestStem.isActive = false
             }
         }
     }
@@ -248,6 +283,9 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         val topPoint = stem.points.lastOrNull() ?: return
         val spikeColor = FlowerColor.values().random() // Couleur aléatoire pour l'épi
         
+        // Notifier le challenge manager qu'un épi coloré a été créé
+        challengeManager?.notifyLupinSpikeCreated(spikeColor.name, stem.id)
+        
         for (i in 0 until flowerDensity) {
             val positionOnSpike = i.toFloat() / (flowerDensity - 1) // 0.0 à 1.0
             val yOffset = positionOnSpike * stem.flowerSpike.maxLength
@@ -278,7 +316,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
                     flower.currentSize = (flower.currentSize + growth).coerceAtMost(flower.maxSize)
                     
                     // Notifier le challenge manager quand une fleur atteint sa taille max
-                    if (flower.currentSize >= flower.maxSize * 0.9f) {
+                    if (flower.currentSize >= flower.maxSize * 0.9f && flower.currentSize < flower.maxSize) {
                         challengeManager?.notifyFlowerCreated(flower.x, flower.y, flower.id)
                     }
                 }
@@ -328,7 +366,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         
         canvas.save()
         canvas.translate(x, y)
-        canvas.rotate(leaf.angle)
+        canvas.rotate(leaf.angle)  // Rotation fixe seulement
         
         // Dessiner les folioles en éventail (caractéristique du lupin)
         val folioleCount = leaf.folioleCount.coerceAtMost(leaf.folioleAngles.size)
@@ -336,7 +374,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         
         for (i in 0 until folioleCount) {
             val folioleAngle = (i - folioleCount / 2f) * (angleSpread / folioleCount) + leaf.folioleAngles[i]
-            val folioleLength = size * (0.8f + Math.random().toFloat() * 0.4f) // Variation de longueur
+            val folioleLength = size * (0.8f + (i % 3) * 0.1f) // Variation fixe selon l'index
             val folioleWidth = folioleLength * 0.3f
             
             canvas.save()
@@ -441,4 +479,4 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             return 1.0f + (Math.random().toFloat() - 0.5f) * 2 * variation
         }
     }
-}
+             }
