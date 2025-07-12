@@ -63,7 +63,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     enum class FlowerColor(val rgb: IntArray) {
         PURPLE(intArrayOf(138, 43, 226)),    // Violet
         BLUE(intArrayOf(65, 105, 225)),      // Bleu royal
-        PINK(intArrayOf(255, 20, 147),       // Rose fuchsia
+        PINK(intArrayOf(255, 20, 147)),      // Rose fuchsia
         WHITE(intArrayOf(248, 248, 255)),    // Blanc cassé
         YELLOW(intArrayOf(255, 215, 0))      // Jaune doré
     }
