@@ -204,7 +204,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
         val groupAngle = Random.nextFloat() * 2 * PI
         val groupDistance = Random.nextFloat() * baseRadius + 60f
         
-        val groupBaseX = (centerX + cos(groupAngle) * groupDistance).toFloat()
+        val groupBaseX = (centerX + cos(groupAngle).toFloat() * groupDistance)
             .coerceIn(marginFromEdges, screenWidth - marginFromEdges)
         val groupBaseY = bottomY + (Random.nextFloat() - 0.5f) * 60f
         
@@ -255,7 +255,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
                 
                 val lastPoint = activeStem.segments.lastOrNull() ?: continue
                 val angleRad = Math.toRadians(activeStem.baseAngle.toDouble())
-                val curvatureEffect = sin(growthProgress * PI) * activeStem.curvature * 20f
+                val curvatureEffect = sin(growthProgress * PI).toFloat() * activeStem.curvature * 20f
                 
                 val newX = lastPoint.x + sin(angleRad).toFloat() * 2f + curvatureEffect
                 val newY = lastPoint.y - adjustedGrowth
