@@ -11,7 +11,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
     fun drawChallengeSelection(canvas: Canvas, challengeManager: ChallengeManager, textPaint: Paint, buttonPaint: Paint) {
         // Titre avec retour à la ligne
         textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = 100f  // Réduit de 120f à 100f
+        textPaint.textSize = 100f
         textPaint.color = 0xFFFFFFFF.toInt()
         textPaint.isFakeBoldText = true
         
@@ -21,11 +21,11 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
         // Deuxième ligne : "DÉFI"
         canvas.drawText("DÉFI", screenWidth / 2f, screenHeight * 0.22f, textPaint)
         
-        // CORRIGÉ: Sous-titre adaptatif selon la fleur ACTUELLE
+        // Sous-titre adaptatif selon la fleur ACTUELLE
         textPaint.textSize = 60f
         textPaint.isFakeBoldText = false
         
-        // NOUVEAU: Utiliser getCurrentFlowerType() du ChallengeManager
+        // Utiliser getCurrentFlowerType() du ChallengeManager
         val flowerType = challengeManager.getCurrentFlowerType()
         
         // Afficher le nom de la fleur actuelle
@@ -39,12 +39,12 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
         
         canvas.drawText(displayName, screenWidth / 2f, screenHeight * 0.32f, textPaint)
         
-        // CORRIGÉ: Charger les défis selon le type de fleur ACTUEL
+        // Charger les défis selon le type de fleur ACTUEL
         val challenges = when (flowerType) {
             "MARGUERITE" -> challengeManager.getMargueriteChallenges()
             "ROSE" -> challengeManager.getRoseChallenges()
             "LUPIN" -> challengeManager.getLupinChallenges()
-            "IRIS" -> emptyList() // À implémenter plus tard
+            "IRIS" -> challengeManager.getIrisChallenges()
             else -> challengeManager.getMargueriteChallenges() // Fallback
         }
         
@@ -102,14 +102,6 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             
             canvas.drawText(buttonText, screenWidth / 2f, buttonY + 15f, textPaint)
         }
-        
-        // NOUVEAU: Affichage d'informations de debug (optionnel)
-        if (challenges.isEmpty()) {
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = 40f
-            textPaint.color = 0xFFFF6666.toInt()
-            canvas.drawText("Debug: Aucun défi trouvé pour $flowerType", screenWidth / 2f, screenHeight * 0.85f, textPaint)
-        }
     }
     
     fun drawChallengeBrief(canvas: Canvas, challengeManager: ChallengeManager, timeRemaining: Long, textPaint: Paint) {
@@ -123,7 +115,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
         textPaint.isFakeBoldText = true
         canvas.drawText(challenge?.title ?: "DÉFI", screenWidth / 2f, screenHeight * 0.25f, textPaint)
         
-        // NOUVEAU: Sous-titre avec le type de fleur
+        // Sous-titre avec le type de fleur
         textPaint.textSize = 60f
         textPaint.color = 0xFFFFD700.toInt()
         textPaint.isFakeBoldText = false
@@ -145,7 +137,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             challenge?.id == 2 && flowerType == "MARGUERITE" -> {
                 textPaint.textAlign = Paint.Align.CENTER
                 textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()  // Jaune
+                textPaint.color = 0xFFFFD700.toInt()
                 textPaint.isFakeBoldText = false
                 canvas.drawText("Technique: souffle très doux", screenWidth / 2f, screenHeight * 0.62f, textPaint)
             }
@@ -169,6 +161,27 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                 textPaint.color = 0xFFFFD700.toInt()
                 textPaint.isFakeBoldText = false
                 canvas.drawText("Astuce: saccades pour créer des divisions", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+            }
+            challenge?.id == 1 && flowerType == "IRIS" -> {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = 55f
+                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.isFakeBoldText = false
+                canvas.drawText("Astuce: souffle contrôlé pour l'élégance", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+            }
+            challenge?.id == 2 && flowerType == "IRIS" -> {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = 55f
+                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.isFakeBoldText = false
+                canvas.drawText("Astuce: patience pour une symphonie parfaite", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+            }
+            challenge?.id == 3 && flowerType == "IRIS" -> {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = 55f
+                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.isFakeBoldText = false
+                canvas.drawText("Astuce: maîtrise complète pour un jardin impérial", screenWidth / 2f, screenHeight * 0.62f, textPaint)
             }
         }
         
@@ -196,7 +209,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             textPaint.isFakeBoldText = true
             canvas.drawText(resultText, screenWidth / 2f, screenHeight * 0.3f, textPaint)
             
-            // NOUVEAU: Sous-titre avec le type de fleur
+            // Sous-titre avec le type de fleur
             textPaint.textSize = 70f
             textPaint.color = 0xFFFFFFFF.toInt()
             textPaint.isFakeBoldText = false
@@ -238,6 +251,24 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                     textPaint.color = 0xFFFFD700.toInt()
                     canvas.drawText("Expert en multiplication des rosiers!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
                 }
+                result.challenge.id == 1 && result.success && flowerType == "IRIS" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Élégance royale accomplie!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
+                result.challenge.id == 2 && result.success && flowerType == "IRIS" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Symphonie florale magistrale!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
+                result.challenge.id == 3 && result.success && flowerType == "IRIS" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Jardin impérial parfait!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
             }
             
             // Message de déblocage si applicable
@@ -260,6 +291,12 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                         textPaint.textSize = 55f
                         textPaint.color = 0xFF4169E1.toInt() // Bleu
                         canvas.drawText("🌺 IRIS DÉBLOQUÉ! 🌺", screenWidth / 2f, screenHeight * 0.75f, textPaint)
+                    }
+                    flowerType == "IRIS" && result.challenge.id == 3 -> {
+                        textPaint.textAlign = Paint.Align.CENTER
+                        textPaint.textSize = 55f
+                        textPaint.color = 0xFFFFD700.toInt() // Or
+                        canvas.drawText("👑 TOUTES LES FLEURS MAÎTRISÉES! 👑", screenWidth / 2f, screenHeight * 0.75f, textPaint)
                     }
                 }
             }
