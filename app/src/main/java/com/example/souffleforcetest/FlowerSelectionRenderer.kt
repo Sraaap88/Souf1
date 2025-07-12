@@ -113,62 +113,28 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
     private fun drawFlowerButton(canvas: Canvas, x: Float, y: Float, radius: Float, flowerType: String, challengeManager: ChallengeManager) {
         val isUnlocked = challengeManager.isFlowerUnlocked(flowerType)
         
+        // SI PAS DÉBLOQUÉE = RIEN AFFICHER (comme avant)
+        if (!isUnlocked && flowerType != "MARGUERITE") return
+        
         when (flowerType) {
             "MARGUERITE" -> {
-                // Toujours débloquée
+                // GARDE TA MARGUERITE !
                 drawMiniDaisy(canvas, x, y, radius * 1.5f)
             }
             "ROSE" -> {
-                if (isUnlocked) {
-                    // Rose débloquée
-                    flowerTextPaint.textSize = radius * 1.6f
-                    flowerTextPaint.color = 0xFFFF69B4.toInt()  // Rose
-                    canvas.drawText("🌹", x, y + 15f, flowerTextPaint)
-                } else {
-                    // Rose verrouillée
-                    drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
-                }
+                flowerTextPaint.textSize = radius * 1.6f
+                flowerTextPaint.color = 0xFFFF69B4.toInt()
+                canvas.drawText("🌹", x, y + 15f, flowerTextPaint)
             }
             "LUPIN" -> {
-                if (isUnlocked) {
-                    // Lupin débloqué - Représentation stylisée
-                    flowerTextPaint.textSize = radius * 1.4f
-                    flowerTextPaint.color = 0xFF9370DB.toInt()  // Violet
-                    
-                    // Dessiner plusieurs petits points pour simuler l'épi
-                    val spikeHeight = radius * 1.2f
-                    val pointCount = 8
-                    for (i in 0 until pointCount) {
-                        val pointY = y - spikeHeight/2f + (i * spikeHeight / pointCount)
-                        val pointSize = radius * 0.15f * (1f - (i.toFloat() / pointCount) * 0.3f)
-                        
-                        flowerTextPaint.style = Paint.Style.FILL
-                        canvas.drawCircle(x, pointY, pointSize, flowerTextPaint)
-                    }
-                    
-                    // Tige
-                    flowerTextPaint.style = Paint.Style.STROKE
-                    flowerTextPaint.strokeWidth = radius * 0.05f
-                    flowerTextPaint.color = 0xFF228B22.toInt()  // Vert
-                    canvas.drawLine(x, y + spikeHeight/2f, x, y + radius, flowerTextPaint)
-                    
-                    // Reset du style
-                    flowerTextPaint.style = Paint.Style.FILL
-                } else {
-                    // Lupin verrouillé
-                    drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
-                }
+                flowerTextPaint.textSize = radius * 1.6f
+                flowerTextPaint.color = 0xFF9370DB.toInt()
+                canvas.drawText("🌾", x, y + 15f, flowerTextPaint)
             }
             "IRIS" -> {
-                if (isUnlocked) {
-                    // Iris débloqué - Version simplifiée
-                    flowerTextPaint.textSize = radius * 1.6f
-                    flowerTextPaint.color = 0xFF4B0082.toInt()  // Indigo
-                    canvas.drawText("🌷", x, y + 15f, flowerTextPaint)
-                } else {
-                    // Iris verrouillé
-                    drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
-                }
+                flowerTextPaint.textSize = radius * 1.6f
+                flowerTextPaint.color = 0xFF4B0082.toInt()
+                canvas.drawText("🌷", x, y + 15f, flowerTextPaint)
             }
         }
     }
