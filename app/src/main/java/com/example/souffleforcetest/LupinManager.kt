@@ -1,4 +1,30 @@
-package com.example.souffleforcetest
+// ==================== NOUVELLES FONCTIONS POUR TIGES BASALES ====================
+    
+    private fun createBasalStems(mainStemX: Float, mainStemY: Float, mainStemId: String) {
+        // Créer 3 petites tiges à la base de la tige principale
+        for (i in 0..2) {
+            val angle = (Math.random() - 0.5) * 60f  // Angle entre -30° et +30°
+            val distance = 15f + Math.random().toFloat() * 10f  // Distance 15-25px de la base
+            
+            val basalX = mainStemX + cos(Math.toRadians(angle.toDouble())).toFloat() * distance
+            val basalY = mainStemY + (Math.random().toFloat() - 0.5f) * 8f
+            
+            val basalStem = LupinStem(
+                maxHeight = 40f + Math.random().toFloat() * 20f,  // Petites tiges 40-60px
+                baseX = basalX,
+                baseY = basalY,
+                growthSpeedMultiplier = 1.2f + Math.random().toFloat() * 0.3f  // Poussent plus vite
+            )
+            basalStem.points.add(StemPoint(basalX, basalY, baseThickness * 0.6f))  // Plus fines
+            stems.add(basalStem)
+        }
+    
+    private fun calculatePreviousGroupsSize(groupIndex: Int): Int {
+        // Cette fonction devrait calculer combien de tiges ont été créées dans les groupes précédents
+        // Pour simplifier, on assume qu'on fait pousser toutes les tiges principales (non basales)
+        return stems.count { it.maxHeight >= 80f }
+    }
+    }package com.example.souffleforcetest
 
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -95,7 +121,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     // ==================== PARAMÈTRES COPIÉS DE PLANTSTEM ====================
     
     private val forceThreshold = 0.15f      // EXACTEMENT comme PlantStem
-    private val maxStemHeight = 0.75f       // EXACTEMENT comme PlantStem
+    private val maxStemHeight = 0.5f        // Maximum 50% de l'écran au lieu de 75%
     private val baseThickness = 13.1f       // 25% plus fin (17.5 * 0.75)
     private val tipThickness = 4.2f         // 25% plus fin (5.6 * 0.75)
     private val growthRate = 7200f          // 3X plus rapide (2400 * 3)
@@ -227,55 +253,52 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     private fun createMainStem() {
-        // Créer le premier groupe de 3 tiges au centre, ÉNORMÉMENT espacées
-        val radius = 160f  // 2X plus grand (80f * 2)
+        // Créer le premier groupe de 2-5 tiges, positions aléatoires MAIS pas trop proches des côtés
+        val stemCount = 2 + (Math.random() * 4).toInt()  // 2 à 5 tiges
+        val safeMargin = screenWidth * 0.15f  // 15% de marge de chaque côté
         
-        for (i in 0..2) {
-            // Position complètement aléatoire dans un cercle énorme, très espacées
-            val angle = Math.random() * 2 * PI
-            val distance = Math.random() * radius + 80f  // Distance minimale 2X plus grande (40f * 2)
-            val stemX = baseX + (cos(angle) * distance).toFloat()
-            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 40f  // Plus de variation Y
+        for (i in 0 until stemCount) {
+            // Position aléatoire mais dans la zone sécurisée
+            val stemX = safeMargin + Math.random().toFloat() * (screenWidth - 2 * safeMargin)
+            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 30f
             
             val stem = LupinStem(
-                maxHeight = screenHeight * maxStemHeight * (0.7f + Math.random().toFloat() * 0.6f),
+                maxHeight = screenHeight * maxStemHeight * (0.8f + Math.random().toFloat() * 0.4f), // 80%-120% variation
                 baseX = stemX,
                 baseY = stemY,
-                growthSpeedMultiplier = 0.5f + Math.random().toFloat() * 1.0f
+                growthSpeedMultiplier = 0.7f + Math.random().toFloat() * 0.6f  // Variation vitesse
             )
             stem.points.add(StemPoint(stemX, stemY, baseThickness))
             stems.add(stem)
             challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
+            
+            // Créer 3 petites tiges à la base de cette tige principale
+            createBasalStems(stemX, stemY, stem.id)
         }
     }
     
     private fun createNewStemGroup(groupNumber: Int) {
-        // Position de base ÉNORMÉMENT éloignée pour ce groupe
-        val baseRadius = 240f + groupNumber * 80f  // 2X plus espacé (120f * 2)
-        val groupAngle = Math.random() * 2 * PI
-        val groupDistance = Math.random() * baseRadius + 120f  // Distance minimale 2X plus grande
+        // Nouveau groupe de 2-5 tiges, positions aléatoires dans la zone sécurisée
+        val stemCount = 2 + (Math.random() * 4).toInt()  // 2 à 5 tiges
+        val safeMargin = screenWidth * 0.15f  // 15% de marge de chaque côté
         
-        val groupBaseX = baseX + (cos(groupAngle) * groupDistance).toFloat()
-        val groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 60f  // Plus de variation Y
-        
-        // 3 tiges dans ce groupe, positions ÉNORMÉMENT espacées entre elles
-        for (i in 0..2) {
-            val localRadius = 160f + Math.random().toFloat() * 120f  // 2X plus espacé localement (80f * 2)
-            val localAngle = Math.random() * 2 * PI
-            val localDistance = Math.random() * localRadius + 60f  // Distance minimale 2X plus grande (30f * 2)
-            
-            val stemX = groupBaseX + (cos(localAngle) * localDistance).toFloat()
-            val stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 50f
+        for (i in 0 until stemCount) {
+            // Position aléatoire mais dans la zone sécurisée
+            val stemX = safeMargin + Math.random().toFloat() * (screenWidth - 2 * safeMargin)
+            val stemY = baseY + (Math.random().toFloat() - 0.5f) * 40f
             
             val stem = LupinStem(
-                maxHeight = screenHeight * maxStemHeight * (0.6f + Math.random().toFloat() * 0.8f),
+                maxHeight = screenHeight * maxStemHeight * (0.8f + Math.random().toFloat() * 0.4f), // 80%-120% variation
                 baseX = stemX,
                 baseY = stemY,
-                growthSpeedMultiplier = 0.4f + Math.random().toFloat() * 1.2f
+                growthSpeedMultiplier = 0.7f + Math.random().toFloat() * 0.6f
             )
             stem.points.add(StemPoint(stemX, stemY, baseThickness))
             stems.add(stem)
             challengeManager?.notifyLupinSpikeCreated("NEW_STEM", stem.id)
+            
+            // Créer 3 petites tiges à la base de cette tige principale
+            createBasalStems(stemX, stemY, stem.id)
         }
     }
     
@@ -284,12 +307,18 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         
         // Faire pousser toutes les tiges du groupe actif
         val stemsInCurrentGroup = if (currentActiveStemIndex == 0) {
-            // Groupe principal : les 3 premières tiges
-            stems.take(3)
+            // Groupe principal : toutes les tiges créées au début (nombre variable)
+            val firstGroupSize = stems.indexOfFirst { it.maxHeight < 80f }  // Trouve où commencent les tiges basales
+            if (firstGroupSize == -1) stems else stems.take(firstGroupSize)
         } else {
-            // Autres groupes : 3 tiges par groupe, en commençant après le groupe principal
-            val startIndex = 3 + (currentActiveStemIndex - 1) * 3
-            stems.drop(startIndex).take(3)
+            // Autres groupes : calculer selon le nombre variable de tiges par groupe
+            val previousGroupsSize = calculatePreviousGroupsSize(currentActiveStemIndex - 1)
+            val currentGroupStart = previousGroupsSize
+            val currentGroupEnd = stems.indexOfFirst { stem ->
+                stems.indexOf(stem) > currentGroupStart && stem.maxHeight < 80f
+            }
+            if (currentGroupEnd == -1) stems.drop(currentGroupStart) 
+            else stems.subList(currentGroupStart, currentGroupEnd)
         }
         
         for (activeStem in stemsInCurrentGroup) {
@@ -336,14 +365,33 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             val existingLeaves = leaves.filter { it.stemIndex == index }
             if (existingLeaves.isNotEmpty()) continue
             
-            if (stem.currentHeight < 40f) continue
+            if (stem.currentHeight < 30f) continue
             
-            val leafCount = 3
+            val leafCount = if (stem.maxHeight < 80f) {
+                // Petites tiges basales : 1-2 feuilles seulement
+                1 + (Math.random() * 2).toInt()
+            } else {
+                // Tiges principales : plus de feuilles + paquet sous la fleur
+                4 + (Math.random() * 2).toInt()  // 4-5 feuilles
+            }
             
             for (i in 0 until leafCount) {
-                val heightRatio = 0.3f + (i.toFloat() / leafCount) * 0.5f
-                val size = baseLeafSize + Math.random().toFloat() * 10f
-                val angle = Math.random().toFloat() * 60f - 30f
+                val heightRatio = if (stem.maxHeight < 80f) {
+                    // Feuilles sur petites tiges : plus vers le haut
+                    0.6f + (i.toFloat() / leafCount) * 0.4f
+                } else {
+                    // Tiges principales : répartition + paquet sous fleur
+                    if (i >= leafCount - 2) {
+                        // 2 dernières feuilles : paquet sous la fleur (85-95%)
+                        0.85f + (i - leafCount + 2) * 0.05f
+                    } else {
+                        // Autres feuilles : réparties sur la tige (30-80%)
+                        0.3f + (i.toFloat() / (leafCount - 2)) * 0.5f
+                    }
+                }
+                
+                val size = baseLeafSize * (if (stem.maxHeight < 80f) 0.6f else 1f) + Math.random().toFloat() * 10f
+                val angle = Math.random().toFloat() * 40f - 20f  // Angle plus droit (-20° à +20°)
                 
                 val leaf = LupinLeaf(
                     stemIndex = index,
