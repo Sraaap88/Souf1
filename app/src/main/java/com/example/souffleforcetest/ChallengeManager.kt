@@ -12,7 +12,7 @@ class ChallengeManager(private val context: Context? = null) {
     // ==================== DATA CLASSES ====================
     
     data class UnlockedFlower(
-        val flowerType: String,  // "MARGUERITE", "ROSE", "LUPIN", etc.
+        val flowerType: String,  // "MARGUERITE", "ROSE", "LUPIN", "IRIS", etc.
         val unlockedBy: String,  // "Défi 3 Marguerite", etc.
         val dateUnlocked: Long = System.currentTimeMillis()
     )
@@ -28,6 +28,7 @@ class ChallengeManager(private val context: Context? = null) {
     private val margueriteData = MargueriteData()
     private val roseData = RoseData()
     private val lupinData = LupinData()
+    private val irisData = IrisData()  // NOUVEAU: Données pour l'iris
     
     // Gestion des fleurs débloquées
     private val unlockedFlowers = mutableListOf<UnlockedFlower>()
@@ -74,6 +75,19 @@ class ChallengeManager(private val context: Context? = null) {
         }
     }
     
+    // NOUVEAU: Classe de données pour l'iris
+    private class IrisData {
+        val irisFlowersInZone = mutableListOf<String>()
+        val irisRamifications = mutableListOf<String>()
+        val irisTotalFlowers = mutableListOf<String>()
+        
+        fun clear() {
+            irisFlowersInZone.clear()
+            irisRamifications.clear()
+            irisTotalFlowers.clear()
+        }
+    }
+    
     // ==================== SAUVEGARDE ====================
     
     private val sharedPrefs: SharedPreferences? by lazy {
@@ -92,6 +106,7 @@ class ChallengeManager(private val context: Context? = null) {
     fun getMargueriteChallenges(): List<ChallengeDefinitions.Challenge> = definitions.margueriteChallenges
     fun getRoseChallenges(): List<ChallengeDefinitions.Challenge> = definitions.roseChallenges
     fun getLupinChallenges(): List<ChallengeDefinitions.Challenge> = definitions.lupinChallenges
+    fun getIrisChallenges(): List<ChallengeDefinitions.Challenge> = definitions.irisChallenges  // NOUVEAU
     
     fun setCurrentFlowerType(flowerType: String) {
         currentFlowerType = flowerType
@@ -112,6 +127,7 @@ class ChallengeManager(private val context: Context? = null) {
             "MARGUERITE" -> margueriteData.clear()
             "ROSE" -> roseData.clear()
             "LUPIN" -> lupinData.clear()
+            "IRIS" -> irisData.clear()  // NOUVEAU
         }
         
         println("Défi démarré: ${currentChallenge?.title} (${currentFlowerType})")
@@ -125,6 +141,7 @@ class ChallengeManager(private val context: Context? = null) {
             "MARGUERITE" -> definitions.updateMargueriteChallenge(challenge.id, force, plantState, challengeData)
             "ROSE" -> definitions.updateRoseChallenge(challenge.id, force, plantState, challengeData)
             "LUPIN" -> definitions.updateLupinChallenge(challenge.id, force, plantState, challengeData)
+            "IRIS" -> definitions.updateIrisChallenge(challenge.id, force, plantState, challengeData)  // NOUVEAU
         }
     }
     
@@ -143,6 +160,7 @@ class ChallengeManager(private val context: Context? = null) {
             "MARGUERITE" -> handleMargueriteFlower(challenge, flowerY, screenHeight, flowerId)
             "ROSE" -> handleRoseFlower(challenge, flowerY, screenHeight, flowerId)
             "LUPIN" -> handleLupinFlower(flowerId)
+            "IRIS" -> handleIrisFlower(challenge, flowerY, screenHeight, flowerId)  // NOUVEAU
         }
     }
     
@@ -200,6 +218,26 @@ class ChallengeManager(private val context: Context? = null) {
         }
     }
     
+    // NOUVEAU: Gestion des fleurs d'iris
+    private fun handleIrisFlower(challenge: ChallengeDefinitions.Challenge, flowerY: Float, screenHeight: Float, flowerId: String) {
+        when (challenge.id) {
+            1 -> {
+                if (definitions.isInIrisZone(flowerY, screenHeight)) {
+                    if (!irisData.irisFlowersInZone.contains(flowerId)) {
+                        irisData.irisFlowersInZone.add(flowerId)
+                        println("Iris - Fleur dans la zone centrale! Total: ${irisData.irisFlowersInZone.size}/4")
+                    }
+                }
+            }
+            2, 3 -> {
+                if (!irisData.irisTotalFlowers.contains(flowerId)) {
+                    irisData.irisTotalFlowers.add(flowerId)
+                    println("Iris - Fleur totale! Total: ${irisData.irisTotalFlowers.size}")
+                }
+            }
+        }
+    }
+    
     fun notifyLupinSpikeCreated(spikeColor: String, stemId: String) {
         val challenge = currentChallenge ?: return
         
@@ -221,19 +259,37 @@ class ChallengeManager(private val context: Context? = null) {
     fun notifyDivisionCreated(divisionId: String) {
         val challenge = currentChallenge ?: return
         
-        if (currentFlowerType == "ROSE") {
-            when (challenge.id) {
-                2 -> {
-                    if (!roseData.roseDivisions.contains(divisionId)) {
-                        roseData.roseDivisions.add(divisionId)
-                        println("Rosier - Division créée! Total: ${roseData.roseDivisions.size}/10")
+        when (currentFlowerType) {
+            "ROSE" -> {
+                when (challenge.id) {
+                    2 -> {
+                        if (!roseData.roseDivisions.contains(divisionId)) {
+                            roseData.roseDivisions.add(divisionId)
+                            println("Rosier - Division créée! Total: ${roseData.roseDivisions.size}/10")
+                        }
+                    }
+                    3 -> {
+                        if (!roseData.roseDivisions.contains(divisionId)) {
+                            roseData.roseDivisions.add(divisionId)
+                            println("Rosier - Division défi 3! Total: ${roseData.roseDivisions.size}/8")
+                        }
                     }
                 }
-                3 -> {
-                    // NOUVEAU: Le défi 3 compte aussi les divisions
-                    if (!roseData.roseDivisions.contains(divisionId)) {
-                        roseData.roseDivisions.add(divisionId)
-                        println("Rosier - Division défi 3! Total: ${roseData.roseDivisions.size}/8")
+            }
+            "IRIS" -> {
+                // NOUVEAU: Gestion des ramifications d'iris
+                when (challenge.id) {
+                    2 -> {
+                        if (!irisData.irisRamifications.contains(divisionId)) {
+                            irisData.irisRamifications.add(divisionId)
+                            println("Iris - Ramification créée! Total: ${irisData.irisRamifications.size}/8")
+                        }
+                    }
+                    3 -> {
+                        if (!irisData.irisRamifications.contains(divisionId)) {
+                            irisData.irisRamifications.add(divisionId)
+                            println("Iris - Ramification défi 3! Total: ${irisData.irisRamifications.size}/6")
+                        }
                     }
                 }
             }
@@ -287,6 +343,12 @@ class ChallengeManager(private val context: Context? = null) {
                 lupinData.lupinCompleteStems,
                 lupinData.lupinFlowers
             )
+            "IRIS" -> definitions.checkIrisChallenge(  // NOUVEAU
+                challenge.id,
+                irisData.irisFlowersInZone,
+                irisData.irisRamifications,
+                irisData.irisTotalFlowers
+            )
             else -> false
         }
         
@@ -337,6 +399,12 @@ class ChallengeManager(private val context: Context? = null) {
                 lupinData.lupinCompleteStems,
                 lupinData.lupinFlowers
             )
+            "IRIS" -> definitions.getIrisSuccessMessage(  // NOUVEAU
+                challengeId,
+                irisData.irisFlowersInZone,
+                irisData.irisRamifications,
+                irisData.irisTotalFlowers
+            )
             else -> "Défi réussi!"
         }
     }
@@ -363,6 +431,12 @@ class ChallengeManager(private val context: Context? = null) {
                 lupinData.lupinCompleteStems,
                 lupinData.lupinFlowers
             )
+            "IRIS" -> definitions.getIrisFailMessage(  // NOUVEAU
+                challengeId,
+                irisData.irisFlowersInZone,
+                irisData.irisRamifications,
+                irisData.irisTotalFlowers
+            )
             else -> "Défi échoué!"
         }
     }
@@ -386,6 +460,7 @@ class ChallengeManager(private val context: Context? = null) {
                 "ROSE" -> unlockRoseFlower()
                 "LUPIN" -> unlockLupinFlower()
                 "IRIS" -> unlockIrisFlower()
+                "ORCHIDEE" -> unlockOrchideeFlower()  // Pour le futur
             }
         }
     }
@@ -404,10 +479,18 @@ class ChallengeManager(private val context: Context? = null) {
         }
     }
     
+    // NOUVEAU: Déblocage de l'iris
     private fun unlockIrisFlower() {
         if (unlockedFlowers.none { it.flowerType == "IRIS" }) {
             unlockedFlowers.add(UnlockedFlower("IRIS", "Défi 3 Lupin complété"))
             println("🌺 IRIS DÉBLOQUÉ!")
+        }
+    }
+    
+    private fun unlockOrchideeFlower() {
+        if (unlockedFlowers.none { it.flowerType == "ORCHIDEE" }) {
+            unlockedFlowers.add(UnlockedFlower("ORCHIDEE", "Défi 3 Iris complété"))
+            println("🌸 ORCHIDÉE DÉBLOQUÉE!")
         }
     }
     
@@ -432,6 +515,7 @@ class ChallengeManager(private val context: Context? = null) {
         saveFlowerChallenges(editor, "marguerite", definitions.margueriteChallenges)
         saveFlowerChallenges(editor, "rose", definitions.roseChallenges)
         saveFlowerChallenges(editor, "lupin", definitions.lupinChallenges)
+        saveFlowerChallenges(editor, "iris", definitions.irisChallenges)  // NOUVEAU
         
         // Sauvegarder les fleurs débloquées
         editor.putInt("unlocked_flowers_count", unlockedFlowers.size)
@@ -461,6 +545,7 @@ class ChallengeManager(private val context: Context? = null) {
         loadFlowerChallenges(prefs, "marguerite", definitions.margueriteChallenges)
         loadFlowerChallenges(prefs, "rose", definitions.roseChallenges)
         loadFlowerChallenges(prefs, "lupin", definitions.lupinChallenges)
+        loadFlowerChallenges(prefs, "iris", definitions.irisChallenges)  // NOUVEAU
         
         // Charger les fleurs débloquées
         unlockedFlowers.clear()
@@ -500,7 +585,7 @@ class ChallengeManager(private val context: Context? = null) {
     
     fun resetAllChallenges() {
         // Reset tous les défis via ChallengeDefinitions
-        for (challenges in listOf(definitions.margueriteChallenges, definitions.roseChallenges, definitions.lupinChallenges)) {
+        for (challenges in listOf(definitions.margueriteChallenges, definitions.roseChallenges, definitions.lupinChallenges, definitions.irisChallenges)) {
             challenges.forEach { 
                 it.isCompleted = false
                 it.isUnlocked = (it.id == 1)
@@ -518,7 +603,7 @@ class ChallengeManager(private val context: Context? = null) {
         println("🎮 MODE CHEAT ACTIVÉ!")
         
         // Débloquer tous les défis via ChallengeDefinitions
-        for (challenges in listOf(definitions.margueriteChallenges, definitions.roseChallenges, definitions.lupinChallenges)) {
+        for (challenges in listOf(definitions.margueriteChallenges, definitions.roseChallenges, definitions.lupinChallenges, definitions.irisChallenges)) {
             challenges.forEach {
                 it.isCompleted = true
                 it.isUnlocked = true
@@ -530,7 +615,7 @@ class ChallengeManager(private val context: Context? = null) {
         unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
         unlockedFlowers.add(UnlockedFlower("ROSE", "Débloquée par cheat code"))
         unlockedFlowers.add(UnlockedFlower("LUPIN", "Débloqué par cheat code"))
-        unlockedFlowers.add(UnlockedFlower("IRIS", "Débloqué par cheat code"))
+        unlockedFlowers.add(UnlockedFlower("IRIS", "Débloqué par cheat code"))  // NOUVEAU
         
         saveChallengeProgress()
         
