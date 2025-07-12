@@ -181,6 +181,7 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
             flowers.add("IRIS")
         }
         
+        println("Fleurs débloquées: $flowers") // DEBUG
         return flowers
     }
     
