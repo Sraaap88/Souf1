@@ -254,14 +254,14 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     // ==================== CRÉATION DES TIGES ====================
     
     private fun createMainStem() {
-        val stemCount = 2 + (Math.random() * 4).toInt() // 2 à 5 tiges
-        val radius = 160f
+        val stemCount = 3 + (Math.random() * 4).toInt() // 3 à 6 tiges
+        val radius = 320f // 2X plus grand pour plus d'espacement
         
         for (i in 0 until stemCount) {
             val angle = Math.random() * 2 * PI
-            val distance = Math.random() * radius + 80f
+            val distance = Math.random() * radius + 160f // Distance minimale 2X plus grande
             var stemX = baseX + (cos(angle) * distance).toFloat()
-            var stemY = baseY + (Math.random().toFloat() - 0.5f) * 40f
+            var stemY = baseY + (Math.random().toFloat() - 0.5f) * 80f // Plus de variation Y
             
             stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             
@@ -283,24 +283,24 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     private fun createNewStemGroup(groupNumber: Int) {
-        val baseRadius = 240f + groupNumber * 80f
+        val baseRadius = 480f + groupNumber * 160f  // 2X plus espacé
         val groupAngle = Math.random() * 2 * PI
-        val groupDistance = Math.random() * baseRadius + 120f
+        val groupDistance = Math.random() * baseRadius + 240f  // Distance minimale 2X plus grande
         
         var groupBaseX = baseX + (cos(groupAngle) * groupDistance).toFloat()
-        var groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 60f
+        var groupBaseY = baseY + (Math.random().toFloat() - 0.5f) * 120f  // Plus de variation Y
         
         groupBaseX = groupBaseX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
         
-        val stemCount = 2 + (Math.random() * 4).toInt()
+        val stemCount = 3 + (Math.random() * 4).toInt() // 3 à 6 tiges
         
         for (i in 0 until stemCount) {
-            val localRadius = 160f + Math.random().toFloat() * 120f
+            val localRadius = 320f + Math.random().toFloat() * 240f  // 2X plus espacé localement
             val localAngle = Math.random() * 2 * PI
-            val localDistance = Math.random() * localRadius + 60f
+            val localDistance = Math.random() * localRadius + 120f  // Distance minimale 2X plus grande
             
             var stemX = groupBaseX + (cos(localAngle) * localDistance).toFloat()
-            var stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 50f
+            var stemY = groupBaseY + (Math.random().toFloat() - 0.5f) * 100f
             
             stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             
@@ -418,13 +418,13 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
                 break
             }
         }
-        return count.coerceAtLeast(2).coerceAtMost(5)
+        return count.coerceAtLeast(3).coerceAtMost(6)
     }
     
     private fun getGroupIndexAndSize(groupIndex: Int): Pair<Int, Int> {
         val mainGroupSize = getMainGroupSize()
         val startIndex = mainGroupSize + (groupIndex - 1) * 3
-        return Pair(startIndex, (2 + (Math.random() * 4).toInt()).coerceAtMost(stems.size - startIndex))
+        return Pair(startIndex, (3 + (Math.random() * 4).toInt()).coerceAtMost(stems.size - startIndex))
     }
     
     // ==================== CRÉATION ET CROISSANCE DES FEUILLES ====================
@@ -440,10 +440,16 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
             
             if (stem.currentHeight < 40f) continue
             
-            val leafCount = 3
+            // Plus de feuilles pour les tiges hautes (5-7 feuilles)
+            val leafCount = if (stem.currentHeight > stem.maxHeight * 0.6f) {
+                5 + (Math.random() * 3).toInt() // 5 à 7 feuilles pour les hautes tiges
+            } else {
+                3 + (Math.random() * 2).toInt() // 3 à 4 feuilles pour les petites tiges
+            }
             
             for (i in 0 until leafCount) {
-                val heightRatio = 0.3f + (i.toFloat() / leafCount) * 0.4f
+                // Répartir les feuilles sur toute la hauteur de la tige
+                val heightRatio = 0.2f + (i.toFloat() / leafCount) * 0.6f // De 20% à 80% de la hauteur
                 val size = baseLeafSize + Math.random().toFloat() * 10f
                 val angle = (Math.random().toFloat() - 0.5f) * 40f // Angle plus droit
                 
@@ -473,7 +479,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
                 val leafCount = 1 + (Math.random() * 2).toInt()
                 for (i in 0 until leafCount) {
                     val heightRatio = 0.5f + (i.toFloat() / leafCount) * 0.4f
-                    val size = baseLeafSize * 0.6f + Math.random().toFloat() * 5f
+                    val size = baseLeafSize * 2.0f + Math.random().toFloat() * 20f // 2X plus grandes
                     val angle = (Math.random().toFloat() - 0.5f) * 40f
                     
                     val leaf = LupinLeaf(
