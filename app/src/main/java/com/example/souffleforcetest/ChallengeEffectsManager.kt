@@ -50,7 +50,7 @@ class ChallengeEffectsManager {
     // ==================== GESTION DES EFFETS ====================
     
     fun startFireworks() {
-        fireworkManager?.startFireworks()  // CORRIGÉ: Utiliser la vraie méthode
+        fireworkManager?.startFirework()  // CORRIGÉ: startFirework() - méthode réelle
         onFireworkStartedCallback?.invoke()
     }
     
@@ -63,8 +63,8 @@ class ChallengeEffectsManager {
     }
     
     fun stopAllEffects() {
-        fireworkManager?.stopFireworks()  // CORRIGÉ: Utiliser la vraie méthode
-        rainManager?.stopRain()           // CORRIGÉ: Utiliser la vraie méthode
+        fireworkManager?.stop()  // CORRIGÉ: stop() - méthode réelle
+        rainManager?.stop()      // CORRIGÉ: stop() - méthode réelle
         
         // Reset de toutes les dissolutions
         dissolveStates.clear()
@@ -76,7 +76,7 @@ class ChallengeEffectsManager {
         
         // Mettre à jour la dissolution pour toutes les fleurs actives
         for ((flowerType, challengeData) in dissolveStates) {
-            if (rainManager?.isRainActive() == true) {  // CORRIGÉ: Utiliser la vraie méthode
+            if (rainManager?.isPlaying() == true) {  // CORRIGÉ: isPlaying() - méthode réelle
                 updateDissolveProgress(deltaTime * 0.5f, challengeData) // Vitesse de dissolution
             }
         }
@@ -165,7 +165,7 @@ class ChallengeEffectsManager {
     
     // ==================== GETTERS D'ÉTAT ====================
     
-    fun isFireworksActive(): Boolean = fireworkManager?.isFireworksActive() ?: false  // CORRIGÉ: Utiliser la vraie méthode
-    fun isRainActive(): Boolean = rainManager?.isRainActive() ?: false                // CORRIGÉ: Utiliser la vraie méthode
+    fun isFireworksActive(): Boolean = fireworkManager?.isPlaying() ?: false  // CORRIGÉ: isPlaying() - méthode réelle
+    fun isRainActive(): Boolean = rainManager?.isPlaying() ?: false           // CORRIGÉ: isPlaying() - méthode réelle
     fun isAnyEffectActive(): Boolean = isFireworksActive() || isRainActive()
 }
