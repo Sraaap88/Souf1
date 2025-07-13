@@ -270,9 +270,11 @@ class OrganicLineView @JvmOverloads constructor(
                 lightState == LightState.GREEN_FLOWER || 
                 lightState == LightState.RED) {
                 
+                // NOUVEAU: Récupérer dissolveInfo et le passer à drawPlants
+                val dissolveInfo = challengeEffectsManager?.getDissolveInfo(selectedFlowerType)
                 interactionHandler?.drawPlants(
                     canvas, selectedFlowerType, lightState,
-                    plantStem, roseBushManager, lupinManager, irisManager, uiDrawing!!
+                    plantStem, roseBushManager, lupinManager, irisManager, uiDrawing!!, dissolveInfo
                 )
             }
             
