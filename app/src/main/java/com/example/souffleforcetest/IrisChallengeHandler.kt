@@ -2,7 +2,7 @@ package com.example.souffleforcetest
 
 class IrisChallengeHandler {
     
-    // ==================== LOGIQUE DES DÉFIS IRIS ====================
+    // ==================== LOGIQUE DES DÉFIS IRIS CORRIGÉE ====================
     
     fun updateChallenge(
         challengeId: Int, 
@@ -17,7 +17,7 @@ class IrisChallengeHandler {
         }
     }
     
-    // ==================== NOUVEAU: SUPPORT DISSOLUTION ====================
+    // ==================== SUPPORT DISSOLUTION ====================
     
     /**
      * Fonction appelée pour déclencher la dissolution des iris lors d'un échec
@@ -115,6 +115,8 @@ class IrisChallengeHandler {
         challengeData["currentPhase"] = plantState
     }
     
+    // ==================== CONDITIONS DE DÉFIS CORRIGÉES ====================
+    
     fun checkChallenge(
         challengeId: Int,
         irisFlowersInZone: List<String>,
@@ -122,9 +124,18 @@ class IrisChallengeHandler {
         irisTotalFlowers: List<String>
     ): Boolean {
         return when (challengeId) {
-            1 -> irisFlowersInZone.size >= 4 // Inchangé
-            2 -> irisTotalFlowers.size >= 10 && irisFlowersInZone.size >= 6 // 10 total + 6 en zone
-            3 -> irisTotalFlowers.size >= 16 && irisFlowersInZone.size >= 8 // 16 total + 8 en zone
+            1 -> {
+                // DÉFI 1 CORRIGÉ: 4 iris en zone centrale (2 pouces de haut)
+                irisFlowersInZone.size >= 4
+            }
+            2 -> {
+                // DÉFI 2 CORRIGÉ: 10 iris total avec ramifications en zone centrale
+                irisTotalFlowers.size >= 10 && irisFlowersInZone.size >= 6
+            }
+            3 -> {
+                // DÉFI 3 CORRIGÉ: 16 iris total dont 8 en zone centrale (2 pouces)
+                irisTotalFlowers.size >= 16 && irisFlowersInZone.size >= 8
+            }
             else -> false
         }
     }
@@ -136,8 +147,8 @@ class IrisChallengeHandler {
         irisTotalFlowers: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi réussi! ${irisFlowersInZone.size} iris élégants en zone centrale!"
-            2 -> "Défi réussi! ${irisTotalFlowers.size} iris au total dont ${irisFlowersInZone.size} en zone spécifique!"
+            1 -> "Défi réussi! ${irisFlowersInZone.size} iris élégants en zone centrale (2 pouces)!"
+            2 -> "Défi réussi! ${irisTotalFlowers.size} iris au total dont ${irisFlowersInZone.size} en zone centrale!"
             3 -> "Défi réussi! ${irisTotalFlowers.size} iris magnifiques dont ${irisFlowersInZone.size} en zone centrale!\n🌸 ORCHIDÉE DÉBLOQUÉE!"
             else -> "Défi réussi!"
         }
@@ -150,8 +161,8 @@ class IrisChallengeHandler {
         irisTotalFlowers: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi échoué - Seulement ${irisFlowersInZone.size}/4 iris en zone centrale!"
-            2 -> "Défi échoué - ${irisTotalFlowers.size}/10 iris total et ${irisFlowersInZone.size}/6 en zone spécifique!"
+            1 -> "Défi échoué - Seulement ${irisFlowersInZone.size}/4 iris en zone centrale (2 pouces)!"
+            2 -> "Défi échoué - ${irisTotalFlowers.size}/10 iris total et ${irisFlowersInZone.size}/6 en zone centrale!"
             3 -> "Défi échoué - ${irisTotalFlowers.size}/16 iris total et ${irisFlowersInZone.size}/8 en zone centrale!"
             else -> "Défi échoué!"
         }
