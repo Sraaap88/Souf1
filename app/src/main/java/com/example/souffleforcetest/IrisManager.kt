@@ -371,7 +371,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     private fun growExistingLeaves(stem: IrisStem, force: Float) {
         for (leaf in stem.leaves) {
             if (leaf.growthProgress < 1f) {
-                val growth = force * 0.05f // 5x plus rapide (0.01f → 0.05f)
+                val growth = force * 0.025f // 50% moins vite (0.05f → 0.025f)
                 leaf.growthProgress = (leaf.growthProgress + growth).coerceAtMost(1f)
             }
         }
