@@ -7,7 +7,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.*
- 
+
 class OrganicLineView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -235,7 +235,7 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.CHALLENGE_RESULT -> {
-                if (elapsedTime >= 4000) {
+                if (elapsedTime >= 3000) { // CORRIGÉ: 3 secondes au lieu de 4 - pluie démarre 1 seconde plus tôt
                     lightState = LightState.RED
                     stateStartTime = currentTime
                     
