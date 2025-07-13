@@ -85,4 +85,67 @@ class RoseChallengeHandler {
             else -> "Défi échoué!"
         }
     }
+    
+    // ==================== NOUVEAU: SUPPORT DISSOLUTION ====================
+    
+    /**
+     * Fonction appelée pour déclencher la dissolution des roses lors d'un échec
+     * @param dissolveProgress Progression de la dissolution (0.0 = intact, 1.0 = complètement dissous)
+     */
+    fun updateDissolveProgress(dissolveProgress: Float, challengeData: MutableMap<String, Any>) {
+        challengeData["dissolveProgress"] = dissolveProgress.coerceIn(0f, 1f)
+        
+        // Effets spécifiques aux roses lors de la dissolution
+        if (dissolveProgress > 0.2f) {
+            challengeData["petalsDrooping"] = true // Les pétales s'affaissent
+        }
+        if (dissolveProgress > 0.4f) {
+            challengeData["thornsWeakening"] = true // Les épines s'affaiblissent
+        }
+        if (dissolveProgress > 0.7f) {
+            challengeData["branchesDissolving"] = true // Les branches se dissolvent
+        }
+        if (dissolveProgress >= 1f) {
+            challengeData["fullyDissolved"] = true // Complètement dissous
+        }
+    }
+    
+    /**
+     * Retourne le niveau de dissolution actuel
+     */
+    fun getDissolveProgress(challengeData: MutableMap<String, Any>): Float {
+        return challengeData["dissolveProgress"] as? Float ?: 0f
+    }
+    
+    /**
+     * Indique si les pétales doivent s'affaisser
+     */
+    fun shouldPetalsDroop(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["petalsDrooping"] as? Boolean ?: false
+    }
+    
+    /**
+     * Indique si les épines doivent s'affaiblir
+     */
+    fun shouldThornsWeaken(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["thornsWeakening"] as? Boolean ?: false
+    }
+    
+    /**
+     * Indique si les branches doivent se dissoudre
+     */
+    fun shouldBranchesDissolve(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["branchesDissolving"] as? Boolean ?: false
+    }
+    
+    /**
+     * Reset de la dissolution pour un nouveau défi
+     */
+    fun resetDissolveEffects(challengeData: MutableMap<String, Any>) {
+        challengeData.remove("dissolveProgress")
+        challengeData.remove("petalsDrooping")
+        challengeData.remove("thornsWeakening")
+        challengeData.remove("branchesDissolving")
+        challengeData.remove("fullyDissolved")
+    }
 }
