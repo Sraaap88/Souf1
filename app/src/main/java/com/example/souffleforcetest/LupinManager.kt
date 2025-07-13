@@ -208,8 +208,8 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
     }
     
     fun drawLupin(canvas: Canvas, stemPaint: Paint, leafPaint: Paint, flowerPaint: Paint, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
-        // Déléguer le rendu au LupinRenderer
-        renderer.drawLupin(canvas, stemPaint, leafPaint, flowerPaint, stems, leaves)
+        // CORRIGÉ: Passer dissolveInfo au LupinRenderer
+        renderer.drawLupin(canvas, stemPaint, leafPaint, flowerPaint, stems, leaves, dissolveInfo)
     }
     
     // ==================== SYSTÈME ORDRE ALÉATOIRE ====================
