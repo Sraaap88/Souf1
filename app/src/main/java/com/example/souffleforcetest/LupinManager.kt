@@ -326,29 +326,23 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         setupRandomStemOrder()
     }
     
-    // NOUVEAU: Fonction de rendu optimisée
     fun drawLupin(canvas: Canvas, stemPaint: Paint, leafPaint: Paint, flowerPaint: Paint, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
-        optimizer.startFrame()
-        
-        // Filtrer les éléments visibles avant de les passer au renderer
-        val visibleStems = stems.filter { optimizer.isStemVisible(it) }
-        
+        // OPTIMISATION SIMPLE: Filtrer les feuilles hors écran avant de dessiner
+        val screenBounds = android.graphics.Rect(0, 0, screenWidth, screenHeight)
         val visibleLeaves = leaves.filter { leaf ->
+            // Estimer la position de la feuille rapidement
             val stem = stems.getOrNull(leaf.stemIndex)
-            val isVisible = stem != null && optimizer.isLeafVisible(leaf, stem)
-            optimizer.countLeaf(isVisible)
-            isVisible
+            if (stem != null && stem.points.isNotEmpty()) {
+                val stemY = stem.baseY - (stem.currentHeight * leaf.heightRatio)
+                val leafSize = leaf.currentSize
+                // Vérifier si la feuille est potentiellement visible (avec marge)
+                stemY > -leafSize && stemY < screenHeight + leafSize &&
+                stem.baseX > -leafSize && stem.baseX < screenWidth + leafSize
+            } else false
         }
         
-        val visibleFlowers = stems.flatMap { stem ->
-            stem.flowerSpike.flowers.filter { optimizer.isFlowerVisible(it) }
-        }
-        
-        // Debug performance (optionnel - retirez en production)
-        // println(optimizer.getOptimizationStats())
-        
-        // Passer seulement les éléments visibles au renderer
-        renderer.drawLupinOptimized(canvas, stemPaint, leafPaint, flowerPaint, visibleStems, visibleLeaves, visibleFlowers, dissolveInfo)
+        // Passer seulement les feuilles potentiellement visibles
+        renderer.drawLupin(canvas, stemPaint, leafPaint, flowerPaint, stems, visibleLeaves, dissolveInfo)
     }
     
     // ==================== SYSTÈME ORDRE ALÉATOIRE ====================
