@@ -1,5 +1,5 @@
 package com.example.souffleforcetest
- 
+
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -270,38 +270,97 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
         }
     }
     
-    // ==================== RENDU DES PLANTES ====================
+    // ==================== RENDU DES PLANTES - VERSIONS ORIGINALES (RÉTROCOMPATIBILITÉ) ====================
     
     fun drawMainStem(canvas: Canvas, mainStem: List<PlantStem.StemPoint>) {
+        drawMainStemWithDissolution(canvas, mainStem, null)
+    }
+    
+    fun drawBranches(canvas: Canvas, branches: List<PlantStem.Branch>) {
+        drawBranchesWithDissolution(canvas, branches, null)
+    }
+    
+    fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>, stem: PlantStem) {
+        drawLeavesWithDissolution(canvas, leaves, stem, null)
+    }
+    
+    fun drawBackgroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem) {
+        drawBackgroundFlowersWithDissolution(canvas, flowers, stem, null)
+    }
+    
+    fun drawForegroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem) {
+        drawForegroundFlowersWithDissolution(canvas, flowers, stem, null)
+    }
+    
+    // ==================== RENDU DES PLANTES - NOUVELLES VERSIONS AVEC DISSOLUTION ====================
+    
+    fun drawMainStemWithDissolution(canvas: Canvas, mainStem: List<PlantStem.StemPoint>, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         if (mainStem.size < 2) return
         
         stemPaint.color = Color.rgb(50, 120, 50)
+        
+        // Appliquer dissolution si présente
+        if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+            val alpha = ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+            stemPaint.alpha = alpha
+            
+            if (dissolveInfo.stemsCollapsing) {
+                val shrivelingFactor = dissolveInfo.progress
+                val red = (50 + (139 - 50) * shrivelingFactor).toInt()
+                val green = (120 * (1f - shrivelingFactor * 0.6f)).toInt()
+                val blue = (50 * (1f - shrivelingFactor * 0.8f)).toInt()
+                stemPaint.color = Color.rgb(red, green, blue)
+            }
+        } else {
+            stemPaint.alpha = 255
+        }
         
         for (i in 1 until mainStem.size) {
             val point = mainStem[i]
             val prevPoint = mainStem[i - 1]
             
-            stemPaint.strokeWidth = point.thickness
+            var strokeWidth = point.thickness
+            if (dissolveInfo?.stemsCollapsing == true) {
+                strokeWidth *= (1f - dissolveInfo.progress * 0.4f)
+            }
+            stemPaint.strokeWidth = strokeWidth
             
             val adjustedX = point.x + point.oscillation + point.permanentWave
             val prevAdjustedX = prevPoint.x + prevPoint.oscillation + prevPoint.permanentWave
             
+            // Effet d'affaissement
+            var finalX = adjustedX
+            var finalY = point.y
+            if (dissolveInfo?.stemsCollapsing == true) {
+                val bendFactor = dissolveInfo.progress * 15f
+                val heightRatio = i.toFloat() / mainStem.size
+                finalX += bendFactor * heightRatio * heightRatio
+                finalY += bendFactor * 0.3f * heightRatio
+            }
+            
             if (i == 1) {
-                canvas.drawLine(prevAdjustedX, prevPoint.y, adjustedX, point.y, stemPaint)
+                canvas.drawLine(prevAdjustedX, prevPoint.y, finalX, finalY, stemPaint)
             } else {
-                val controlX = (prevAdjustedX + adjustedX) / 2f
-                val controlY = (prevPoint.y + point.y) / 2f
-                val curvatureOffset = (adjustedX - prevAdjustedX) * 0.3f
+                val controlX = (prevAdjustedX + finalX) / 2f
+                val controlY = (prevPoint.y + finalY) / 2f
+                val curvatureOffset = (finalX - prevAdjustedX) * 0.3f
                 val finalControlX = controlX + curvatureOffset
                 
                 canvas.drawLine(prevAdjustedX, prevPoint.y, finalControlX, controlY, stemPaint)
-                canvas.drawLine(finalControlX, controlY, adjustedX, point.y, stemPaint)
+                canvas.drawLine(finalControlX, controlY, finalX, finalY, stemPaint)
             }
         }
     }
     
-    fun drawBranches(canvas: Canvas, branches: List<PlantStem.Branch>) {
+    fun drawBranchesWithDissolution(canvas: Canvas, branches: List<PlantStem.Branch>, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         branchPaint.color = Color.rgb(40, 100, 40)
+        
+        if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+            val alpha = ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+            branchPaint.alpha = alpha
+        } else {
+            branchPaint.alpha = 255
+        }
         
         for (branch in branches.filter { it.isActive }) {
             if (branch.points.size >= 2) {
@@ -309,7 +368,11 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                     val point = branch.points[i]
                     val prevPoint = branch.points[i - 1]
                     
-                    branchPaint.strokeWidth = point.thickness
+                    var strokeWidth = point.thickness
+                    if (dissolveInfo?.stemsCollapsing == true) {
+                        strokeWidth *= (1f - dissolveInfo.progress * 0.5f)
+                    }
+                    branchPaint.strokeWidth = strokeWidth
                     
                     if (i == 1 || branch.points.size <= 2) {
                         canvas.drawLine(prevPoint.x, prevPoint.y, point.x, point.y, branchPaint)
@@ -324,10 +387,31 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
         }
     }
     
-    fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>, stem: PlantStem) {
+    fun drawLeavesWithDissolution(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>, stem: PlantStem, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
+        if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+            val alpha = ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+            leafPaint.alpha = alpha
+        } else {
+            leafPaint.alpha = 255
+        }
+        
         for (leaf in leaves) {
             if (leaf.currentSize > 0) {
-                leafPaint.color = stem.getLeavesManager().getLeafColor(leaf)
+                var leafColor = stem.getLeavesManager().getLeafColor(leaf)
+                
+                if (dissolveInfo?.leavesShriveling == true) {
+                    val shrivelingFactor = dissolveInfo.progress
+                    val originalRed = Color.red(leafColor)
+                    val originalGreen = Color.green(leafColor)
+                    val originalBlue = Color.blue(leafColor)
+                    
+                    val red = (originalRed + (139 - originalRed) * shrivelingFactor).toInt()
+                    val green = (originalGreen * (1f - shrivelingFactor * 0.7f)).toInt()
+                    val blue = (originalBlue * (1f - shrivelingFactor * 0.8f)).toInt()
+                    leafColor = Color.rgb(red, green, blue)
+                }
+                
+                leafPaint.color = leafColor
                 val leafPath = stem.getLeavesManager().createLeafPath(leaf)
                 canvas.drawPath(leafPath, leafPaint)
                 
@@ -342,18 +426,121 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
         }
     }
     
-    fun drawBackgroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem) {
+    fun drawBackgroundFlowersWithDissolution(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         val backgroundFlowers = flowers.filter { it.perspective.viewAngle > 60f }
         if (backgroundFlowers.isNotEmpty()) {
-            stem.getFlowerManager().drawSpecificFlowers(canvas, backgroundFlowers, flowerPaint, flowerCenterPaint)
+            drawFlowersWithDissolution(canvas, backgroundFlowers, stem, dissolveInfo)
         }
     }
     
-    fun drawForegroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem) {
+    fun drawForegroundFlowersWithDissolution(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         val foregroundFlowers = flowers.filter { it.perspective.viewAngle <= 60f }
         if (foregroundFlowers.isNotEmpty()) {
-            stem.getFlowerManager().drawSpecificFlowers(canvas, foregroundFlowers, flowerPaint, flowerCenterPaint)
+            drawFlowersWithDissolution(canvas, foregroundFlowers, stem, dissolveInfo)
         }
+    }
+    
+    private fun drawFlowersWithDissolution(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
+        for (flower in flowers) {
+            if (flower.currentSize > 0) {
+                drawMargueriteWithDissolution(canvas, flower, dissolveInfo)
+            }
+        }
+    }
+    
+    private fun drawMargueriteWithDissolution(canvas: Canvas, flower: FlowerManager.Flower, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
+        var flowerSize = flower.currentSize
+        
+        // Réduire la taille si dissolution
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            val wiltFactor = 1f - dissolveInfo.progress * 0.9f
+            flowerSize *= wiltFactor
+        }
+        
+        val baseAlpha = if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+            ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+        } else 255
+        
+        canvas.save()
+        canvas.translate(flower.x, flower.y)
+        
+        // Couleur des pétales
+        var petalRed = 255
+        var petalGreen = 255
+        var petalBlue = 255
+        
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            val wiltFactor = dissolveInfo.progress
+            petalRed = (255 * (1f - wiltFactor * 0.3f)).toInt()
+            petalGreen = (255 * (1f - wiltFactor * 0.4f)).toInt()
+            petalBlue = (255 * (1f - wiltFactor * 0.2f)).toInt()
+        }
+        
+        // Pétales (moins nombreux si dissolution)
+        val maxPetals = if (dissolveInfo?.flowersPetalsWilting == true) {
+            (8 * (1f - dissolveInfo.progress * 0.6f)).toInt().coerceAtLeast(3)
+        } else 8
+        
+        flowerPaint.color = Color.rgb(petalRed, petalGreen, petalBlue)
+        flowerPaint.style = Paint.Style.FILL
+        flowerPaint.alpha = baseAlpha
+        
+        for (i in 0 until maxPetals) {
+            val angle = (i * 360f / maxPetals) * Math.PI.toFloat() / 180f
+            val petalLength = flowerSize * 0.6f
+            val petalWidth = flowerSize * 0.15f
+            
+            // Pétales qui tombent
+            var petalAlpha = baseAlpha
+            if (dissolveInfo?.flowersPetalsWilting == true) {
+                val petalWiltChance = dissolveInfo.progress + (i.toFloat() / maxPetals) * 0.3f
+                if (petalWiltChance > 0.7f) {
+                    petalAlpha = (petalAlpha * (1f - (petalWiltChance - 0.7f) / 0.3f)).toInt().coerceAtLeast(0)
+                }
+            }
+            flowerPaint.alpha = petalAlpha
+            
+            canvas.save()
+            canvas.rotate(angle * 180f / Math.PI.toFloat())
+            
+            // Pétales qui s'affaissent
+            var adjustedLength = petalLength
+            if (dissolveInfo?.flowersPetalsWilting == true) {
+                adjustedLength *= (1f - dissolveInfo.progress * 0.5f)
+            }
+            
+            canvas.drawOval(
+                -petalWidth / 2f, flowerSize * 0.1f,
+                petalWidth / 2f, flowerSize * 0.1f + adjustedLength,
+                flowerPaint
+            )
+            
+            canvas.restore()
+        }
+        
+        // Centre
+        var centerRed = 255
+        var centerGreen = 255
+        var centerBlue = 0
+        
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            val wiltFactor = dissolveInfo.progress
+            centerRed = (255 * (1f - wiltFactor * 0.5f)).toInt()
+            centerGreen = (255 * (1f - wiltFactor * 0.6f)).toInt()
+            centerBlue = (0 + (100 * wiltFactor)).toInt()
+        }
+        
+        flowerCenterPaint.color = Color.rgb(centerRed, centerGreen, centerBlue)
+        flowerCenterPaint.alpha = baseAlpha
+        
+        var centerSize = flowerSize * 0.2f
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            centerSize *= (1f - dissolveInfo.progress * 0.3f)
+        }
+        
+        canvas.drawCircle(0f, 0f, centerSize, flowerCenterPaint)
+        
+        canvas.restore()
     }
     
     // ==================== ZONES CIBLES POUR DÉFIS ====================
