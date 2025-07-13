@@ -115,8 +115,9 @@ class PlantInteractionHandler(
         }
     }
     
-    // ==================== GESTION DE L'AFFICHAGE ====================
+    // ==================== GESTION DE L'AFFICHAGE AVEC DISSOLUTION ====================
     
+    // NOUVEAU: Signature mise à jour avec dissolveInfo
     fun drawPlants(
         canvas: Canvas,
         selectedFlowerType: String,
@@ -125,13 +126,14 @@ class PlantInteractionHandler(
         roseBushManager: RoseBushManager?,
         lupinManager: LupinManager?,
         irisManager: IrisManager?,
-        uiDrawing: UIDrawingManager
+        uiDrawing: UIDrawingManager,
+        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null  // NOUVEAU paramètre
     ) {
         when (selectedFlowerType) {
-            "MARGUERITE" -> drawPlantStem(canvas, lightState, plantStem, uiDrawing)
-            "ROSE" -> drawRoseBush(canvas, roseBushManager)
-            "LUPIN" -> drawLupin(canvas, lupinManager)
-            "IRIS" -> drawIris(canvas, irisManager)
+            "MARGUERITE" -> drawPlantStem(canvas, lightState, plantStem, uiDrawing, dissolveInfo)
+            "ROSE" -> drawRoseBush(canvas, roseBushManager, dissolveInfo)
+            "LUPIN" -> drawLupin(canvas, lupinManager, dissolveInfo)
+            "IRIS" -> drawIris(canvas, irisManager, dissolveInfo)
         }
     }
     
@@ -139,37 +141,38 @@ class PlantInteractionHandler(
         canvas: Canvas,
         lightState: OrganicLineView.LightState,
         stem: PlantStem?,
-        uiDrawing: UIDrawingManager
+        uiDrawing: UIDrawingManager,
+        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null  // NOUVEAU
     ) {
         stem ?: return
         
         // Dessiner les fleurs de profil/arrière DERRIÈRE les tiges
         if (lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawBackgroundFlowers(canvas, stem.getFlowers(), stem)
+            uiDrawing.drawBackgroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
         }
         
         // Dessiner la tige principale
-        uiDrawing.drawMainStem(canvas, stem.mainStem)
+        uiDrawing.drawMainStem(canvas, stem.mainStem, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
         
         // Dessiner les branches
-        uiDrawing.drawBranches(canvas, stem.branches)
+        uiDrawing.drawBranches(canvas, stem.branches, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
         
         // Dessiner les feuilles pendant GREEN_LEAVES et après
         if (lightState == OrganicLineView.LightState.GREEN_LEAVES || 
             lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawLeaves(canvas, stem.getLeaves(), stem)
+            uiDrawing.drawLeaves(canvas, stem.getLeaves(), stem, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
         }
         
         // Dessiner les fleurs de face/3-4 PAR-DESSUS les tiges
         if (lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawForegroundFlowers(canvas, stem.getFlowers(), stem)
+            uiDrawing.drawForegroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
         }
     }
     
-    private fun drawRoseBush(canvas: Canvas, roseBushManager: RoseBushManager?) {
+    private fun drawRoseBush(canvas: Canvas, roseBushManager: RoseBushManager?, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
         roseBushManager?.let { manager ->
             val branchPaint = Paint().apply {
                 isAntiAlias = true
@@ -187,11 +190,12 @@ class PlantInteractionHandler(
                 style = Paint.Style.FILL
             }
             
-            manager.drawRoseBush(canvas, branchPaint, leafPaint, flowerPaint)
+            // NOUVEAU: Passer dissolveInfo
+            manager.drawRoseBush(canvas, branchPaint, leafPaint, flowerPaint, dissolveInfo)
         }
     }
     
-    private fun drawLupin(canvas: Canvas, lupinManager: LupinManager?) {
+    private fun drawLupin(canvas: Canvas, lupinManager: LupinManager?, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
         lupinManager?.let { manager ->
             val stemPaint = Paint().apply {
                 isAntiAlias = true
@@ -209,11 +213,12 @@ class PlantInteractionHandler(
                 style = Paint.Style.FILL
             }
             
-            manager.drawLupin(canvas, stemPaint, leafPaint, flowerPaint)
+            // NOUVEAU: Passer dissolveInfo
+            manager.drawLupin(canvas, stemPaint, leafPaint, flowerPaint, dissolveInfo)
         }
     }
     
-    private fun drawIris(canvas: Canvas, irisManager: IrisManager?) {
+    private fun drawIris(canvas: Canvas, irisManager: IrisManager?, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
         irisManager?.let { manager ->
             val stemPaint = Paint().apply {
                 isAntiAlias = true
@@ -232,7 +237,8 @@ class PlantInteractionHandler(
             }
             
             val renderer = IrisRenderer()
-            renderer.drawIris(canvas, stemPaint, leafPaint, flowerPaint, manager.getStems(), manager.getFlowers())
+            // NOUVEAU: Passer dissolveInfo
+            renderer.drawIris(canvas, stemPaint, leafPaint, flowerPaint, manager.getStems(), manager.getFlowers(), dissolveInfo)
         }
     }
     
