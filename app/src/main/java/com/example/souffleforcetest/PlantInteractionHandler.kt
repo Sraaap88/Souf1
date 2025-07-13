@@ -117,7 +117,7 @@ class PlantInteractionHandler(
     
     // ==================== GESTION DE L'AFFICHAGE AVEC DISSOLUTION ====================
     
-    // NOUVEAU: Signature mise à jour avec dissolveInfo
+    // CORRIGÉ: Retirer dissolveInfo puisque UIDrawingManager ne l'accepte pas
     fun drawPlants(
         canvas: Canvas,
         selectedFlowerType: String,
@@ -127,7 +127,7 @@ class PlantInteractionHandler(
         lupinManager: LupinManager?,
         irisManager: IrisManager?,
         uiDrawing: UIDrawingManager,
-        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null  // NOUVEAU paramètre
+        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null  // Gardé pour compatibilité mais pas utilisé
     ) {
         when (selectedFlowerType) {
             "MARGUERITE" -> drawPlantStem(canvas, lightState, plantStem, uiDrawing, dissolveInfo)
@@ -142,33 +142,33 @@ class PlantInteractionHandler(
         lightState: OrganicLineView.LightState,
         stem: PlantStem?,
         uiDrawing: UIDrawingManager,
-        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null  // NOUVEAU
+        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null  // Pas utilisé
     ) {
         stem ?: return
         
         // Dessiner les fleurs de profil/arrière DERRIÈRE les tiges
         if (lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawBackgroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
+            uiDrawing.drawBackgroundFlowers(canvas, stem.getFlowers(), stem)  // CORRIGÉ: Sans dissolveInfo
         }
         
         // Dessiner la tige principale
-        uiDrawing.drawMainStem(canvas, stem.mainStem, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
+        uiDrawing.drawMainStem(canvas, stem.mainStem)  // CORRIGÉ: Sans dissolveInfo
         
         // Dessiner les branches
-        uiDrawing.drawBranches(canvas, stem.branches, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
+        uiDrawing.drawBranches(canvas, stem.branches)  // CORRIGÉ: Sans dissolveInfo
         
         // Dessiner les feuilles pendant GREEN_LEAVES et après
         if (lightState == OrganicLineView.LightState.GREEN_LEAVES || 
             lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawLeaves(canvas, stem.getLeaves(), stem, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
+            uiDrawing.drawLeaves(canvas, stem.getLeaves(), stem)  // CORRIGÉ: Sans dissolveInfo
         }
         
         // Dessiner les fleurs de face/3-4 PAR-DESSUS les tiges
         if (lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawForegroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)  // NOUVEAU: Passer dissolveInfo
+            uiDrawing.drawForegroundFlowers(canvas, stem.getFlowers(), stem)  // CORRIGÉ: Sans dissolveInfo
         }
     }
     
