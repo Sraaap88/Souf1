@@ -130,7 +130,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             
             val heightVariation = 0.8f + Random.nextFloat() * 0.6f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation 0.8f
+            val maxHeight = screenHeight * maxStemHeight * heightVariation * 0.8f
             
             val stem = IrisStem(
                 id = nextStemId++,
