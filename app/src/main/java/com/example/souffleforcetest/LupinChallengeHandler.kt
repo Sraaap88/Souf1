@@ -82,4 +82,67 @@ class LupinChallengeHandler {
             else -> "Défi échoué!"
         }
     }
+    
+    // ==================== NOUVEAU: SUPPORT DISSOLUTION ====================
+    
+    /**
+     * Fonction appelée pour déclencher la dissolution des lupins lors d'un échec
+     * @param dissolveProgress Progression de la dissolution (0.0 = intact, 1.0 = complètement dissous)
+     */
+    fun updateDissolveProgress(dissolveProgress: Float, challengeData: MutableMap<String, Any>) {
+        challengeData["dissolveProgress"] = dissolveProgress.coerceIn(0f, 1f)
+        
+        // Effets spécifiques aux lupins lors de la dissolution
+        if (dissolveProgress > 0.25f) {
+            challengeData["spikesWilting"] = true // Les épis commencent à flétrir
+        }
+        if (dissolveProgress > 0.5f) {
+            challengeData["colorsBlending"] = true // Les couleurs se mélangent/ternissent
+        }
+        if (dissolveProgress > 0.75f) {
+            challengeData["stemsCollapsing"] = true // Les tiges s'effondrent
+        }
+        if (dissolveProgress >= 1f) {
+            challengeData["fullyDissolved"] = true // Complètement dissous
+        }
+    }
+    
+    /**
+     * Retourne le niveau de dissolution actuel
+     */
+    fun getDissolveProgress(challengeData: MutableMap<String, Any>): Float {
+        return challengeData["dissolveProgress"] as? Float ?: 0f
+    }
+    
+    /**
+     * Indique si les épis doivent flétrir
+     */
+    fun shouldSpikesWilt(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["spikesWilting"] as? Boolean ?: false
+    }
+    
+    /**
+     * Indique si les couleurs doivent se ternir/se mélanger
+     */
+    fun shouldColorsBlend(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["colorsBlending"] as? Boolean ?: false
+    }
+    
+    /**
+     * Indique si les tiges doivent s'effondrer
+     */
+    fun shouldStemsCollapse(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["stemsCollapsing"] as? Boolean ?: false
+    }
+    
+    /**
+     * Reset de la dissolution pour un nouveau défi
+     */
+    fun resetDissolveEffects(challengeData: MutableMap<String, Any>) {
+        challengeData.remove("dissolveProgress")
+        challengeData.remove("spikesWilting")
+        challengeData.remove("colorsBlending")
+        challengeData.remove("stemsCollapsing")
+        challengeData.remove("fullyDissolved")
+    }
 }
