@@ -120,7 +120,8 @@ class IrisRenderer {
         canvas.save()
         canvas.translate(flower.position.x, flower.position.y)
         
-        val size = 177f * flower.bloomProgress  // 15% plus petit (208f → 177f)
+        val baseSize = 88.5f * flower.bloomProgress
+        val size = baseSize * flower.sizeMultiplier // Taille variable
         
         // Couleurs dégradées pour plus de réalisme
         val upperPetalColor = Color.rgb(138, 43, 226)  // Violet
@@ -135,62 +136,47 @@ class IrisRenderer {
             canvas.save()
             canvas.rotate(angle)
             
-            // Pétale supérieur (étendard) avec dégradé
-            paint.style = Paint.Style.FILL
-            paint.color = upperPetalColor
-            drawDetailedIrisPetal(canvas, paint, size, true)
-            
-            // Veines sur pétale supérieur
-            paint.color = veiningColor
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 1.5f
-            drawPetalVeins(canvas, paint, size, true)
-            
-            // Pétale inférieur (chute) - base plus claire
-            canvas.translate(0f, size * 0.3f)
-            paint.style = Paint.Style.FILL
-            paint.color = lowerPetalLight
-            drawDetailedIrisPetal(canvas, paint, size * 0.8f, false)
-            
-            // Bordure plus foncée sur pétale inférieur
-            paint.color = lowerPetalColor
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 4f
-            drawDetailedIrisPetalOutline(canvas, paint, size * 0.8f, false)
-            
-            // BARBE caractéristique de l'iris sur pétale inférieur
-            paint.style = Paint.Style.FILL
-            paint.color = beardColor
-            drawIrisBeard(canvas, paint, size * 0.8f)
-            
-            // Veines sur pétale inférieur
-            paint.color = veiningColor
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 1.2f
-            drawPetalVeins(canvas, paint, size * 0.8f, false)
+            if (i == 0) {
+                // Pétale supérieur - plus court et arrondi
+                paint.style = Paint.Style.FILL
+                paint.color = upperPetalColor
+                drawUpperPetal(canvas, paint, size)
+                
+                // Veines sur pétale supérieur
+                paint.color = veiningColor
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 1.5f
+                drawUpperPetalVeins(canvas, paint, size)
+            } else {
+                // Pétales inférieurs - plus longs, pointus et pendants
+                canvas.translate(0f, size * 0.2f)
+                paint.style = Paint.Style.FILL
+                paint.color = lowerPetalLight
+                drawLowerPetal(canvas, paint, size)
+                
+                // Bordure plus foncée
+                paint.color = lowerPetalColor
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 3f
+                drawLowerPetalOutline(canvas, paint, size)
+                
+                // BARBE caractéristique de l'iris
+                paint.style = Paint.Style.FILL
+                paint.color = beardColor
+                drawIrisBeard(canvas, paint, size * 0.8f)
+                
+                // Veines sur pétale inférieur
+                paint.color = veiningColor
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 1.2f
+                drawLowerPetalVeins(canvas, paint, size)
+            }
             
             canvas.restore()
         }
         
         // Centre détaillé de la fleur
         drawIrisCenter(canvas, paint, size)
-        
-        // Contours finaux pour définir la forme
-        paint.color = Color.rgb(50, 0, 80)
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 2f
-        
-        for (i in 0..2) {
-            val angle = i * 120f
-            canvas.save()
-            canvas.rotate(angle)
-            
-            drawDetailedIrisPetalOutline(canvas, paint, size, true)
-            canvas.translate(0f, size * 0.3f)
-            drawDetailedIrisPetalOutline(canvas, paint, size * 0.8f, false)
-            
-            canvas.restore()
-        }
         
         paint.style = Paint.Style.FILL
         canvas.restore()
@@ -301,43 +287,5 @@ class IrisRenderer {
         // Point central plus foncé
         paint.color = Color.rgb(150, 100, 0)
         canvas.drawCircle(0f, 0f, size * 0.04f, paint)
-    }
-    
-    private fun drawIrisPetal(canvas: Canvas, paint: Paint, size: Float, isUpper: Boolean) {
-        val path = Path()
-        
-        if (isUpper) {
-            // Pétale supérieur - plus droit et élancé
-            path.moveTo(0f, 0f)
-            path.quadTo(-size * 0.3f, -size * 0.2f, -size * 0.2f, -size * 0.6f)
-            path.quadTo(0f, -size * 0.8f, size * 0.2f, -size * 0.6f)
-            path.quadTo(size * 0.3f, -size * 0.2f, 0f, 0f)
-        } else {
-            // Pétale inférieur - plus arrondi et tombant
-            path.moveTo(0f, 0f)
-            path.quadTo(-size * 0.4f, size * 0.1f, -size * 0.3f, size * 0.4f)
-            path.quadTo(0f, size * 0.6f, size * 0.3f, size * 0.4f)
-            path.quadTo(size * 0.4f, size * 0.1f, 0f, 0f)
-        }
-        
-        canvas.drawPath(path, paint)
-    }
-    
-    private fun drawIrisPetalOutline(canvas: Canvas, paint: Paint, size: Float, isUpper: Boolean) {
-        val path = Path()
-        
-        if (isUpper) {
-            path.moveTo(0f, 0f)
-            path.quadTo(-size * 0.3f, -size * 0.2f, -size * 0.2f, -size * 0.6f)
-            path.quadTo(0f, -size * 0.8f, size * 0.2f, -size * 0.6f)
-            path.quadTo(size * 0.3f, -size * 0.2f, 0f, 0f)
-        } else {
-            path.moveTo(0f, 0f)
-            path.quadTo(-size * 0.4f, size * 0.1f, -size * 0.3f, size * 0.4f)
-            path.quadTo(0f, size * 0.6f, size * 0.3f, size * 0.4f)
-            path.quadTo(size * 0.4f, size * 0.1f, 0f, 0f)
-        }
-        
-        canvas.drawPath(path, paint)
     }
 }
