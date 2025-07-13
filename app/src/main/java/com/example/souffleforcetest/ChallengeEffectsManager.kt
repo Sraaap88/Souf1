@@ -50,7 +50,7 @@ class ChallengeEffectsManager {
     // ==================== GESTION DES EFFETS ====================
     
     fun startFireworks() {
-        fireworkManager?.start()  // CORRIGÉ: start() au lieu de startFireworks()
+        fireworkManager?.startFireworks()  // CORRIGÉ: startFireworks() au lieu de start()
         onFireworkStartedCallback?.invoke()
     }
     
@@ -63,8 +63,8 @@ class ChallengeEffectsManager {
     }
     
     fun stopAllEffects() {
-        fireworkManager?.stop()  // CORRIGÉ: stop() au lieu de stopFireworks()
-        rainManager?.stop()      // CORRIGÉ: stop() au lieu de stopRain()
+        fireworkManager?.stopFireworks()  // CORRIGÉ: stopFireworks() au lieu de stop()
+        rainManager?.stopRain()           // CORRIGÉ: stopRain() au lieu de stop()
         
         // Reset de toutes les dissolutions
         dissolveStates.clear()
@@ -76,7 +76,7 @@ class ChallengeEffectsManager {
         
         // Mettre à jour la dissolution pour toutes les fleurs actives
         for ((flowerType, challengeData) in dissolveStates) {
-            if (rainManager?.isActive == true) {  // CORRIGÉ: isActive sans ()
+            if (rainManager?.isRainActive() == true) {  // CORRIGÉ: isRainActive() au lieu de isActive
                 updateDissolveProgress(deltaTime * 0.5f, challengeData) // Vitesse de dissolution
             }
         }
@@ -165,7 +165,7 @@ class ChallengeEffectsManager {
     
     // ==================== GETTERS D'ÉTAT ====================
     
-    fun isFireworksActive(): Boolean = fireworkManager?.isActive ?: false  // CORRIGÉ: isActive sans ()
-    fun isRainActive(): Boolean = rainManager?.isActive ?: false           // CORRIGÉ: isActive sans ()
+    fun isFireworksActive(): Boolean = fireworkManager?.isFireworksActive() ?: false  // CORRIGÉ: isFireworksActive()
+    fun isRainActive(): Boolean = rainManager?.isRainActive() ?: false                // CORRIGÉ: isRainActive()
     fun isAnyEffectActive(): Boolean = isFireworksActive() || isRainActive()
 }
