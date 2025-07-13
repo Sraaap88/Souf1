@@ -105,9 +105,9 @@ class RainManager(private val screenWidth: Int, private val screenHeight: Int) {
             drop.x += Random.nextFloat() * 20f - 10f // Léger mouvement horizontal (vent)
             
             // Créer éclaboussure quand la goutte touche le sol
-            if (drop.y >= screenHeight * 0.85f) { // Zone du sol
+            if (drop.y >= screenHeight * 0.85f) { // CORRIGÉ: Sol aligné avec toutes les plantes
                 if (Random.nextFloat() < 0.3f) { // 30% de chance d'éclaboussure
-                    createSplash(drop.x, screenHeight * 0.85f)
+                    createSplash(drop.x, screenHeight * 0.85f) // CORRIGÉ: Même hauteur que les plantes
                 }
                 iterator.remove()
             }
