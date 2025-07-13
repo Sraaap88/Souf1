@@ -148,7 +148,7 @@ class ChallengeManager(private val context: Context? = null) {
         
         // Mettre à jour la dissolution si la pluie est active
         if (::effectsManager.isInitialized && effectsManager.isRainActive()) {
-            effectsManager.updateDissolveProgress(0.016f, challengeData)  // CORRIGÉ: deltaTime au lieu de flowerType
+            effectsManager.updateDissolveProgress(0.016f, challengeData)
         }
     }
     
@@ -216,7 +216,6 @@ class ChallengeManager(private val context: Context? = null) {
             dataManager.unlockNextFlower(definitions, currentFlowerType, challenge.id)
             dataManager.saveProgress()
             
-            // CORRIGÉ: startFireworks() au lieu de triggerFirework()
             if (::effectsManager.isInitialized) {
                 effectsManager.startFireworks()
             }
@@ -232,11 +231,7 @@ class ChallengeManager(private val context: Context? = null) {
         val challenge = currentChallenge ?: return null
         
         val result = checkChallengeCompletion() ?: run {
-            // CORRIGÉ: startRain() au lieu de triggerRain()
-            if (::effectsManager.isInitialized) {
-                effectsManager.startRain(currentFlowerType)
-            }
-            
+            // SUPPRIMÉ: startRain() - maintenant géré dans OrganicLineView
             val failMessage = getFailMessage(challenge.id)
             ChallengeDefinitions.ChallengeResult(challenge, false, failMessage)
         }
