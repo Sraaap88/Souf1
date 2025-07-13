@@ -149,26 +149,26 @@ class PlantInteractionHandler(
         // Dessiner les fleurs de profil/arrière DERRIÈRE les tiges
         if (lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawBackgroundFlowers(canvas, stem.getFlowers(), stem)  // CORRIGÉ: Sans dissolveInfo
+            uiDrawing.drawBackgroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
         }
         
         // Dessiner la tige principale
-        uiDrawing.drawMainStem(canvas, stem.mainStem)  // CORRIGÉ: Sans dissolveInfo
+        uiDrawing.drawMainStem(canvas, stem.mainStem, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
         
         // Dessiner les branches
-        uiDrawing.drawBranches(canvas, stem.branches)  // CORRIGÉ: Sans dissolveInfo
+        uiDrawing.drawBranches(canvas, stem.branches, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
         
         // Dessiner les feuilles pendant GREEN_LEAVES et après
         if (lightState == OrganicLineView.LightState.GREEN_LEAVES || 
             lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawLeaves(canvas, stem.getLeaves(), stem)  // CORRIGÉ: Sans dissolveInfo
+            uiDrawing.drawLeaves(canvas, stem.getLeaves(), stem, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
         }
         
         // Dessiner les fleurs de face/3-4 PAR-DESSUS les tiges
         if (lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawForegroundFlowers(canvas, stem.getFlowers(), stem)  // CORRIGÉ: Sans dissolveInfo
+            uiDrawing.drawForegroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
         }
     }
     
