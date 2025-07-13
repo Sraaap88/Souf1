@@ -245,7 +245,6 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         lastSpikeTime = 0L
     }
     
-    // NOUVEAU: Fonction de rendu optimisée
     fun drawRoseBush(
         canvas: android.graphics.Canvas, 
         branchPaint: android.graphics.Paint, 
@@ -253,28 +252,28 @@ class RoseBushManager(private val screenWidth: Int, private val screenHeight: In
         flowerPaint: android.graphics.Paint, 
         dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null
     ) {
-        optimizer.startFrame()
-        
-        // Filtrer les éléments visibles
-        val visibleBranches = branches.filter { branch ->
-            val isVisible = optimizer.isBranchVisible(branch)
-            optimizer.countBranch(isVisible)
-            isVisible
-        }
-        
+        // OPTIMISATION SIMPLE: Filtrer les feuilles hors écran avant de dessiner
         val visibleLeaves = leaves.filter { leaf ->
-            val isVisible = optimizer.isLeafVisible(leaf, branches)
-            optimizer.countLeaf(isVisible)
-            isVisible
+            // Estimer rapidement si la feuille peut être visible
+            val branch = branches.getOrNull(leaf.branchIndex)
+            if (branch != null && branch.points.isNotEmpty()) {
+                val lastPoint = branch.points.last()
+                val leafSize = leaf.currentSize
+                // Vérifier si la feuille est potentiellement visible (avec marge)
+                lastPoint.x > -leafSize && lastPoint.x < screenWidth + leafSize &&
+                lastPoint.y > -leafSize && lastPoint.y < screenHeight + leafSize
+            } else false
         }
         
-        val visibleFlowers = flowers.filter { optimizer.isFlowerVisible(it) }
+        // Filtrer aussi les fleurs hors écran
+        val visibleFlowers = flowers.filter { flower ->
+            val flowerSize = flower.currentSize
+            flower.x > -flowerSize && flower.x < screenWidth + flowerSize &&
+            flower.y > -flowerSize && flower.y < screenHeight + flowerSize
+        }
         
-        // Debug performance (optionnel - retirez en production)
-        // println(optimizer.getOptimizationStats())
-        
-        // Passer seulement les éléments visibles au renderer
-        renderer.drawRoseBushOptimized(canvas, branchPaint, leafPaint, flowerPaint, visibleBranches, visibleLeaves, visibleFlowers, dissolveInfo)
+        // Passer seulement les éléments potentiellement visibles
+        renderer.drawRoseBush(canvas, branchPaint, leafPaint, flowerPaint, branches, visibleLeaves, visibleFlowers, dissolveInfo)
     }
     
     // ==================== GETTERS POUR LE RENDERER ====================
