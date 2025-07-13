@@ -62,6 +62,8 @@ class MargueriteChallengeHandler {
         }
     }
     
+    // ==================== CONDITIONS DE DÉFIS CORRIGÉES ====================
+    
     fun checkChallenge(
         challengeId: Int, 
         flowersInZone: List<String>,
@@ -70,9 +72,18 @@ class MargueriteChallengeHandler {
         budsCreatedDefi3: List<String>
     ): Boolean {
         return when (challengeId) {
-            1 -> flowersInZone.size >= 1
-            2 -> budsCreated.size >= 2
-            3 -> flowersInZoneDefi3.size >= 2 && budsCreatedDefi3.size >= 1
+            1 -> {
+                // DÉFI 1 CORRIGÉ: 1 fleur dans la zone verte (1 pouce de haut)
+                flowersInZone.size >= 1
+            }
+            2 -> {
+                // DÉFI 2 INCHANGÉ: 2 bourgeons avec souffle doux
+                budsCreated.size >= 2
+            }
+            3 -> {
+                // DÉFI 3 CORRIGÉ: 2 fleurs en zone verte (1 pouce) ET 1 bourgeon
+                flowersInZoneDefi3.size >= 2 && budsCreatedDefi3.size >= 1
+            }
             else -> false
         }
     }
@@ -85,9 +96,9 @@ class MargueriteChallengeHandler {
         budsCreatedDefi3: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi réussi! ${flowersInZone.size} fleur dans la zone!"
-            2 -> "Défi réussi! ${budsCreated.size} bourgeons créés!"
-            3 -> "Défi réussi! ${flowersInZoneDefi3.size} fleurs + ${budsCreatedDefi3.size} bourgeon!\n🌹 ROSE DÉBLOQUÉE!"
+            1 -> "Défi réussi! ${flowersInZone.size} fleur dans la zone verte (1 pouce)!"
+            2 -> "Défi réussi! ${budsCreated.size} bourgeons créés avec souffle doux!"
+            3 -> "Défi réussi! ${flowersInZoneDefi3.size} fleurs en zone verte + ${budsCreatedDefi3.size} bourgeon!\n🌹 ROSIER DÉBLOQUÉ!"
             else -> "Défi réussi!"
         }
     }
@@ -100,14 +111,14 @@ class MargueriteChallengeHandler {
         budsCreatedDefi3: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi échoué - Aucune fleur en zone verte!"
-            2 -> "Défi échoué - Seulement ${budsCreated.size}/2 bourgeons créés!"
-            3 -> "Défi échoué - ${flowersInZoneDefi3.size}/2 fleurs, ${budsCreatedDefi3.size}/1 bourgeon!"
+            1 -> "Défi échoué - Aucune fleur dans la zone verte (1 pouce de haut)!"
+            2 -> "Défi échoué - Seulement ${budsCreated.size}/2 bourgeons créés avec souffle doux!"
+            3 -> "Défi échoué - ${flowersInZoneDefi3.size}/2 fleurs en zone verte, ${budsCreatedDefi3.size}/1 bourgeon!"
             else -> "Défi échoué!"
         }
     }
     
-    // ==================== NOUVEAU: SUPPORT DISSOLUTION ====================
+    // ==================== SUPPORT DISSOLUTION ====================
     
     /**
      * Fonction appelée pour déclencher la dissolution des marguerites lors d'un échec
