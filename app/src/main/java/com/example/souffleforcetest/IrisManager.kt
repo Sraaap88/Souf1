@@ -130,7 +130,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             
             val heightVariation = 0.8f + Random.nextFloat() * 0.6f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation
+            val maxHeight = screenHeight * maxStemHeight * heightVariation 0.8f
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -224,7 +224,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             val spacing = 40f * i - 20f // Espacement serré
             val stemX = (centerX + spacing).coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             val heightVariation = 0.8f + Random.nextFloat() * 0.4f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation
+            val maxHeight = screenHeight * maxStemHeight * heightVariation * 0.8f
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -259,7 +259,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             val spacing = 50f * i - 25f // Plus d'espacement (30f → 50f)
             val stemX = (groupBaseX + spacing).coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             val heightVariation = 0.8f + Random.nextFloat() * 0.4f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation
+            val maxHeight = screenHeight * maxStemHeight * heightVariation * 0.8f
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -352,7 +352,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             
             // Feuilles 10x plus longues et croissance plus rapide
             val heightVariation = 0.6f + (i * 0.2f) + Random.nextFloat() * 0.3f
-            val leafLength = 1200f + Random.nextFloat() * 800f * heightVariation // 10x plus long
+            val leafLength = 1200f + Random.nextFloat() * 800f * heightVariation * 0.5f // 5x plus long
             val leafWidth = 15f + Random.nextFloat() * 8f // Légèrement plus larges aussi
             
             val leaf = IrisLeaf(
