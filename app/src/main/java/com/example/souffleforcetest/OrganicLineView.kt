@@ -42,8 +42,10 @@ class OrganicLineView @JvmOverloads constructor(
     private val challengeManager = ChallengeManager(context)
     private var selectedChallengeId = -1
     
-    // CORRECTION: Initialisation sûre des nouveaux composants
+    // NOUVEAUX: Système d'effets complet
     private var fireworkManager: FireworkManager? = null
+    private var rainManager: RainManager? = null
+    private var challengeEffectsManager: ChallengeEffectsManager? = null
     private var interactionHandler: PlantInteractionHandler? = null
     private var isInitialized = false
     
@@ -71,14 +73,31 @@ class OrganicLineView @JvmOverloads constructor(
             irisManager = IrisManager(w, h)
             uiDrawing = UIDrawingManager(context, w, h, challengeManager)
             
-            // CORRECTION: Initialisation sûre des nouveaux composants
+            // NOUVEAU: Initialisation complète du système d'effets
             fireworkManager = FireworkManager(w, h)
+            rainManager = RainManager(w, h)
+            challengeEffectsManager = ChallengeEffectsManager()
             interactionHandler = PlantInteractionHandler(w, h, challengeManager)
             
-            // Configuration des connexions
-            challengeManager.setFireworkManager(fireworkManager!!)
-            challengeManager.setOnFireworkStartedCallback {
+            // NOUVEAU: Configuration du système d'effets
+            challengeEffectsManager?.setFireworkManager(fireworkManager!!)
+            challengeEffectsManager?.setRainManager(rainManager!!)
+            challengeEffectsManager?.setOnFireworkStartedCallback {
                 post { invalidate() } // Post sur le thread UI
+            }
+            challengeEffectsManager?.setOnRainStartedCallback {
+                post { invalidate() } // Post sur le thread UI pour la pluie
+            }
+            
+            // NOUVEAU: Configuration des gestionnaires dans ChallengeManager
+            challengeManager.setEffectsManager(challengeEffectsManager!!)
+            challengeManager.setFireworkManager(fireworkManager!!)
+            challengeManager.setRainManager(rainManager!!)
+            challengeManager.setOnFireworkStartedCallback {
+                post { invalidate() }
+            }
+            challengeManager.setOnRainStartedCallback {
+                post { invalidate() }
             }
             
             // Injecter le ChallengeManager
@@ -112,7 +131,10 @@ class OrganicLineView @JvmOverloads constructor(
             roseBushManager?.reset()
             lupinManager?.reset()
             irisManager?.reset()
-            fireworkManager?.stop()
+            
+            // NOUVEAU: Arrêter tous les effets
+            challengeEffectsManager?.stopAllEffects()
+            
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -154,8 +176,9 @@ class OrganicLineView @JvmOverloads constructor(
                 challengeManager.checkChallengeCompletion()
             }
             
-            // Mettre à jour le feu d'artifice
-            fireworkManager?.update(0.016f)
+            // NOUVEAU: Mettre à jour tous les effets (feu d'artifice + pluie)
+            challengeEffectsManager?.updateEffects(0.016f)
+            
             invalidate()
             
         } catch (e: Exception) {
@@ -256,9 +279,10 @@ class OrganicLineView @JvmOverloads constructor(
             // Dessiner l'UI
             uiDrawing?.drawCurrentState(canvas, lightState, timeRemaining, resetButtonX, resetButtonY, resetButtonRadius, challengeManager)
             
-            // Dessiner le feu d'artifice par-dessus tout
+            // NOUVEAU: Dessiner tous les effets par-dessus tout
             val paint = Paint()
             fireworkManager?.draw(canvas, paint)
+            rainManager?.draw(canvas, paint)
             
         } catch (e: Exception) {
             e.printStackTrace()
@@ -406,7 +430,7 @@ class OrganicLineView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         try {
-            fireworkManager?.stop()
+            challengeEffectsManager?.stopAllEffects()
         } catch (e: Exception) {
             e.printStackTrace()
         }
