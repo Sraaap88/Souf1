@@ -50,7 +50,7 @@ class ChallengeEffectsManager {
     // ==================== GESTION DES EFFETS ====================
     
     fun startFireworks() {
-        fireworkManager?.startFireworks()  // CORRIGÉ: startFireworks() au lieu de start()
+        fireworkManager?.start()  // CORRIGÉ: Retour à start()
         onFireworkStartedCallback?.invoke()
     }
     
@@ -63,8 +63,8 @@ class ChallengeEffectsManager {
     }
     
     fun stopAllEffects() {
-        fireworkManager?.stopFireworks()  // CORRIGÉ: stopFireworks() au lieu de stop()
-        rainManager?.stopRain()           // CORRIGÉ: stopRain() au lieu de stop()
+        fireworkManager?.stop()  // CORRIGÉ: Retour à stop()
+        rainManager?.stop()      // CORRIGÉ: Retour à stop()
         
         // Reset de toutes les dissolutions
         dissolveStates.clear()
@@ -76,7 +76,7 @@ class ChallengeEffectsManager {
         
         // Mettre à jour la dissolution pour toutes les fleurs actives
         for ((flowerType, challengeData) in dissolveStates) {
-            if (rainManager?.isRainActive() == true) {  // CORRIGÉ: isRainActive() au lieu de isActive
+            if (rainManager?.isActive == true) {  // CORRIGÉ: Retour à isActive
                 updateDissolveProgress(deltaTime * 0.5f, challengeData) // Vitesse de dissolution
             }
         }
@@ -165,7 +165,7 @@ class ChallengeEffectsManager {
     
     // ==================== GETTERS D'ÉTAT ====================
     
-    fun isFireworksActive(): Boolean = fireworkManager?.isFireworksActive() ?: false  // CORRIGÉ: isFireworksActive()
-    fun isRainActive(): Boolean = rainManager?.isRainActive() ?: false                // CORRIGÉ: isRainActive()
+    fun isFireworksActive(): Boolean = fireworkManager?.isActive ?: false  // CORRIGÉ: Retour à isActive
+    fun isRainActive(): Boolean = rainManager?.isActive ?: false           // CORRIGÉ: Retour à isActive
     fun isAnyEffectActive(): Boolean = isFireworksActive() || isRainActive()
 }
