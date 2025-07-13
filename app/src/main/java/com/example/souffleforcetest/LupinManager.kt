@@ -207,7 +207,7 @@ class LupinManager(private val screenWidth: Int, private val screenHeight: Int) 
         setupRandomStemOrder()
     }
     
-    fun drawLupin(canvas: Canvas, stemPaint: Paint, leafPaint: Paint, flowerPaint: Paint) {
+    fun drawLupin(canvas: Canvas, stemPaint: Paint, leafPaint: Paint, flowerPaint: Paint, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
         // Déléguer le rendu au LupinRenderer
         renderer.drawLupin(canvas, stemPaint, leafPaint, flowerPaint, stems, leaves)
     }
