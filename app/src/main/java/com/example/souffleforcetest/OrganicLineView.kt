@@ -38,49 +38,63 @@ class OrganicLineView @JvmOverloads constructor(
     private var roseBushManager: RoseBushManager? = null
     private var lupinManager: LupinManager? = null
     private var irisManager: IrisManager? = null
-    private lateinit var uiDrawing: UIDrawingManager
+    private var uiDrawing: UIDrawingManager? = null
     private val challengeManager = ChallengeManager(context)
     private var selectedChallengeId = -1
     
-    // NOUVEAU: Gestionnaire de feu d'artifice + logique d'interaction
-    private lateinit var fireworkManager: FireworkManager
-    private lateinit var interactionHandler: PlantInteractionHandler
+    // CORRECTION: Initialisation sûre des nouveaux composants
+    private var fireworkManager: FireworkManager? = null
+    private var interactionHandler: PlantInteractionHandler? = null
+    private var isInitialized = false
     
     enum class LightState {
         START, MODE_CHOICE, CHALLENGE_SELECTION, CHALLENGE_BRIEF, 
         YELLOW, GREEN_GROW, GREEN_LEAVES, GREEN_FLOWER, CHALLENGE_RESULT, RED
     }
     
-    // ==================== INITIALISATION ====================
+    // ==================== INITIALISATION SÉCURISÉE ====================
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         
-        resetButtonX = w - resetButtonRadius - 50f
-        resetButtonY = resetButtonRadius + 80f
+        // PROTECTION: Éviter les initialisations multiples
+        if (w <= 0 || h <= 0) return
         
-        // Initialiser tous les gestionnaires
-        plantStem = PlantStem(w, h)
-        roseBushManager = RoseBushManager(w, h)
-        lupinManager = LupinManager(w, h)
-        irisManager = IrisManager(w, h)
-        uiDrawing = UIDrawingManager(context, w, h, challengeManager)
-        
-        // NOUVEAU: Initialiser feu d'artifice et gestionnaire d'interaction
-        fireworkManager = FireworkManager(w, h)
-        interactionHandler = PlantInteractionHandler(w, h, challengeManager)
-        
-        challengeManager.setFireworkManager(fireworkManager)
-        challengeManager.setOnFireworkStartedCallback {
-            invalidate()
+        try {
+            resetButtonX = w - resetButtonRadius - 50f
+            resetButtonY = resetButtonRadius + 80f
+            
+            // Initialiser tous les gestionnaires de manière sécurisée
+            plantStem = PlantStem(w, h)
+            roseBushManager = RoseBushManager(w, h)
+            lupinManager = LupinManager(w, h)
+            irisManager = IrisManager(w, h)
+            uiDrawing = UIDrawingManager(context, w, h, challengeManager)
+            
+            // CORRECTION: Initialisation sûre des nouveaux composants
+            fireworkManager = FireworkManager(w, h)
+            interactionHandler = PlantInteractionHandler(w, h, challengeManager)
+            
+            // Configuration des connexions
+            challengeManager.setFireworkManager(fireworkManager!!)
+            challengeManager.setOnFireworkStartedCallback {
+                post { invalidate() } // Post sur le thread UI
+            }
+            
+            // Injecter le ChallengeManager
+            challengeManager.updateScreenDimensions(w, h)
+            plantStem?.getFlowerManager()?.setChallengeManager(challengeManager)
+            roseBushManager?.setChallengeManager(challengeManager)
+            lupinManager?.setChallengeManager(challengeManager)
+            irisManager?.setChallengeManager(challengeManager)
+            
+            isInitialized = true
+            
+        } catch (e: Exception) {
+            // LOG: En cas d'erreur, ne pas planter l'app
+            e.printStackTrace()
+            isInitialized = false
         }
-        
-        // Injecter le ChallengeManager
-        challengeManager.updateScreenDimensions(w, h)
-        plantStem?.getFlowerManager()?.setChallengeManager(challengeManager)
-        roseBushManager?.setChallengeManager(challengeManager)
-        lupinManager?.setChallengeManager(challengeManager)
-        irisManager?.setChallengeManager(challengeManager)
     }
     
     // ==================== CONTRÔLE DU CYCLE ====================
@@ -92,12 +106,16 @@ class OrganicLineView @JvmOverloads constructor(
         selectedMode = ""
         selectedFlowerType = "MARGUERITE"
         
-        // Reset de tous les gestionnaires
-        plantStem?.resetStem()
-        roseBushManager?.reset()
-        lupinManager?.reset()
-        irisManager?.reset()
-        fireworkManager.stop()
+        // PROTECTION: Reset seulement si initialisé
+        try {
+            plantStem?.resetStem()
+            roseBushManager?.reset()
+            lupinManager?.reset()
+            irisManager?.reset()
+            fireworkManager?.stop()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         
         cheatTapCount = 0
         lastCheatTapTime = 0L
@@ -105,36 +123,44 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     fun updateForce(force: Float) {
-        updateLightState()
+        // PROTECTION: Ne rien faire si pas initialisé
+        if (!isInitialized || interactionHandler == null) return
         
-        // Déléguer la logique de croissance au gestionnaire d'interaction
-        interactionHandler.handlePlantGrowth(
-            selectedFlowerType, lightState, force, 
-            plantStem, roseBushManager, lupinManager, irisManager
-        )
-        
-        // Gérer le bouton reset
-        if (!showResetButton) {
-            showResetButton = interactionHandler.shouldShowResetButton(
-                selectedFlowerType, plantStem, roseBushManager, lupinManager, irisManager
+        try {
+            updateLightState()
+            
+            // Déléguer la logique de croissance au gestionnaire d'interaction
+            interactionHandler?.handlePlantGrowth(
+                selectedFlowerType, lightState, force, 
+                plantStem, roseBushManager, lupinManager, irisManager
             )
-        }
-        
-        // Mettre à jour le défi si en mode DÉFI
-        if (selectedMode == "DÉFI" && challengeManager.getCurrentChallenge() != null) {
-            val plantState = when (lightState) {
-                LightState.GREEN_GROW -> "STEM"
-                LightState.GREEN_LEAVES -> "LEAVES" 
-                LightState.GREEN_FLOWER -> "FLOWER"
-                else -> "OTHER"
+            
+            // Gérer le bouton reset
+            if (!showResetButton) {
+                showResetButton = interactionHandler?.shouldShowResetButton(
+                    selectedFlowerType, plantStem, roseBushManager, lupinManager, irisManager
+                ) ?: false
             }
-            challengeManager.updateChallengeProgress(force, plantState)
-            challengeManager.checkChallengeCompletion()
+            
+            // Mettre à jour le défi si en mode DÉFI
+            if (selectedMode == "DÉFI" && challengeManager.getCurrentChallenge() != null) {
+                val plantState = when (lightState) {
+                    LightState.GREEN_GROW -> "STEM"
+                    LightState.GREEN_LEAVES -> "LEAVES" 
+                    LightState.GREEN_FLOWER -> "FLOWER"
+                    else -> "OTHER"
+                }
+                challengeManager.updateChallengeProgress(force, plantState)
+                challengeManager.checkChallengeCompletion()
+            }
+            
+            // Mettre à jour le feu d'artifice
+            fireworkManager?.update(0.016f)
+            invalidate()
+            
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        
-        // Mettre à jour le feu d'artifice
-        fireworkManager.update(0.016f)
-        invalidate()
     }
     
     private fun updateLightState() {
@@ -190,55 +216,75 @@ class OrganicLineView @JvmOverloads constructor(
         }
     }
     
-    // ==================== AFFICHAGE ====================
+    // ==================== AFFICHAGE SÉCURISÉ ====================
     
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        // Calculer le temps restant
-        val currentTime = System.currentTimeMillis()
-        val elapsedTime = currentTime - stateStartTime
-        val timeRemaining = when (lightState) {
-            LightState.START, LightState.MODE_CHOICE, LightState.CHALLENGE_SELECTION -> 0
-            LightState.CHALLENGE_BRIEF -> max(0, 3 - (elapsedTime / 1000))
-            LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
-            LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))
-            LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000))
-            LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000))
-            LightState.CHALLENGE_RESULT -> max(0, 4 - (elapsedTime / 1000))
-            LightState.RED -> 0
+        // PROTECTION: Ne rien dessiner si pas initialisé
+        if (!isInitialized || uiDrawing == null || interactionHandler == null) {
+            return
         }
         
-        // Dessiner les plantes
-        if (lightState == LightState.GREEN_GROW || 
-            lightState == LightState.GREEN_LEAVES || 
-            lightState == LightState.GREEN_FLOWER || 
-            lightState == LightState.RED) {
+        try {
+            // Calculer le temps restant
+            val currentTime = System.currentTimeMillis()
+            val elapsedTime = currentTime - stateStartTime
+            val timeRemaining = when (lightState) {
+                LightState.START, LightState.MODE_CHOICE, LightState.CHALLENGE_SELECTION -> 0
+                LightState.CHALLENGE_BRIEF -> max(0, 3 - (elapsedTime / 1000))
+                LightState.YELLOW -> max(0, 2 - (elapsedTime / 1000))
+                LightState.GREEN_GROW -> max(0, 4 - (elapsedTime / 1000))
+                LightState.GREEN_LEAVES -> max(0, 3 - (elapsedTime / 1000))
+                LightState.GREEN_FLOWER -> max(0, 4 - (elapsedTime / 1000))
+                LightState.CHALLENGE_RESULT -> max(0, 4 - (elapsedTime / 1000))
+                LightState.RED -> 0
+            }
             
-            interactionHandler.drawPlants(
-                canvas, selectedFlowerType, lightState,
-                plantStem, roseBushManager, lupinManager, irisManager, uiDrawing
-            )
+            // Dessiner les plantes
+            if (lightState == LightState.GREEN_GROW || 
+                lightState == LightState.GREEN_LEAVES || 
+                lightState == LightState.GREEN_FLOWER || 
+                lightState == LightState.RED) {
+                
+                interactionHandler?.drawPlants(
+                    canvas, selectedFlowerType, lightState,
+                    plantStem, roseBushManager, lupinManager, irisManager, uiDrawing!!
+                )
+            }
+            
+            // Dessiner l'UI
+            uiDrawing?.drawCurrentState(canvas, lightState, timeRemaining, resetButtonX, resetButtonY, resetButtonRadius, challengeManager)
+            
+            // Dessiner le feu d'artifice par-dessus tout
+            val paint = Paint()
+            fireworkManager?.draw(canvas, paint)
+            
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        
-        // Dessiner l'UI
-        uiDrawing.drawCurrentState(canvas, lightState, timeRemaining, resetButtonX, resetButtonY, resetButtonRadius, challengeManager)
-        
-        // Dessiner le feu d'artifice par-dessus tout
-        val paint = Paint()
-        fireworkManager.draw(canvas, paint)
     }
     
     // ==================== GESTION DES ÉVÉNEMENTS ====================
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // PROTECTION: Ne pas traiter les événements si pas initialisé
+        if (!isInitialized || interactionHandler == null) {
+            return super.onTouchEvent(event)
+        }
+        
         if (event.action == MotionEvent.ACTION_DOWN) {
-            return when (lightState) {
-                LightState.START -> handleFlowerChoiceClick(event)
-                LightState.MODE_CHOICE -> handleModeChoiceClick(event)
-                LightState.CHALLENGE_SELECTION -> handleChallengeSelectionClick(event)
-                LightState.RED -> handleResetButtonClick(event)
-                else -> super.onTouchEvent(event)
+            return try {
+                when (lightState) {
+                    LightState.START -> handleFlowerChoiceClick(event)
+                    LightState.MODE_CHOICE -> handleModeChoiceClick(event)
+                    LightState.CHALLENGE_SELECTION -> handleChallengeSelectionClick(event)
+                    LightState.RED -> handleResetButtonClick(event)
+                    else -> super.onTouchEvent(event)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                super.onTouchEvent(event)
             }
         }
         return super.onTouchEvent(event)
@@ -248,7 +294,7 @@ class OrganicLineView @JvmOverloads constructor(
         // Vérifier cheat code
         if (checkCheatCode(event)) return true
         
-        val selectedFlower = interactionHandler.detectFlowerSelection(
+        val selectedFlower = interactionHandler?.detectFlowerSelection(
             event, width, height, challengeManager
         )
         
@@ -261,7 +307,7 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun handleModeChoiceClick(event: MotionEvent): Boolean {
-        val mode = interactionHandler.detectModeSelection(event, width, height)
+        val mode = interactionHandler?.detectModeSelection(event, width, height)
         
         when (mode) {
             "ZEN" -> {
@@ -283,11 +329,11 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun handleChallengeSelectionClick(event: MotionEvent): Boolean {
-        val challengeId = interactionHandler.detectChallengeSelection(
+        val challengeId = interactionHandler?.detectChallengeSelection(
             event, width, height, selectedFlowerType, challengeManager
         )
         
-        if (challengeId > 0) {
+        if (challengeId != null && challengeId > 0) {
             selectedChallengeId = challengeId
             challengeManager.startChallenge(challengeId)
             initializePlant()
@@ -319,10 +365,14 @@ class OrganicLineView @JvmOverloads constructor(
     }
     
     private fun initializePlant() {
-        when (selectedFlowerType) {
-            "ROSE" -> roseBushManager?.initialize(width / 2f, height * 0.85f)
-            "LUPIN" -> lupinManager?.initialize(width / 2f, height * 0.85f)
-            "IRIS" -> irisManager?.initialize(width / 2f, height * 0.85f)
+        try {
+            when (selectedFlowerType) {
+                "ROSE" -> roseBushManager?.initialize(width / 2f, height * 0.85f)
+                "LUPIN" -> lupinManager?.initialize(width / 2f, height * 0.85f)
+                "IRIS" -> irisManager?.initialize(width / 2f, height * 0.85f)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
     
@@ -349,5 +399,21 @@ class OrganicLineView @JvmOverloads constructor(
             cheatTapCount = 0
         }
         return false
+    }
+    
+    // ==================== CYCLE DE VIE ANDROID ====================
+    
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        try {
+            fireworkManager?.stop()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Rien à faire ici, onSizeChanged se chargera de l'initialisation
     }
 }
