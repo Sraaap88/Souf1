@@ -104,10 +104,15 @@ class RainManager(private val screenWidth: Int, private val screenHeight: Int) {
             drop.y += drop.speed * deltaTime
             drop.x += Random.nextFloat() * 20f - 10f // Léger mouvement horizontal (vent)
             
+            // NOUVEAU: Sol différent selon le type de plante
+            val groundLevel = screenHeight * 0.85f // Sol par défaut pour roses, lupins, iris
+            val margueriteGroundLevel = screenHeight - 100f // Sol spécial pour marguerite
+            
             // Créer éclaboussure quand la goutte touche le sol
-            if (drop.y >= screenHeight - 100f) { // CORRIGÉ: Sol aligné avec marguerite (screenHeight - 100f)
+            // TODO: Détecter le type de fleur actuel pour choisir le bon sol
+            if (drop.y >= margueriteGroundLevel) { // Pour l'instant, utiliser sol marguerite
                 if (Random.nextFloat() < 0.3f) { // 30% de chance d'éclaboussure
-                    createSplash(drop.x, screenHeight - 100f) // CORRIGÉ: Même hauteur que la marguerite
+                    createSplash(drop.x, margueriteGroundLevel)
                 }
                 iterator.remove()
             }
@@ -211,8 +216,8 @@ class RainManager(private val screenWidth: Int, private val screenHeight: Int) {
     fun getDissolveProgress(): Float {
         return if (!isActive) 0f else {
             when {
-                duration < 1000L -> 0f // CORRIGÉ: Pas de dissolution pendant 1 seconde (au lieu de 2 secondes)
-                duration < 3000L -> (duration - 1000f) / 2000f // CORRIGÉ: Dissolution progressive sur 2 secondes
+                duration < 3000L -> 0f // CORRIGÉ: Dissolution commence à 3 secondes
+                duration < 5000L -> (duration - 3000f) / 2000f // Dissolution progressive sur 2 secondes
                 else -> 1f // Dissolution complète
             }.coerceIn(0f, 1f)
         }
