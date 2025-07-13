@@ -32,6 +32,9 @@ class OrganicLineView @JvmOverloads constructor(
     private val cheatTimeWindow = 3000L
     private val cheatRequiredTaps = 3
     
+    // NOUVEAU: Variable pour stocker le résultat du défi
+    private var lastChallengeResult: ChallengeDefinitions.ChallengeResult? = null
+    
     // ==================== GESTIONNAIRES ====================
     
     private var plantStem: PlantStem? = null
@@ -124,6 +127,7 @@ class OrganicLineView @JvmOverloads constructor(
         showResetButton = false
         selectedMode = ""
         selectedFlowerType = "MARGUERITE"
+        lastChallengeResult = null  // NOUVEAU: Reset du résultat
         
         // PROTECTION: Reset seulement si initialisé
         try {
@@ -221,7 +225,8 @@ class OrganicLineView @JvmOverloads constructor(
             LightState.GREEN_FLOWER -> {
                 if (elapsedTime >= 4000) {
                     if (selectedMode == "DÉFI") {
-                        challengeManager.finalizeChallengeResult()
+                        // NOUVEAU: Stocker le résultat avant de passer à CHALLENGE_RESULT
+                        lastChallengeResult = challengeManager.finalizeChallengeResult()
                         lightState = LightState.CHALLENGE_RESULT
                     } else {
                         lightState = LightState.RED
@@ -233,6 +238,11 @@ class OrganicLineView @JvmOverloads constructor(
                 if (elapsedTime >= 4000) {
                     lightState = LightState.RED
                     stateStartTime = currentTime
+                    
+                    // NOUVEAU: Déclencher la pluie SEULEMENT si le défi a échoué
+                    if (lastChallengeResult != null && !lastChallengeResult!!.isSuccess) {
+                        challengeEffectsManager?.startRain(selectedFlowerType)
+                    }
                 }
             }
             LightState.RED -> {}
