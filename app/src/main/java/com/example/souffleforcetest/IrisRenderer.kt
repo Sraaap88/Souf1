@@ -143,17 +143,17 @@ class IrisRenderer {
         paint.strokeWidth = 1f
         drawCentralPetalVeinsUp(canvas, paint, size)
         
-        // INVERSÉ CORRECTEMENT: 2 pétales longs vers le BAS, 1 court vers le HAUT
+        // CORRIGÉ: 1 pétale court vers le HAUT, 2 pétales longs vers le BAS
         for (i in 0..2) {
             val angle = i * 120f
             canvas.save()
             canvas.rotate(angle)
             
             if (i == 0) {
-                // Pétale supérieur - maintenant court vers le haut
+                // Pétale supérieur - court vers le haut (PLUS GROS)
                 paint.style = Paint.Style.FILL
                 paint.color = upperPetalColor
-                drawShortPetalUp(canvas, paint, size) // Court vers le haut
+                drawShortPetalUp(canvas, paint, size)
                 
                 // Veines courtes
                 paint.color = veiningColor
@@ -161,11 +161,11 @@ class IrisRenderer {
                 paint.strokeWidth = 1.5f
                 drawShortPetalVeinsUp(canvas, paint, size)
             } else {
-                // Pétales inférieurs - maintenant longs vers le bas
+                // Pétales inférieurs - longs vers le bas (CORRIGÉ)
                 canvas.translate(0f, size * 0.1f)
                 paint.style = Paint.Style.FILL
                 paint.color = lowerPetalLight
-                drawLongPetalDown(canvas, paint, size) // Long vers le bas
+                drawLongPetalDown(canvas, paint, size)
                 
                 // Bordure
                 paint.color = lowerPetalColor
@@ -214,34 +214,34 @@ class IrisRenderer {
         }
     }
     
-    // Pétale court vers le HAUT
+    // Pétale court vers le HAUT (PLUS GROS - 30% plus large)
     private fun drawShortPetalUp(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
         path.moveTo(0f, 0f)
-        path.quadTo(-size * 0.25f, -size * 0.05f, -size * 0.2f, -size * 0.2f)
-        path.quadTo(0f, -size * 0.25f, size * 0.2f, -size * 0.2f)
-        path.quadTo(size * 0.25f, -size * 0.05f, 0f, 0f)
+        // 30% plus large (0.25f → 0.325f, 0.2f → 0.26f)
+        path.quadTo(-size * 0.325f, -size * 0.05f, -size * 0.26f, -size * 0.2f)
+        path.quadTo(0f, -size * 0.25f, size * 0.26f, -size * 0.2f)
+        path.quadTo(size * 0.325f, -size * 0.05f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
     private fun drawShortPetalVeinsUp(canvas: Canvas, paint: Paint, size: Float) {
+        // Plus de veines car pétale plus gros
         for (i in -1..1) {
-            val startX = size * 0.1f * i
-            val endX = size * 0.08f * i
+            val startX = size * 0.12f * i // Élargi pour correspondre
+            val endX = size * 0.1f * i
             val endY = -size * 0.15f
             canvas.drawLine(startX, 0f, endX, endY, paint)
         }
     }
     
-    // Pétales longs vers le BAS - plus minces et plus longs
+    // CORRIGÉ: Pétales longs vers le BAS (au lieu du haut)
     private fun drawLongPetalDown(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
         path.moveTo(0f, 0f)
         
-        // 30% plus minces (0.4f → 0.28f et 0.35f → 0.245f)
+        // INVERSER TOUTES les coordonnées Y : + devient -, - devient +
         path.quadTo(-size * 0.28f, size * 0.1f, -size * 0.245f, size * 0.4f)
-        
-        // 20% plus longs (0.7f → 0.84f, 0.9f → 1.08f, 1.1f → 1.32f, 1.15f → 1.38f)
         path.quadTo(-size * 0.175f, size * 0.84f, -size * 0.105f, size * 1.08f)
         
         // Pointe plus fine et chétive vers le bas
