@@ -55,7 +55,7 @@ class ChallengeEffectsManager {
     }
     
     fun startRain(flowerType: String) {
-        rainManager?.startRain()
+        rainManager?.startRain(flowerType)  // CORRIGÉ: Passer le flowerType
         onRainStartedCallback?.invoke()
         
         // Initialiser la dissolution pour ce type de fleur
