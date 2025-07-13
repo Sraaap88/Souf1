@@ -76,8 +76,10 @@ class ChallengeEffectsManager {
         
         // Mettre à jour la dissolution pour toutes les fleurs actives
         for ((flowerType, challengeData) in dissolveStates) {
-            if (rainManager?.isPlaying() == true) {  // CORRIGÉ: isPlaying() - méthode réelle
-                updateDissolveProgress(deltaTime * 0.5f, challengeData) // Vitesse de dissolution
+            if (rainManager?.isPlaying() == true) {
+                // CORRIGÉ: Utiliser le progress du RainManager directement
+                val rainProgress = rainManager?.getDissolveProgress() ?: 0f
+                challengeData["dissolveProgress"] = rainProgress
             }
         }
     }
