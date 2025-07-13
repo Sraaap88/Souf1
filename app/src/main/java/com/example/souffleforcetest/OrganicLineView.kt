@@ -180,6 +180,11 @@ class OrganicLineView @JvmOverloads constructor(
                 challengeManager.checkChallengeCompletion()
             }
             
+            // NOUVEAU: Continuer à mettre à jour les effets même en état RED pour la dissolution
+            if (lightState == LightState.RED) {
+                challengeManager.updateChallengeProgress(force, "DISSOLVING")
+            }
+            
             // NOUVEAU: Mettre à jour tous les effets (feu d'artifice + pluie)
             challengeEffectsManager?.updateEffects(0.016f)
             
