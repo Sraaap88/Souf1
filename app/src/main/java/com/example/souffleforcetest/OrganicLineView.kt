@@ -7,7 +7,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.*
-
+ 
 class OrganicLineView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
