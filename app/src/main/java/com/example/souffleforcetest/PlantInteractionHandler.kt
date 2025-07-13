@@ -213,7 +213,7 @@ class PlantInteractionHandler(
                 style = Paint.Style.FILL
             }
             
-            // NOUVEAU: Passer dissolveInfo
+            // CORRIGÉ: Passer dissolveInfo au lupin
             manager.drawLupin(canvas, stemPaint, leafPaint, flowerPaint, dissolveInfo)
         }
     }
