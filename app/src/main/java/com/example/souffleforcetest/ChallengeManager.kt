@@ -9,6 +9,11 @@ class ChallengeManager(private val context: Context? = null) {
     
     private val definitions = ChallengeDefinitions()
     
+    // ==================== NOUVEAU: GESTIONNAIRE DE FEU D'ARTIFICE ====================
+    
+    private var fireworkManager: FireworkManager? = null
+    private var onFireworkStarted: (() -> Unit)? = null
+    
     // ==================== DATA CLASSES ====================
     
     data class UnlockedFlower(
@@ -102,6 +107,22 @@ class ChallengeManager(private val context: Context? = null) {
         unlockedFlowers.add(UnlockedFlower("IRIS", "Test forcé"))
         
         loadChallengeProgress()
+    }
+    
+    // ==================== NOUVEAU: GESTION FEU D'ARTIFICE ====================
+    
+    fun setFireworkManager(manager: FireworkManager) {
+        fireworkManager = manager
+    }
+    
+    fun setOnFireworkStartedCallback(callback: () -> Unit) {
+        onFireworkStarted = callback
+    }
+    
+    private fun triggerFirework() {
+        fireworkManager?.startFirework()
+        onFireworkStarted?.invoke()
+        println("🎆 FEU D'ARTIFICE DÉCLENCHÉ ! 🎆")
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
@@ -361,6 +382,9 @@ class ChallengeManager(private val context: Context? = null) {
             unlockNextChallenge(challenge.id)
             unlockNextFlower(challenge.id)
             saveChallengeProgress()
+            
+            // NOUVEAU: DÉCLENCHER LE FEU D'ARTIFICE !
+            triggerFirework()
             
             val successMessage = getSuccessMessage(challenge.id)
             return ChallengeDefinitions.ChallengeResult(challenge, true, successMessage)
