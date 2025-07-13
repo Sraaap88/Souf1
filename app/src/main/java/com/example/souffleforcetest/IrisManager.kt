@@ -87,30 +87,27 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     fun initialize(centerX: Float, bottomY: Float) {
-        // Iris pousse au centre avec 2-3 tiges groupées
-        if (stems.isEmpty()) {
-            createInitialStemGroup(centerX, bottomY)
-        }
+        // Ne rien faire ici - laisser processStemGrowth gérer
     }
     
     fun processStemGrowth(force: Float) {
-        // Créer le groupe principal si pas encore fait
+        // EXACTEMENT comme le Lupin - créer le groupe principal seulement si vide
         if (stems.isEmpty()) {
             createMainStemGroup()
-        }
-        
-        // Activer le premier groupe dès qu'on souffle
-        if (force > forceThreshold && currentActiveStemGroup == -1) {
-            currentActiveStemGroup = 0
-            saccadeCount = 1
-            isCurrentlyBreathing = true
-            lastSaccadeTime = System.currentTimeMillis()
+            
+            // Activer le premier groupe seulement si on souffle
+            if (force > forceThreshold) {
+                saccadeCount = 1
+                currentActiveStemGroup = 0
+                lastSaccadeTime = System.currentTimeMillis()
+                isCurrentlyBreathing = true
+            }
         }
         
         // Détecter les saccades pour créer de nouveaux groupes
         detectSaccadesAndActivateGroups(force, System.currentTimeMillis())
         
-        // Faire grandir le groupe actif
+        // Faire grandir le groupe actif seulement si force + groupe actif
         if (force > forceThreshold && currentActiveStemGroup >= 0) {
             growActiveGroup(force)
         }
@@ -276,14 +273,21 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     private fun growActiveGroup(force: Float) {
-        val activeStemsInGroup = if (currentActiveStemGroup == 0) {
-            stems.take(stemsPerGroup.coerceAtMost(stems.size))
-        } else {
-            val startIndex = stemsPerGroup * currentActiveStemGroup
-            if (startIndex < stems.size) {
-                stems.drop(startIndex).take(stemsPerGroup)
-            } else {
-                emptyList()
+        // CORRECTION: Faire grandir TOUTES les tiges créées récemment
+        val activeStemsInGroup = when (currentActiveStemGroup) {
+            0 -> {
+                // Premier groupe - prendre les premières tiges créées
+                stems.take(6) // Toutes les tiges du groupe principal
+            }
+            else -> {
+                // Nouveaux groupes - prendre les dernières tiges créées
+                val groupSize = 3 // 2-3 tiges par nouveau groupe
+                val startIndex = 6 + (currentActiveStemGroup - 1) * groupSize
+                if (startIndex < stems.size) {
+                    stems.drop(startIndex)
+                } else {
+                    stems.takeLast(groupSize) // Prendre les dernières créées
+                }
             }
         }
         
@@ -295,7 +299,9 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             
             val growthProgress = activeStem.currentHeight / activeStem.maxHeight
             val progressCurve = 1f - growthProgress * growthProgress
-            val adjustedGrowth = force * qualityMultiplier * progressCurve * activeStem.growthSpeed * 0.8f
+            
+            // CORRECTION: Vitesse de croissance comme le Lupin
+            val adjustedGrowth = force * qualityMultiplier * progressCurve * activeStem.growthSpeed * 1.2f
             
             if (adjustedGrowth > 0) {
                 activeStem.currentHeight += adjustedGrowth
