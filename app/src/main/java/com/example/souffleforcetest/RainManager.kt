@@ -211,8 +211,8 @@ class RainManager(private val screenWidth: Int, private val screenHeight: Int) {
     fun getDissolveProgress(): Float {
         return if (!isActive) 0f else {
             when {
-                duration < 2000L -> 0f // CORRIGÉ: Pas de dissolution pendant 2 secondes (au lieu de 1 seconde)
-                duration < 4000L -> (duration - 2000f) / 2000f // CORRIGÉ: Dissolution progressive sur 2 secondes
+                duration < 1000L -> 0f // CORRIGÉ: Pas de dissolution pendant 1 seconde (au lieu de 2 secondes)
+                duration < 3000L -> (duration - 1000f) / 2000f // CORRIGÉ: Dissolution progressive sur 2 secondes
                 else -> 1f // Dissolution complète
             }.coerceIn(0f, 1f)
         }
