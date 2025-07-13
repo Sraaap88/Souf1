@@ -30,7 +30,7 @@ class IrisFlowerDrawer {
         val yellowVeinColor = Color.rgb(255, 215, 0)   // Jaune pour nervures
         
         // NOUVEAU: Pétale central violet avec nervures jaunes (VERS LE HAUT)
-        if (dissolveInfo?.standardsWilting != true || dissolveInfo.progress < 0.6f) {
+        if (dissolveInfo?.shouldStandardsWilt != true || dissolveInfo.progress < 0.6f) {  // CORRIGÉ
             paint.style = Paint.Style.FILL
             paint.color = centralPetalColor
             drawCentralPetalUp(canvas, paint, size)
@@ -50,7 +50,7 @@ class IrisFlowerDrawer {
             
             if (i % 2 == 0) {
                 // STANDARDS : Pétales DRESSÉS (3 standards) - vers le haut
-                if (dissolveInfo?.standardsWilting != true || dissolveInfo.progress < 0.5f) {
+                if (dissolveInfo?.shouldStandardsWilt != true || dissolveInfo.progress < 0.5f) {  // CORRIGÉ
                     paint.style = Paint.Style.FILL
                     paint.color = upperPetalColor
                     drawStandardPetalUp(canvas, paint, size, dissolveInfo)
@@ -66,7 +66,7 @@ class IrisFlowerDrawer {
                 var shouldDrawFalls = true
                 
                 // NOUVEAU: Les falls tombent en premier lors de la dissolution
-                if (dissolveInfo?.fallsDropping == true && dissolveInfo.progress > 0.3f) {
+                if (dissolveInfo?.shouldFallsDropPetals == true && dissolveInfo.progress > 0.3f) {  // CORRIGÉ
                     shouldDrawFalls = false
                 }
                 
@@ -82,7 +82,7 @@ class IrisFlowerDrawer {
                     drawFallPetalOutline(canvas, paint, size)
                     
                     // BARBE sur les falls (se dissout en dernier)
-                    if (dissolveInfo?.beardDissolving != true || dissolveInfo.progress < 0.8f) {
+                    if (dissolveInfo?.shouldBeardDissolve != true || dissolveInfo.progress < 0.8f) {  // CORRIGÉ
                         paint.style = Paint.Style.FILL
                         paint.color = beardColor
                         drawIrisBeard(canvas, paint, size * 0.8f, dissolveInfo)
@@ -134,7 +134,7 @@ class IrisFlowerDrawer {
         
         var petalSize = size
         // NOUVEAU: Les standards flétrissent
-        if (dissolveInfo?.standardsWilting == true) {
+        if (dissolveInfo?.shouldStandardsWilt == true) {  // CORRIGÉ
             petalSize *= (1f - dissolveInfo.progress * 0.4f)
         }
         
@@ -163,7 +163,7 @@ class IrisFlowerDrawer {
         var dropFactor = 0f
         
         // NOUVEAU: Les falls tombent et se ratatinent
-        if (dissolveInfo?.fallsDropping == true) {
+        if (dissolveInfo?.shouldFallsDropPetals == true) {  // CORRIGÉ
             petalSize *= (1f - dissolveInfo.progress * 0.6f)
             dropFactor = dissolveInfo.progress * 30f // Effet de chute
         }
@@ -216,7 +216,7 @@ class IrisFlowerDrawer {
         var beardSize = size
         
         // NOUVEAU: La barbe se dissout
-        if (dissolveInfo?.beardDissolving == true) {
+        if (dissolveInfo?.shouldBeardDissolve == true) {  // CORRIGÉ
             beardSize *= (1f - dissolveInfo.progress * 0.8f)
             // Changer la couleur vers une teinte fanée
             val fadeFactor = dissolveInfo.progress
@@ -237,7 +237,7 @@ class IrisFlowerDrawer {
         
         // Petits poils duveteux (disparaissent progressivement)
         paint.strokeWidth = 2f
-        val poilCount = if (dissolveInfo?.beardDissolving == true) {
+        val poilCount = if (dissolveInfo?.shouldBeardDissolve == true) {  // CORRIGÉ
             (6 * (1f - dissolveInfo.progress * 0.7f)).toInt().coerceAtLeast(1)
         } else 6
         
