@@ -70,10 +70,10 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     private var currentActiveStemGroup = -1
     private var lastForce = 0f
     
-    // Paramètres de croissance - RESTAURÉS
+    // Paramètres de croissance - AJUSTÉS
     private val forceThreshold = 0.15f
     private val baseGrowthSpeed = 6f
-    private val maxStemHeight = 0.45f // Restauré à la hauteur originale
+    private val maxStemHeight = 0.36f // 20% plus bas (0.45f → 0.36f)
     private val stemsPerGroup = 3
     private val maxGroups = 4
     
@@ -140,7 +140,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
                 startPoint = PointF(stemX, stemY),
                 currentPoint = PointF(stemX, stemY),
                 baseAngle = Random.nextFloat() * 5f - 2.5f,
-                growthSpeed = baseGrowthSpeed * 3f + Random.nextFloat() * 4f,
+                growthSpeed = baseGrowthSpeed * 3.3f + Random.nextFloat() * 4.4f, // 10% plus vite (3f → 3.3f, 4f → 4.4f)
                 maxHeight = maxHeight,
                 curvature = Random.nextFloat() * 0.1f + 0.05f
             )
@@ -274,7 +274,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
                 startPoint = PointF(stemX, groupBaseY),
                 currentPoint = PointF(stemX, groupBaseY),
                 baseAngle = angle,
-                growthSpeed = baseGrowthSpeed * 3f + Random.nextFloat() * 4f,
+                growthSpeed = baseGrowthSpeed * 3.3f + Random.nextFloat() * 4.4f, // 10% plus vite
                 maxHeight = maxHeight,
                 curvature = Random.nextFloat() * 0.15f + 0.05f
             )
@@ -301,7 +301,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
                 val growthProgress = activeStem.currentHeight / activeStem.maxHeight
                 val progressCurve = 1f - growthProgress * growthProgress
                 
-                val adjustedGrowth = force * qualityMultiplier * progressCurve * activeStem.growthSpeed * 4.8f
+                val adjustedGrowth = force * qualityMultiplier * progressCurve * activeStem.growthSpeed * 5.28f // 10% plus vite (4.8f → 5.28f)
                 
                 if (adjustedGrowth > 0) {
                     activeStem.currentHeight += adjustedGrowth
@@ -358,9 +358,9 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             // Angles variés mais tous pointant vers le haut
             val leafAngle = Random.nextFloat() * 40f - 20f // -20° à +20°
             
-            // Feuilles 50% MOINS longues (réduction demandée)
+            // Feuilles 30% PLUS hautes (augmentation demandée)
             val heightVariation = 0.6f + (i * 0.2f) + Random.nextFloat() * 0.3f
-            val leafLength = 600f + Random.nextFloat() * 400f * heightVariation // 50% moins long (1200f → 600f)
+            val leafLength = 780f + Random.nextFloat() * 520f * heightVariation // 30% plus haut (600f → 780f, 400f → 520f)
             val leafWidth = 15f + Random.nextFloat() * 8f // Légèrement plus larges aussi
             
             val leaf = IrisLeaf(
