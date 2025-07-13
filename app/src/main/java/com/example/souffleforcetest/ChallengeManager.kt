@@ -95,11 +95,13 @@ class ChallengeManager(private val context: Context? = null) {
     }
     
     init {
+        // FORCE LES 4 FLEURS POUR TESTER
+        unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
+        unlockedFlowers.add(UnlockedFlower("ROSE", "Test forcé"))
+        unlockedFlowers.add(UnlockedFlower("LUPIN", "Test forcé"))
+        unlockedFlowers.add(UnlockedFlower("IRIS", "Test forcé"))
+        
         loadChallengeProgress()
-        // S'assurer que marguerite est toujours là
-        if (unlockedFlowers.none { it.flowerType == "MARGUERITE" }) {
-            unlockedFlowers.add(0, UnlockedFlower("MARGUERITE", "Disponible par défaut"))
-        }
     }
     
     // ==================== FONCTIONS PUBLIQUES ====================
