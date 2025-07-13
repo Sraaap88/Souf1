@@ -110,7 +110,7 @@ class IrisRenderer {
         canvas.save()
         canvas.translate(flower.position.x, flower.position.y)
         
-        val size = 208f * flower.bloomProgress  // 30% plus gros (160f -> 208f)
+        val size = 177f * flower.bloomProgress  // 15% plus petit (208f → 177f)
         
         // Couleurs dégradées pour plus de réalisme
         val upperPetalColor = Color.rgb(138, 43, 226)  // Violet
