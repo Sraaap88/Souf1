@@ -14,7 +14,10 @@ class IrisChallengeHandler {
             1 -> updateIrisChallenge1_CentralZone(force, plantState, challengeData)
             2 -> updateIrisChallenge2_MixedObjective(force, plantState, challengeData)
             3 -> updateIrisChallenge3_AdvancedMastery(force, plantState, challengeData)
-            // ==================== NOUVEAU: SUPPORT DISSOLUTION ====================
+        }
+    }
+    
+    // ==================== NOUVEAU: SUPPORT DISSOLUTION ====================
     
     /**
      * Fonction appelée pour déclencher la dissolution des iris lors d'un échec
@@ -86,8 +89,6 @@ class IrisChallengeHandler {
         challengeData.remove("beardDissolving")
         challengeData.remove("leavesShriveling")
         challengeData.remove("fullyDissolved")
-    }
-}
     }
     
     private fun updateIrisChallenge1_CentralZone(
