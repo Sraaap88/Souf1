@@ -160,7 +160,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                 textPaint.textSize = 55f
                 textPaint.color = 0xFFFFD700.toInt()
                 textPaint.isFakeBoldText = false
-                canvas.drawText("Zone verte: 1 pouce + saccades pour couleurs", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+                canvas.drawText("Astuce: saccades pour différentes couleurs", screenWidth / 2f, screenHeight * 0.62f, textPaint)
             }
             challenge?.id == 2 && flowerType == "LUPIN" -> {
                 textPaint.textAlign = Paint.Align.CENTER
@@ -174,7 +174,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                 textPaint.textSize = 55f
                 textPaint.color = 0xFFFFD700.toInt()
                 textPaint.isFakeBoldText = false
-                canvas.drawText("Zone centrale: 2 pouces de haut", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+                canvas.drawText("Astuce: aucune zone requise, juste 12 fleurs", screenWidth / 2f, screenHeight * 0.62f, textPaint)
             }
             challenge?.id == 1 && flowerType == "ROSE" -> {
                 textPaint.textAlign = Paint.Align.CENTER
@@ -296,7 +296,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                     textPaint.textAlign = Paint.Align.CENTER
                     textPaint.textSize = 50f
                     textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Expertise zone centrale parfaite!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                    canvas.drawText("Production de fleurs excellente!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
                 }
                 result.challenge.id == 1 && result.success && flowerType == "ROSE" -> {
                     textPaint.textAlign = Paint.Align.CENTER
@@ -364,3 +364,56 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                         canvas.drawText("🌸 ORCHIDÉE DÉBLOQUÉE! 🌸", screenWidth / 2f, screenHeight * 0.75f, textPaint)
                     }
                 }
+            }
+        } else {
+            // Fallback si pas de résultat
+            textPaint.textAlign = Paint.Align.CENTER
+            textPaint.textSize = 150f
+            textPaint.color = 0xFF00FF00.toInt()
+            textPaint.isFakeBoldText = true
+            canvas.drawText("DÉFI TERMINÉ!", screenWidth / 2f, screenHeight * 0.4f, textPaint)
+        }
+        
+        // Statut de sauvegarde
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = 60f
+        textPaint.color = 0xFFFFFFFF.toInt()
+        textPaint.isFakeBoldText = false
+        canvas.drawText("Progression sauvegardée", screenWidth / 2f, screenHeight * 0.85f, textPaint)
+    }
+    
+    // ==================== FONCTION UTILITAIRE POUR TEXTE MULTILIGNE ====================
+    
+    private fun drawMultilineText(canvas: Canvas, text: String, centerX: Float, startY: Float, textSize: Float, maxWidth: Float, textPaint: Paint) {
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = textSize
+        textPaint.color = 0xFFFFFFFF.toInt()
+        textPaint.isFakeBoldText = false
+        
+        val words = text.split(" ")
+        var currentLine = ""
+        var currentY = startY
+        val lineHeight = textSize * 1.2f
+        
+        for (word in words) {
+            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+            val testWidth = textPaint.measureText(testLine)
+            
+            if (testWidth <= maxWidth) {
+                currentLine = testLine
+            } else {
+                // Dessiner la ligne actuelle et commencer une nouvelle ligne
+                if (currentLine.isNotEmpty()) {
+                    canvas.drawText(currentLine, centerX, currentY, textPaint)
+                    currentY += lineHeight
+                }
+                currentLine = word
+            }
+        }
+        
+        // Dessiner la dernière ligne
+        if (currentLine.isNotEmpty()) {
+            canvas.drawText(currentLine, centerX, currentY, textPaint)
+        }
+    }
+}
