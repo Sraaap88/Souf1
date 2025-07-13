@@ -194,78 +194,85 @@ class IrisRenderer {
         canvas.restore()
     }
     
-    // NOUVEAU: Pétale central violet
-    private fun drawCentralPetal(canvas: Canvas, paint: Paint, size: Float) {
+    // NOUVEAU: Pétale central violet vers le HAUT
+    private fun drawCentralPetalUp(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
         path.moveTo(0f, 0f)
-        path.quadTo(-size * 0.15f, -size * 0.1f, -size * 0.1f, -size * 0.3f)
-        path.quadTo(0f, -size * 0.35f, size * 0.1f, -size * 0.3f)
-        path.quadTo(size * 0.15f, -size * 0.1f, 0f, 0f)
+        path.quadTo(-size * 0.15f, -size * 0.05f, -size * 0.1f, -size * 0.25f)
+        path.quadTo(0f, -size * 0.3f, size * 0.1f, -size * 0.25f)
+        path.quadTo(size * 0.15f, -size * 0.05f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
-    // NOUVEAU: Nervures jaunes sur pétale central
-    private fun drawCentralPetalVeins(canvas: Canvas, paint: Paint, size: Float) {
+    // NOUVEAU: Nervures jaunes sur pétale central vers le haut
+    private fun drawCentralPetalVeinsUp(canvas: Canvas, paint: Paint, size: Float) {
         for (i in -1..1) {
             val startX = size * 0.03f * i
             val endX = size * 0.05f * i
-            val endY = -size * 0.25f
+            val endY = -size * 0.2f
             canvas.drawLine(startX, 0f, endX, endY, paint)
         }
     }
     
-    // Pétale court (maintenant en bas)
-    private fun drawShortPetal(canvas: Canvas, paint: Paint, size: Float) {
+    // Pétale court vers le HAUT
+    private fun drawShortPetalUp(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
         path.moveTo(0f, 0f)
-        path.quadTo(-size * 0.25f, size * 0.05f, -size * 0.2f, size * 0.25f)
-        path.quadTo(0f, size * 0.3f, size * 0.2f, size * 0.25f)
-        path.quadTo(size * 0.25f, size * 0.05f, 0f, 0f)
+        path.quadTo(-size * 0.25f, -size * 0.05f, -size * 0.2f, -size * 0.2f)
+        path.quadTo(0f, -size * 0.25f, size * 0.2f, -size * 0.2f)
+        path.quadTo(size * 0.25f, -size * 0.05f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
-    private fun drawShortPetalOutline(canvas: Canvas, paint: Paint, size: Float) {
-        val path = Path()
-        path.moveTo(0f, 0f)
-        path.quadTo(-size * 0.25f, size * 0.05f, -size * 0.2f, size * 0.25f)
-        path.quadTo(0f, size * 0.3f, size * 0.2f, size * 0.25f)
-        path.quadTo(size * 0.25f, size * 0.05f, 0f, 0f)
-        canvas.drawPath(path, paint)
+    private fun drawShortPetalVeinsUp(canvas: Canvas, paint: Paint, size: Float) {
+        for (i in -1..1) {
+            val startX = size * 0.1f * i
+            val endX = size * 0.08f * i
+            val endY = -size * 0.15f
+            canvas.drawLine(startX, 0f, endX, endY, paint)
+        }
     }
     
-    // Pétales longs (maintenant en haut)
-    private fun drawLongPetal(canvas: Canvas, paint: Paint, size: Float) {
+    // Pétales longs vers le BAS - plus minces et plus longs
+    private fun drawLongPetalDown(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
         path.moveTo(0f, 0f)
-        path.quadTo(-size * 0.4f, -size * 0.1f, -size * 0.35f, -size * 0.4f)
-        path.quadTo(-size * 0.25f, -size * 0.7f, -size * 0.15f, -size * 0.9f)
         
-        // Pointe chétive et pendante vers le haut
-        path.quadTo(-size * 0.05f, -size * 1.1f, 0f, -size * 1.15f)
-        path.quadTo(size * 0.05f, -size * 1.1f, size * 0.15f, -size * 0.9f)
+        // 30% plus minces (0.4f → 0.28f et 0.35f → 0.245f)
+        path.quadTo(-size * 0.28f, size * 0.1f, -size * 0.245f, size * 0.4f)
         
-        path.quadTo(size * 0.25f, -size * 0.7f, size * 0.35f, -size * 0.4f)
-        path.quadTo(size * 0.4f, -size * 0.1f, 0f, 0f)
+        // 20% plus longs (0.7f → 0.84f, 0.9f → 1.08f, 1.1f → 1.32f, 1.15f → 1.38f)
+        path.quadTo(-size * 0.175f, size * 0.84f, -size * 0.105f, size * 1.08f)
+        
+        // Pointe plus fine et chétive vers le bas
+        path.quadTo(-size * 0.02f, size * 1.32f, 0f, size * 1.38f) // Pointe très fine
+        path.quadTo(size * 0.02f, size * 1.32f, size * 0.105f, size * 1.08f)
+        
+        path.quadTo(size * 0.175f, size * 0.84f, size * 0.245f, size * 0.4f)
+        path.quadTo(size * 0.28f, size * 0.1f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
-    private fun drawLongPetalOutline(canvas: Canvas, paint: Paint, size: Float) {
+    private fun drawLongPetalDownOutline(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
         path.moveTo(0f, 0f)
-        path.quadTo(-size * 0.4f, -size * 0.1f, -size * 0.35f, -size * 0.4f)
-        path.quadTo(-size * 0.25f, -size * 0.7f, -size * 0.15f, -size * 0.9f)
-        path.quadTo(-size * 0.05f, -size * 1.1f, 0f, -size * 1.15f)
-        path.quadTo(size * 0.05f, -size * 1.1f, size * 0.15f, -size * 0.9f)
-        path.quadTo(size * 0.25f, -size * 0.7f, size * 0.35f, -size * 0.4f)
-        path.quadTo(size * 0.4f, -size * 0.1f, 0f, 0f)
+        
+        // Même forme mais pour le contour
+        path.quadTo(-size * 0.28f, size * 0.1f, -size * 0.245f, size * 0.4f)
+        path.quadTo(-size * 0.175f, size * 0.84f, -size * 0.105f, size * 1.08f)
+        path.quadTo(-size * 0.02f, size * 1.32f, 0f, size * 1.38f)
+        path.quadTo(size * 0.02f, size * 1.32f, size * 0.105f, size * 1.08f)
+        path.quadTo(size * 0.175f, size * 0.84f, size * 0.245f, size * 0.4f)
+        path.quadTo(size * 0.28f, size * 0.1f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
-    private fun drawLongPetalVeins(canvas: Canvas, paint: Paint, size: Float) {
-        for (i in -2..2) {
-            val startX = size * 0.05f * i
-            val endX = size * 0.1f * i
-            val endY = -size * 0.8f
+    private fun drawLongPetalVeinsDown(canvas: Canvas, paint: Paint, size: Float) {
+        // Veines adaptées à la nouvelle forme plus longue
+        for (i in -1..1) { // Moins de veines car plus mince
+            val startX = size * 0.03f * i // Plus près du centre
+            val endX = size * 0.06f * i
+            val endY = size * 1.0f // Plus longues
             canvas.drawLine(startX, 0f, endX, endY, paint)
         }
     }
