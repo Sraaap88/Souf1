@@ -277,38 +277,37 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     private fun growActiveGroup(force: Float) {
-        // CORRECTION: Faire grandir TOUTES les tiges créées récemment
         for (activeStemsInGroup in listOf(
             stems.take(10), // Premier groupe plus gros (jusqu'à 10 tiges)
             if (stems.size > 10) stems.drop(10).take(5) else emptyList(),
             if (stems.size > 15) stems.drop(15).take(5) else emptyList(),
             if (stems.size > 20) stems.drop(20) else emptyList()
         )) {
-        
-        for (activeStem in activeStemsInGroup) {
-            if (activeStem.currentHeight >= activeStem.maxHeight) continue
-            
-            val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
-            val qualityMultiplier = 0.5f + forceStability * 0.5f
-            
-            val growthProgress = activeStem.currentHeight / activeStem.maxHeight
-            val progressCurve = 1f - growthProgress * growthProgress
-            
-            // CORRECTION: Vitesse de croissance 2x plus rapide (2.4f → 4.8f)
-            val adjustedGrowth = force * qualityMultiplier * progressCurve * activeStem.growthSpeed * 4.8f
-            
-            if (adjustedGrowth > 0) {
-                activeStem.currentHeight += adjustedGrowth
+            for (activeStem in activeStemsInGroup) {
+                if (activeStem.currentHeight >= activeStem.maxHeight) continue
                 
-                val lastPoint = activeStem.segments.lastOrNull() ?: continue
-                val angleRad = Math.toRadians(activeStem.baseAngle.toDouble())
-                val curvatureEffect = sin(growthProgress * PI).toFloat() * activeStem.curvature * 20f
+                val forceStability = 1f - abs(force - lastForce).coerceAtMost(0.5f) * 2f
+                val qualityMultiplier = 0.5f + forceStability * 0.5f
                 
-                val newX = lastPoint.x + sin(angleRad).toFloat() * 2f + curvatureEffect
-                val newY = lastPoint.y - adjustedGrowth
+                val growthProgress = activeStem.currentHeight / activeStem.maxHeight
+                val progressCurve = 1f - growthProgress * growthProgress
                 
-                activeStem.currentPoint = PointF(newX, newY)
-                activeStem.segments.add(PointF(newX, newY))
+                // CORRECTION: Vitesse de croissance 2x plus rapide (2.4f → 4.8f)
+                val adjustedGrowth = force * qualityMultiplier * progressCurve * activeStem.growthSpeed * 4.8f
+                
+                if (adjustedGrowth > 0) {
+                    activeStem.currentHeight += adjustedGrowth
+                    
+                    val lastPoint = activeStem.segments.lastOrNull() ?: continue
+                    val angleRad = Math.toRadians(activeStem.baseAngle.toDouble())
+                    val curvatureEffect = sin(growthProgress * PI).toFloat() * activeStem.curvature * 20f
+                    
+                    val newX = lastPoint.x + sin(angleRad).toFloat() * 2f + curvatureEffect
+                    val newY = lastPoint.y - adjustedGrowth
+                    
+                    activeStem.currentPoint = PointF(newX, newY)
+                    activeStem.segments.add(PointF(newX, newY))
+                }
             }
         }
     }
