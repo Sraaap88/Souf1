@@ -12,8 +12,8 @@ class IrisChallengeHandler {
     ) {
         when (challengeId) {
             1 -> updateIrisChallenge1_CentralZone(force, plantState, challengeData)
-            2 -> updateIrisChallenge2_Ramifications(force, plantState, challengeData)
-            3 -> updateIrisChallenge3_Mastery(force, plantState, challengeData)
+            2 -> updateIrisChallenge2_MixedObjective(force, plantState, challengeData)
+            3 -> updateIrisChallenge3_AdvancedMastery(force, plantState, challengeData)
         }
     }
     
@@ -25,7 +25,7 @@ class IrisChallengeHandler {
         challengeData["currentPhase"] = plantState
     }
     
-    private fun updateIrisChallenge2_Ramifications(
+    private fun updateIrisChallenge2_MixedObjective(
         force: Float, 
         plantState: String, 
         challengeData: MutableMap<String, Any>
@@ -33,7 +33,7 @@ class IrisChallengeHandler {
         challengeData["currentPhase"] = plantState
     }
     
-    private fun updateIrisChallenge3_Mastery(
+    private fun updateIrisChallenge3_AdvancedMastery(
         force: Float, 
         plantState: String, 
         challengeData: MutableMap<String, Any>
@@ -44,13 +44,13 @@ class IrisChallengeHandler {
     fun checkChallenge(
         challengeId: Int,
         irisFlowersInZone: List<String>,
-        irisRamifications: List<String>,
+        irisRamifications: List<String>, // Plus utilisé mais gardé pour compatibilité
         irisTotalFlowers: List<String>
     ): Boolean {
         return when (challengeId) {
-            1 -> irisFlowersInZone.size >= 4
-            2 -> irisRamifications.size >= 8
-            3 -> irisTotalFlowers.size >= 12 && irisRamifications.size >= 6
+            1 -> irisFlowersInZone.size >= 4 // Inchangé
+            2 -> irisTotalFlowers.size >= 10 && irisFlowersInZone.size >= 6 // 10 total + 6 en zone
+            3 -> irisTotalFlowers.size >= 16 && irisFlowersInZone.size >= 8 // 16 total + 8 en zone
             else -> false
         }
     }
@@ -58,13 +58,13 @@ class IrisChallengeHandler {
     fun getSuccessMessage(
         challengeId: Int,
         irisFlowersInZone: List<String>,
-        irisRamifications: List<String>,
+        irisRamifications: List<String>, // Plus utilisé mais gardé pour compatibilité
         irisTotalFlowers: List<String>
     ): String {
         return when (challengeId) {
             1 -> "Défi réussi! ${irisFlowersInZone.size} iris élégants en zone centrale!"
-            2 -> "Défi réussi! ${irisRamifications.size} ramifications parfaites!"
-            3 -> "Défi réussi! ${irisTotalFlowers.size} iris + ${irisRamifications.size} ramifications!\n🌺 ORCHIDÉE DÉBLOQUÉE!"
+            2 -> "Défi réussi! ${irisTotalFlowers.size} iris au total dont ${irisFlowersInZone.size} en zone spécifique!"
+            3 -> "Défi réussi! ${irisTotalFlowers.size} iris magnifiques dont ${irisFlowersInZone.size} en zone centrale!\n🌸 ORCHIDÉE DÉBLOQUÉE!"
             else -> "Défi réussi!"
         }
     }
@@ -72,13 +72,13 @@ class IrisChallengeHandler {
     fun getFailMessage(
         challengeId: Int,
         irisFlowersInZone: List<String>,
-        irisRamifications: List<String>,
+        irisRamifications: List<String>, // Plus utilisé mais gardé pour compatibilité
         irisTotalFlowers: List<String>
     ): String {
         return when (challengeId) {
             1 -> "Défi échoué - Seulement ${irisFlowersInZone.size}/4 iris en zone centrale!"
-            2 -> "Défi échoué - Seulement ${irisRamifications.size}/8 ramifications créées!"
-            3 -> "Défi échoué - ${irisTotalFlowers.size}/12 iris + ${irisRamifications.size}/6 ramifications!"
+            2 -> "Défi échoué - ${irisTotalFlowers.size}/10 iris total et ${irisFlowersInZone.size}/6 en zone spécifique!"
+            3 -> "Défi échoué - ${irisTotalFlowers.size}/16 iris total et ${irisFlowersInZone.size}/8 en zone centrale!"
             else -> "Défi échoué!"
         }
     }
