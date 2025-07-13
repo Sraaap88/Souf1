@@ -143,7 +143,7 @@ class IrisRenderer {
         paint.strokeWidth = 1f
         drawCentralPetalVeinsUp(canvas, paint, size)
         
-        // CORRIGÉ: 1 pétale court vers le HAUT, 2 pétales longs vers le BAS
+        // CORRIGÉ: 1 pétale court vers le HAUT, 2 pétales longs vers le HAUT (INVERSÉS)
         for (i in 0..2) {
             val angle = i * 120f
             canvas.save()
@@ -161,27 +161,27 @@ class IrisRenderer {
                 paint.strokeWidth = 1.5f
                 drawShortPetalVeinsUp(canvas, paint, size)
             } else {
-                // Pétales inférieurs - longs vers le bas (CORRIGÉ)
-                canvas.translate(0f, size * 0.1f)
+                // Pétales inférieurs - maintenant longs vers le HAUT (INVERSÉS)
+                canvas.translate(0f, -size * 0.1f) // Inverser le décalage
                 paint.style = Paint.Style.FILL
                 paint.color = lowerPetalLight
-                drawLongPetalDown(canvas, paint, size)
+                drawLongPetalUp(canvas, paint, size) // NOUVEAU: vers le haut
                 
                 // Bordure
                 paint.color = lowerPetalColor
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = 3f
-                drawLongPetalDownOutline(canvas, paint, size)
+                drawLongPetalUpOutline(canvas, paint, size) // NOUVEAU: vers le haut
                 
-                // BARBE
+                // BARBE (inversée aussi)
                 paint.style = Paint.Style.FILL
                 paint.color = beardColor
-                drawIrisBeard(canvas, paint, size * 0.8f)
+                drawIrisBeardUp(canvas, paint, size * 0.8f) // NOUVEAU: vers le haut
                 
-                // Veines longues
+                // Veines longues (inversées)
                 paint.color = veiningColor
                 paint.strokeWidth = 1.2f
-                drawLongPetalVeinsDown(canvas, paint, size)
+                drawLongPetalVeinsUp(canvas, paint, size) // NOUVEAU: vers le haut
             }
             
             canvas.restore()
@@ -235,63 +235,63 @@ class IrisRenderer {
         }
     }
     
-    // CORRIGÉ: Pétales longs vers le BAS (au lieu du haut)
-    private fun drawLongPetalDown(canvas: Canvas, paint: Paint, size: Float) {
+    // NOUVEAU: Pétales longs vers le HAUT (inversés)
+    private fun drawLongPetalUp(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
         path.moveTo(0f, 0f)
         
-        // INVERSER TOUTES les coordonnées Y : + devient -, - devient +
-        path.quadTo(-size * 0.28f, size * 0.1f, -size * 0.245f, size * 0.4f)
-        path.quadTo(-size * 0.175f, size * 0.84f, -size * 0.105f, size * 1.08f)
+        // Coordonnées Y négatives pour pointer vers le haut
+        path.quadTo(-size * 0.28f, -size * 0.1f, -size * 0.245f, -size * 0.4f)
+        path.quadTo(-size * 0.175f, -size * 0.84f, -size * 0.105f, -size * 1.08f)
         
-        // Pointe plus fine et chétive vers le bas
-        path.quadTo(-size * 0.02f, size * 1.32f, 0f, size * 1.38f) // Pointe très fine
-        path.quadTo(size * 0.02f, size * 1.32f, size * 0.105f, size * 1.08f)
+        // Pointe vers le haut
+        path.quadTo(-size * 0.02f, -size * 1.32f, 0f, -size * 1.38f)
+        path.quadTo(size * 0.02f, -size * 1.32f, size * 0.105f, -size * 1.08f)
         
-        path.quadTo(size * 0.175f, size * 0.84f, size * 0.245f, size * 0.4f)
-        path.quadTo(size * 0.28f, size * 0.1f, 0f, 0f)
+        path.quadTo(size * 0.175f, -size * 0.84f, size * 0.245f, -size * 0.4f)
+        path.quadTo(size * 0.28f, -size * 0.1f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
-    private fun drawLongPetalDownOutline(canvas: Canvas, paint: Paint, size: Float) {
+    private fun drawLongPetalUpOutline(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
         path.moveTo(0f, 0f)
         
-        // Même forme mais pour le contour
-        path.quadTo(-size * 0.28f, size * 0.1f, -size * 0.245f, size * 0.4f)
-        path.quadTo(-size * 0.175f, size * 0.84f, -size * 0.105f, size * 1.08f)
-        path.quadTo(-size * 0.02f, size * 1.32f, 0f, size * 1.38f)
-        path.quadTo(size * 0.02f, size * 1.32f, size * 0.105f, size * 1.08f)
-        path.quadTo(size * 0.175f, size * 0.84f, size * 0.245f, size * 0.4f)
-        path.quadTo(size * 0.28f, size * 0.1f, 0f, 0f)
+        // Même forme mais pour le contour vers le haut
+        path.quadTo(-size * 0.28f, -size * 0.1f, -size * 0.245f, -size * 0.4f)
+        path.quadTo(-size * 0.175f, -size * 0.84f, -size * 0.105f, -size * 1.08f)
+        path.quadTo(-size * 0.02f, -size * 1.32f, 0f, -size * 1.38f)
+        path.quadTo(size * 0.02f, -size * 1.32f, size * 0.105f, -size * 1.08f)
+        path.quadTo(size * 0.175f, -size * 0.84f, size * 0.245f, -size * 0.4f)
+        path.quadTo(size * 0.28f, -size * 0.1f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
-    private fun drawLongPetalVeinsDown(canvas: Canvas, paint: Paint, size: Float) {
-        // Veines adaptées à la nouvelle forme plus longue
-        for (i in -1..1) { // Moins de veines car plus mince
-            val startX = size * 0.03f * i // Plus près du centre
+    private fun drawLongPetalVeinsUp(canvas: Canvas, paint: Paint, size: Float) {
+        // Veines vers le haut
+        for (i in -1..1) {
+            val startX = size * 0.03f * i
             val endX = size * 0.06f * i
-            val endY = size * 1.0f // Plus longues
+            val endY = -size * 1.0f // Négatif pour aller vers le haut
             canvas.drawLine(startX, 0f, endX, endY, paint)
         }
     }
     
-    private fun drawIrisBeard(canvas: Canvas, paint: Paint, size: Float) {
-        // La barbe caractéristique de l'iris - ligne duveteuse au centre
+    private fun drawIrisBeardUp(canvas: Canvas, paint: Paint, size: Float) {
+        // La barbe vers le haut
         val beardPath = Path()
-        beardPath.moveTo(0f, size * 0.1f)
-        beardPath.lineTo(0f, size * 0.4f)
+        beardPath.moveTo(0f, -size * 0.1f) // Négatif pour partir vers le haut
+        beardPath.lineTo(0f, -size * 0.4f)
         
         // Effet duveteux avec petits traits perpendiculaires
         paint.strokeWidth = 6f
         paint.strokeCap = Paint.Cap.ROUND
         canvas.drawPath(beardPath, paint)
         
-        // Petits poils de barbe
+        // Petits poils de barbe vers le haut
         paint.strokeWidth = 2f
         for (i in 1..8) {
-            val y = size * 0.1f + (i * size * 0.04f)
+            val y = -size * 0.1f + (i * -size * 0.04f) // Négatif pour aller vers le haut
             val offset = size * 0.02f
             canvas.drawLine(-offset, y, offset, y, paint)
         }
