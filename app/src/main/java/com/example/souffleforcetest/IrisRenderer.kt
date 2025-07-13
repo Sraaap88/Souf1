@@ -110,7 +110,7 @@ class IrisRenderer {
         canvas.save()
         canvas.translate(flower.position.x, flower.position.y)
         
-        val size = 40f * flower.bloomProgress
+        val size = 160f * flower.bloomProgress  // 4x plus gros (40f -> 160f)
         
         // Couleurs typiques de l'iris - violet/bleu
         val petalColors = listOf(
@@ -138,14 +138,14 @@ class IrisRenderer {
             canvas.restore()
         }
         
-        // Centre de la fleur
+        // Centre de la fleur plus gros aussi
         paint.color = Color.rgb(255, 215, 0) // Jaune doré
         canvas.drawCircle(0f, 0f, size * 0.15f, paint)
         
         // Contours pour définir les pétales
         paint.color = Color.rgb(50, 0, 80)
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 2f
+        paint.strokeWidth = 3f  // Trait plus épais pour fleur plus grosse
         
         for (i in 0..2) {
             val angle = i * 120f
