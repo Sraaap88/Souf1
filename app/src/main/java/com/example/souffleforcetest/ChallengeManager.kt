@@ -68,6 +68,12 @@ class ChallengeManager(private val context: Context? = null) {
         } else 0f
     }
     
+    fun getDissolveInfo(flowerType: String): ChallengeEffectsManager.DissolveInfo? {
+        return if (::effectsManager.isInitialized) {
+            effectsManager.getDissolveInfo(flowerType)
+        } else null
+    }
+    
     fun isRainActive(): Boolean {
         return if (::effectsManager.isInitialized) {
             effectsManager.isRainActive()
@@ -117,6 +123,10 @@ class ChallengeManager(private val context: Context? = null) {
     }
     
     private fun resetDissolveEffects() {
+        if (::effectsManager.isInitialized) {
+            effectsManager.resetDissolveEffects()
+        }
+        
         when (currentFlowerType) {
             "MARGUERITE" -> margueriteChallengeHandler.resetDissolveEffects(challengeData)
             "ROSE" -> roseChallengeHandler.resetDissolveEffects(challengeData)
@@ -138,7 +148,7 @@ class ChallengeManager(private val context: Context? = null) {
         
         // Mettre à jour la dissolution si la pluie est active
         if (::effectsManager.isInitialized && effectsManager.isRainActive()) {
-            effectsManager.updateDissolveProgress(currentFlowerType, challengeData)
+            effectsManager.updateDissolveProgress(0.016f, challengeData)  // CORRIGÉ: deltaTime au lieu de flowerType
         }
     }
     
@@ -206,9 +216,9 @@ class ChallengeManager(private val context: Context? = null) {
             dataManager.unlockNextFlower(definitions, currentFlowerType, challenge.id)
             dataManager.saveProgress()
             
-            // DÉCLENCHER LE FEU D'ARTIFICE !
+            // CORRIGÉ: startFireworks() au lieu de triggerFirework()
             if (::effectsManager.isInitialized) {
-                effectsManager.triggerFirework()
+                effectsManager.startFireworks()
             }
             
             val successMessage = getSuccessMessage(challenge.id)
@@ -222,9 +232,9 @@ class ChallengeManager(private val context: Context? = null) {
         val challenge = currentChallenge ?: return null
         
         val result = checkChallengeCompletion() ?: run {
-            // DÉCLENCHER LA PLUIE EN CAS D'ÉCHEC !
+            // CORRIGÉ: startRain() au lieu de triggerRain()
             if (::effectsManager.isInitialized) {
-                effectsManager.triggerRain(currentFlowerType, challengeData)
+                effectsManager.startRain(currentFlowerType)
             }
             
             val failMessage = getFailMessage(challenge.id)
