@@ -1,6 +1,29 @@
 package com.example.souffleforcetest
 
 class ChallengeEffectsManager {
+
+     // ==================== DATA CLASS POUR LA DISSOLUTION ====================
+    
+    data class DissolveInfo(
+        val progress: Float = 0f,
+        // Effets communs
+        val stemsWilting: Boolean = false,
+        val stemsCollapsing: Boolean = false,
+        // Effets spécifiques marguerite
+        val petalsFalling: Boolean = false,
+        // Effets spécifiques rose
+        val petalsDrooping: Boolean = false,
+        val thornsWeakening: Boolean = false,
+        val branchesDissolving: Boolean = false,
+        // Effets spécifiques lupin
+        val spikesWilting: Boolean = false,
+        val colorsBlending: Boolean = false,
+        // Effets spécifiques iris
+        val fallsDropping: Boolean = false,
+        val standardsWilting: Boolean = false,
+        val beardDissolving: Boolean = false,
+        val leavesShriveling: Boolean = false
+    )
     
     // ==================== GESTIONNAIRES D'EFFETS ====================
     
@@ -191,27 +214,4 @@ class ChallengeEffectsManager {
             else -> DissolveInfo(progress = 0f)
         }
     }
-    
-    // ==================== DATA CLASS POUR LA DISSOLUTION ====================
-    
-    data class DissolveInfo(
-        val progress: Float = 0f,
-        // Effets communs
-        val stemsWilting: Boolean = false,
-        val stemsCollapsing: Boolean = false,
-        // Effets spécifiques marguerite
-        val petalsFalling: Boolean = false,
-        // Effets spécifiques rose
-        val petalsDrooping: Boolean = false,
-        val thornsWeakening: Boolean = false,
-        val branchesDissolving: Boolean = false,
-        // Effets spécifiques lupin
-        val spikesWilting: Boolean = false,
-        val colorsBlending: Boolean = false,
-        // Effets spécifiques iris
-        val fallsDropping: Boolean = false,
-        val standardsWilting: Boolean = false,
-        val beardDissolving: Boolean = false,
-        val leavesShriveling: Boolean = false
-    )
 }
