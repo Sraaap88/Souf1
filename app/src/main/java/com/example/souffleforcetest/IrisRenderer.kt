@@ -9,24 +9,42 @@ import kotlin.math.*
 
 class IrisRenderer {
     
+    // Délégué pour le dessin des fleurs
+    private val flowerDrawer = IrisFlowerDrawer()
+    
     fun drawIris(
         canvas: Canvas,
         stemPaint: Paint,
         leafPaint: Paint,
         flowerPaint: Paint,
         stems: List<IrisStem>,
-        flowers: List<IrisFlower>
+        flowers: List<IrisFlower>,
+        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null
     ) {
-        drawStems(canvas, stemPaint, stems)
-        drawLeaves(canvas, leafPaint, stems)
-        drawFlowers(canvas, flowerPaint, flowers)
+        drawStems(canvas, stemPaint, stems, dissolveInfo)
+        drawLeaves(canvas, leafPaint, stems, dissolveInfo)
+        drawFlowers(canvas, flowerPaint, flowers, dissolveInfo)
     }
     
-    private fun drawStems(canvas: Canvas, paint: Paint, stems: List<IrisStem>) {
+    private fun drawStems(canvas: Canvas, paint: Paint, stems: List<IrisStem>, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         paint.color = Color.rgb(40, 120, 40)
         paint.style = Paint.Style.STROKE
         paint.strokeCap = Paint.Cap.ROUND
         paint.strokeWidth = 8f
+        
+        // NOUVEAU: Appliquer les effets de dissolution
+        if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+            // Réduire l'opacité en fonction de la dissolution
+            val alpha = ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+            paint.alpha = alpha
+            
+            // Si les tiges s'effondrent, réduire la largeur
+            if (dissolveInfo.stemsCollapsing) {
+                paint.strokeWidth = 8f * (1f - dissolveInfo.progress * 0.5f)
+            }
+        } else {
+            paint.alpha = 255
+        }
         
         for (stem in stems) {
             if (stem.segments.size >= 2) {
@@ -38,8 +56,15 @@ class IrisRenderer {
                     val previous = stem.segments[i - 1]
                     
                     // Courbe légère pour tiges élancées
-                    val controlX = (previous.x + current.x) / 2f + sin(i * 0.3f) * 2f
-                    val controlY = (previous.y + current.y) / 2f
+                    var controlX = (previous.x + current.x) / 2f + sin(i * 0.3f) * 2f
+                    var controlY = (previous.y + current.y) / 2f
+                    
+                    // NOUVEAU: Effet de dissolution - les tiges penchent
+                    if (dissolveInfo?.stemsCollapsing == true) {
+                        val bendFactor = dissolveInfo.progress * 20f
+                        controlX += bendFactor * (i.toFloat() / stem.segments.size)
+                        controlY += bendFactor * 0.5f
+                    }
                     
                     path.quadTo(controlX, controlY, current.x, current.y)
                 }
@@ -49,26 +74,50 @@ class IrisRenderer {
         }
     }
     
-    private fun drawLeaves(canvas: Canvas, paint: Paint, stems: List<IrisStem>) {
+    private fun drawLeaves(canvas: Canvas, paint: Paint, stems: List<IrisStem>, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         paint.color = Color.rgb(60, 140, 60)
         paint.style = Paint.Style.FILL
+        
+        // NOUVEAU: Appliquer les effets de dissolution aux feuilles
+        if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+            val alpha = ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+            paint.alpha = alpha
+            
+            // Si les feuilles se ratatinent, changer la couleur vers le brun
+            if (dissolveInfo.leavesShriveling) {
+                val shrivelingFactor = dissolveInfo.progress
+                val red = (60 + (139 - 60) * shrivelingFactor).toInt() // Vers brun
+                val green = (140 * (1f - shrivelingFactor * 0.7f)).toInt()
+                val blue = (60 * (1f - shrivelingFactor * 0.8f)).toInt()
+                paint.color = Color.rgb(red, green, blue)
+            }
+        } else {
+            paint.alpha = 255
+        }
         
         for (stem in stems) {
             for (leaf in stem.leaves) {
                 if (leaf.growthProgress > 0f) {
-                    drawSwordLeaf(canvas, paint, leaf)
+                    drawSwordLeaf(canvas, paint, leaf, dissolveInfo)
                 }
             }
         }
     }
     
-    private fun drawSwordLeaf(canvas: Canvas, paint: Paint, leaf: IrisLeaf) {
+    private fun drawSwordLeaf(canvas: Canvas, paint: Paint, leaf: IrisLeaf, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         canvas.save()
         canvas.translate(leaf.attachmentPoint.x, leaf.attachmentPoint.y)
         canvas.rotate(leaf.angle)
         
-        val currentLength = leaf.length * leaf.growthProgress
-        val currentWidth = leaf.width * leaf.growthProgress
+        var currentLength = leaf.length * leaf.growthProgress
+        var currentWidth = leaf.width * leaf.growthProgress
+        
+        // NOUVEAU: Réduire la taille si les feuilles se ratatinent
+        if (dissolveInfo?.leavesShriveling == true) {
+            val shrinkFactor = 1f - dissolveInfo.progress * 0.6f
+            currentLength *= shrinkFactor
+            currentWidth *= shrinkFactor
+        }
         
         // Feuille en forme d'épée - longue et étroite
         val path = Path()
@@ -85,262 +134,50 @@ class IrisRenderer {
         path.close()
         
         // Dessiner la feuille
-        paint.color = Color.rgb(60, 140, 60)
         canvas.drawPath(path, paint)
         
-        // Nervure centrale
-        paint.color = Color.rgb(40, 100, 40)
-        paint.strokeWidth = 2f
-        paint.style = Paint.Style.STROKE
-        canvas.drawLine(0f, 0f, 0f, -currentLength, paint)
+        // Nervure centrale (seulement si pas trop dissoute)
+        if (dissolveInfo == null || dissolveInfo.progress < 0.7f) {
+            val originalColor = paint.color
+            paint.color = Color.rgb(40, 100, 40)
+            paint.strokeWidth = 2f
+            paint.style = Paint.Style.STROKE
+            
+            // NOUVEAU: Nervure qui s'affaiblit
+            if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+                val alpha = ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+                paint.alpha = alpha
+            }
+            
+            canvas.drawLine(0f, 0f, 0f, -currentLength, paint)
+            
+            paint.style = Paint.Style.FILL
+            paint.color = originalColor
+        }
         
-        paint.style = Paint.Style.FILL
         canvas.restore()
     }
     
-    private fun drawFlowers(canvas: Canvas, paint: Paint, flowers: List<IrisFlower>) {
+    private fun drawFlowers(canvas: Canvas, paint: Paint, flowers: List<IrisFlower>, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         // Trier par couches : arrière-plan d'abord, puis premier plan
         val backgroundFlowers = flowers.filter { it.renderLayer < 30 && it.bloomProgress > 0f }
         val foregroundFlowers = flowers.filter { it.renderLayer >= 30 && it.bloomProgress > 0f }
         
+        // NOUVEAU: Appliquer les effets de dissolution
+        val baseAlpha = if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+            ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+        } else 255
+        
         // Dessiner arrière-plan avec transparence
         for (flower in backgroundFlowers) {
-            paint.alpha = 120 // Semi-transparent
-            drawIrisFlower(canvas, paint, flower)
+            paint.alpha = (120 * baseAlpha / 255) // Semi-transparent + dissolution
+            flowerDrawer.drawIrisFlower(canvas, paint, flower, dissolveInfo)
         }
         
         // Dessiner premier plan normalement
-        paint.alpha = 255
+        paint.alpha = baseAlpha
         for (flower in foregroundFlowers) {
-            drawIrisFlower(canvas, paint, flower)
+            flowerDrawer.drawIrisFlower(canvas, paint, flower, dissolveInfo)
         }
-    }
-    
-    private fun drawIrisFlower(canvas: Canvas, paint: Paint, flower: IrisFlower) {
-        canvas.save()
-        canvas.translate(flower.position.x, flower.position.y)
-        
-        val baseSize = 88.5f * flower.bloomProgress
-        val size = baseSize * flower.sizeMultiplier
-        
-        // Couleurs
-        val upperPetalColor = Color.rgb(138, 43, 226)  // Violet
-        val lowerPetalColor = Color.rgb(75, 0, 130)    // Indigo plus foncé
-        val lowerPetalLight = Color.rgb(100, 149, 237) // Bleu clair
-        val veiningColor = Color.rgb(40, 20, 80)       // Violet foncé
-        val beardColor = Color.rgb(255, 215, 0)        // Jaune doré
-        val centralPetalColor = Color.rgb(138, 43, 226) // Violet pour pétale central
-        val yellowVeinColor = Color.rgb(255, 215, 0)   // Jaune pour nervures
-        
-        // NOUVEAU: Pétale central violet avec nervures jaunes (VERS LE HAUT)
-        paint.style = Paint.Style.FILL
-        paint.color = centralPetalColor
-        drawCentralPetalUp(canvas, paint, size)
-        
-        // Nervures jaunes sur pétale central
-        paint.color = yellowVeinColor
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1f
-        drawCentralPetalVeinsUp(canvas, paint, size)
-        
-        // VRAIE STRUCTURE D'IRIS : 3 pétales dressés + 3 pétales tombants
-        for (i in 0..5) { // 6 pétales au total
-            val angle = i * 60f // Répartis sur 360°
-            canvas.save()
-            canvas.rotate(angle)
-            
-            if (i % 2 == 0) {
-                // Pétales DRESSÉS (3 standards) - vers le haut
-                paint.style = Paint.Style.FILL
-                paint.color = upperPetalColor
-                drawStandardPetalUp(canvas, paint, size)
-                
-                // Veines des standards
-                paint.color = veiningColor
-                paint.style = Paint.Style.STROKE
-                paint.strokeWidth = 1.5f
-                drawStandardPetalVeins(canvas, paint, size)
-            } else {
-                // Pétales TOMBANTS (3 falls) - retombent vers le bas
-                paint.style = Paint.Style.FILL
-                paint.color = lowerPetalLight
-                drawFallPetalDown(canvas, paint, size) // VRAIMENT vers le bas !
-                
-                // Bordure des falls
-                paint.color = lowerPetalColor
-                paint.style = Paint.Style.STROKE
-                paint.strokeWidth = 3f
-                drawFallPetalOutline(canvas, paint, size)
-                
-                // BARBE sur les falls
-                paint.style = Paint.Style.FILL
-                paint.color = beardColor
-                drawIrisBeard(canvas, paint, size * 0.8f)
-                
-                // Veines des falls
-                paint.color = veiningColor
-                paint.strokeWidth = 1.2f
-                drawFallPetalVeins(canvas, paint, size)
-            }
-            
-            canvas.restore()
-        }
-        
-        // Centre
-        drawIrisCenter(canvas, paint, size)
-        
-        paint.style = Paint.Style.FILL
-        canvas.restore()
-    }
-    
-    // NOUVEAU: Pétale central violet vers le HAUT
-    private fun drawCentralPetalUp(canvas: Canvas, paint: Paint, size: Float) {
-        val path = Path()
-        path.moveTo(0f, 0f)
-        path.quadTo(-size * 0.15f, -size * 0.05f, -size * 0.1f, -size * 0.25f)
-        path.quadTo(0f, -size * 0.3f, size * 0.1f, -size * 0.25f)
-        path.quadTo(size * 0.15f, -size * 0.05f, 0f, 0f)
-        canvas.drawPath(path, paint)
-    }
-    
-    // NOUVEAU: Nervures jaunes sur pétale central vers le haut
-    private fun drawCentralPetalVeinsUp(canvas: Canvas, paint: Paint, size: Float) {
-        for (i in -1..1) {
-            val startX = size * 0.03f * i
-            val endX = size * 0.05f * i
-            val endY = -size * 0.2f
-            canvas.drawLine(startX, 0f, endX, endY, paint)
-        }
-    }
-    
-    // Pétale court vers le HAUT (PLUS GROS) - à supprimer
-    
-    private fun drawShortPetalVeinsUp(canvas: Canvas, paint: Paint, size: Float) {
-        // Plus de veines car pétale plus gros
-        for (i in -1..1) {
-            val startX = size * 0.12f * i // Élargi pour correspondre
-            val endX = size * 0.1f * i
-            val endY = -size * 0.15f
-            canvas.drawLine(startX, 0f, endX, endY, paint)
-        }
-    }
-    
-    // STANDARDS : Pétales dressés vers le haut (comme sur la photo)
-    private fun drawStandardPetalUp(canvas: Canvas, paint: Paint, size: Float) {
-        val path = Path()
-        path.moveTo(0f, 0f)
-        // Pétales élancés vers le haut
-        path.quadTo(-size * 0.2f, -size * 0.1f, -size * 0.15f, -size * 0.4f)
-        path.quadTo(0f, -size * 0.5f, size * 0.15f, -size * 0.4f)
-        path.quadTo(size * 0.2f, -size * 0.1f, 0f, 0f)
-        canvas.drawPath(path, paint)
-    }
-    
-    private fun drawStandardPetalVeins(canvas: Canvas, paint: Paint, size: Float) {
-        for (i in -1..1) {
-            val startX = size * 0.05f * i
-            val endX = size * 0.08f * i
-            val endY = -size * 0.35f
-            canvas.drawLine(startX, 0f, endX, endY, paint)
-        }
-    }
-    
-    // FALLS : Pétales qui tombent vers le bas (comme sur la photo)
-    private fun drawFallPetalDown(canvas: Canvas, paint: Paint, size: Float) {
-        val path = Path()
-        path.moveTo(0f, 0f)
-        
-        // Forme qui TOMBE vers le bas avec courbure naturelle
-        path.quadTo(-size * 0.25f, size * 0.05f, -size * 0.3f, size * 0.2f)
-        path.quadTo(-size * 0.35f, size * 0.4f, -size * 0.3f, size * 0.6f)
-        path.quadTo(-size * 0.2f, size * 0.8f, -size * 0.1f, size * 0.9f)
-        
-        // Pointe qui retombe
-        path.quadTo(0f, size * 1.0f, size * 0.1f, size * 0.9f)
-        path.quadTo(size * 0.2f, size * 0.8f, size * 0.3f, size * 0.6f)
-        path.quadTo(size * 0.35f, size * 0.4f, size * 0.3f, size * 0.2f)
-        path.quadTo(size * 0.25f, size * 0.05f, 0f, 0f)
-        
-        canvas.drawPath(path, paint)
-    }
-    
-    private fun drawFallPetalOutline(canvas: Canvas, paint: Paint, size: Float) {
-        val path = Path()
-        path.moveTo(0f, 0f)
-        
-        // Même forme pour le contour
-        path.quadTo(-size * 0.25f, size * 0.05f, -size * 0.3f, size * 0.2f)
-        path.quadTo(-size * 0.35f, size * 0.4f, -size * 0.3f, size * 0.6f)
-        path.quadTo(-size * 0.2f, size * 0.8f, -size * 0.1f, size * 0.9f)
-        path.quadTo(0f, size * 1.0f, size * 0.1f, size * 0.9f)
-        path.quadTo(size * 0.2f, size * 0.8f, size * 0.3f, size * 0.6f)
-        path.quadTo(size * 0.35f, size * 0.4f, size * 0.3f, size * 0.2f)
-        path.quadTo(size * 0.25f, size * 0.05f, 0f, 0f)
-        
-        canvas.drawPath(path, paint)
-    }
-    
-    private fun drawFallPetalVeins(canvas: Canvas, paint: Paint, size: Float) {
-        // Veines qui suivent la courbure du fall
-        for (i in -1..1) {
-            val startX = size * 0.08f * i
-            val midX = size * 0.15f * i
-            val endX = size * 0.05f * i
-            
-            val path = Path()
-            path.moveTo(startX, size * 0.1f)
-            path.quadTo(midX, size * 0.5f, endX, size * 0.8f)
-            canvas.drawPath(path, paint)
-        }
-    }
-    
-    private fun drawIrisBeard(canvas: Canvas, paint: Paint, size: Float) {
-        // Barbe au centre du fall qui retombe
-        val beardPath = Path()
-        beardPath.moveTo(0f, size * 0.2f)
-        beardPath.lineTo(0f, size * 0.5f)
-        
-        paint.strokeWidth = 6f
-        paint.strokeCap = Paint.Cap.ROUND
-        canvas.drawPath(beardPath, paint)
-        
-        // Petits poils duveteux
-        paint.strokeWidth = 2f
-        for (i in 1..6) {
-            val y = size * 0.2f + (i * size * 0.05f)
-            val offset = size * 0.015f
-            canvas.drawLine(-offset, y, offset, y, paint)
-        }
-    }
-    
-    private fun drawIrisCenter(canvas: Canvas, paint: Paint, size: Float) {
-        // Centre complexe avec style et stigmates
-        
-        // Base du centre - jaune doré
-        paint.style = Paint.Style.FILL
-        paint.color = Color.rgb(255, 215, 0)
-        canvas.drawCircle(0f, 0f, size * 0.12f, paint)
-        
-        // Stigmates (3 parties reproductrices)
-        paint.color = Color.rgb(200, 160, 0)
-        for (i in 0..2) {
-            canvas.save()
-            canvas.rotate(i * 120f)
-            
-            // Forme de stigmate
-            val stigmaPath = Path()
-            stigmaPath.moveTo(0f, -size * 0.08f)
-            stigmaPath.quadTo(size * 0.04f, -size * 0.06f, size * 0.03f, 0f)
-            stigmaPath.quadTo(size * 0.04f, size * 0.06f, 0f, size * 0.08f)
-            stigmaPath.quadTo(-size * 0.04f, size * 0.06f, -size * 0.03f, 0f)
-            stigmaPath.quadTo(-size * 0.04f, -size * 0.06f, 0f, -size * 0.08f)
-            
-            canvas.drawPath(stigmaPath, paint)
-            canvas.restore()
-        }
-        
-        // Point central plus foncé
-        paint.color = Color.rgb(150, 100, 0)
-        canvas.drawCircle(0f, 0f, size * 0.04f, paint)
     }
 }
