@@ -129,17 +129,17 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             
             stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             
-            val heightVariation = 0.6f + Random.nextFloat() * 0.8f
+            val heightVariation = 0.8f + Random.nextFloat() * 0.6f // Plus hautes
             val maxHeight = screenHeight * maxStemHeight * heightVariation
             
             val stem = IrisStem(
                 id = nextStemId++,
                 startPoint = PointF(stemX, stemY),
                 currentPoint = PointF(stemX, stemY),
-                baseAngle = Random.nextFloat() * 10f - 5f,
-                growthSpeed = baseGrowthSpeed + Random.nextFloat() * 2f,
+                baseAngle = Random.nextFloat() * 5f - 2.5f, // Plus raide (±2.5° au lieu de ±5°)
+                growthSpeed = baseGrowthSpeed * 1.5f + Random.nextFloat() * 3f, // Plus rapide
                 maxHeight = maxHeight,
-                curvature = Random.nextFloat() * 0.2f + 0.1f
+                curvature = Random.nextFloat() * 0.1f + 0.05f // Moins de courbure = plus raide
             )
             stem.segments.add(PointF(stemX, stemY))
             stems.add(stem)
@@ -148,8 +148,11 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     
     fun processLeavesGrowth(force: Float) {
         if (force > forceThreshold) {
+            // Créer feuilles du sol une seule fois par groupe de tiges
+            createGroundLeavesForGroups()
+            
+            // Faire grandir toutes les feuilles existantes
             for (stem in stems) {
-                createLeavesOnStem(stem)
                 growExistingLeaves(stem, force)
             }
         }
@@ -158,7 +161,8 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     fun processFlowerGrowth(force: Float) {
         if (force > forceThreshold) {
             for (stem in stems) {
-                if (stem.currentHeight > stem.maxHeight * 0.7f && !stem.hasFlower) {
+                // Plus facile d'avoir des fleurs (50% de hauteur au lieu de 70%)
+                if (stem.currentHeight > stem.maxHeight * 0.5f && !stem.hasFlower) {
                     createFlowerOnStem(stem)
                 }
             }
@@ -251,10 +255,10 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
         val stemCount = 2 + Random.nextInt(2) // 2 ou 3 tiges par groupe
         
         for (i in 0 until stemCount) {
-            val angle = Random.nextFloat() * 15f - 7.5f
+            val angle = Random.nextFloat() * 8f - 4f // Plus raide
             val spacing = 30f * i - 15f
             val stemX = (groupBaseX + spacing).coerceIn(marginFromEdges, screenWidth - marginFromEdges)
-            val heightVariation = 0.7f + Random.nextFloat() * 0.5f
+            val heightVariation = 0.8f + Random.nextFloat() * 0.4f // Plus hautes
             val maxHeight = screenHeight * maxStemHeight * heightVariation
             
             val stem = IrisStem(
@@ -262,9 +266,9 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
                 startPoint = PointF(stemX, groupBaseY),
                 currentPoint = PointF(stemX, groupBaseY),
                 baseAngle = angle,
-                growthSpeed = baseGrowthSpeed + Random.nextFloat() * 3f,
+                growthSpeed = baseGrowthSpeed * 1.5f + Random.nextFloat() * 3f, // Plus rapide
                 maxHeight = maxHeight,
-                curvature = Random.nextFloat() * 0.3f + 0.1f
+                curvature = Random.nextFloat() * 0.15f + 0.05f // Moins de courbure
             )
             
             stem.segments.add(PointF(stemX, groupBaseY))
@@ -300,8 +304,8 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             val growthProgress = activeStem.currentHeight / activeStem.maxHeight
             val progressCurve = 1f - growthProgress * growthProgress
             
-            // CORRECTION: Vitesse de croissance comme le Lupin
-            val adjustedGrowth = force * qualityMultiplier * progressCurve * activeStem.growthSpeed * 1.2f
+            // CORRECTION: Vitesse de croissance DOUBLÉE
+            val adjustedGrowth = force * qualityMultiplier * progressCurve * activeStem.growthSpeed * 2.4f
             
             if (adjustedGrowth > 0) {
                 activeStem.currentHeight += adjustedGrowth
@@ -319,22 +323,51 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
         }
     }
     
-    private fun createLeavesOnStem(stem: IrisStem) {
-        if (stem.leaves.isNotEmpty()) return
-        if (stem.currentHeight < 50f) return
+    // NOUVEAU: Créer des feuilles du sol par groupe
+    private fun createGroundLeavesForGroups() {
+        if (stems.isEmpty()) return
         
-        // 4-6 feuilles longues et étroites en forme d'épée
-        val leafCount = 4 + Random.nextInt(3)
+        // Créer des feuilles pour chaque groupe de tiges
+        val processedGroups = mutableSetOf<Int>()
+        
+        for ((index, stem) in stems.withIndex()) {
+            val groupId = when {
+                index < 6 -> 0  // Premier groupe
+                else -> 1 + (index - 6) / 3  // Groupes suivants
+            }
+            
+            if (!processedGroups.contains(groupId) && stem.currentHeight > 30f) {
+                createGroundLeavesNearStem(stem)
+                processedGroups.add(groupId)
+            }
+        }
+    }
+    
+    private fun createGroundLeavesNearStem(stem: IrisStem) {
+        if (stem.leaves.isNotEmpty()) return
+        
+        // 3-4 grandes feuilles partant du sol près de la tige
+        val leafCount = 3 + Random.nextInt(2)
         
         for (i in 0 until leafCount) {
-            val heightRatio = 0.1f + (i.toFloat() / leafCount) * 0.8f
-            val attachmentY = stem.startPoint.y - stem.currentHeight * heightRatio
-            val leafAngle = Random.nextFloat() * 60f - 30f // -30° à +30°
-            val leafLength = 80f + Random.nextFloat() * 40f
-            val leafWidth = 8f + Random.nextFloat() * 4f
+            // Position près du sol, légèrement décalée de la tige
+            val offsetX = (Random.nextFloat() - 0.5f) * 60f
+            val offsetY = Random.nextFloat() * 20f
+            val leafBase = PointF(
+                stem.startPoint.x + offsetX,
+                stem.startPoint.y + offsetY
+            )
+            
+            // Angles variés mais tous pointant vers le haut
+            val leafAngle = Random.nextFloat() * 40f - 20f // -20° à +20°
+            
+            // Feuilles de différentes hauteurs
+            val heightVariation = 0.6f + (i * 0.2f) + Random.nextFloat() * 0.3f
+            val leafLength = 120f + Random.nextFloat() * 80f * heightVariation
+            val leafWidth = 12f + Random.nextFloat() * 6f
             
             val leaf = IrisLeaf(
-                attachmentPoint = PointF(stem.currentPoint.x, attachmentY),
+                attachmentPoint = leafBase,
                 angle = leafAngle,
                 length = leafLength,
                 width = leafWidth
