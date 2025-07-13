@@ -99,10 +99,20 @@ class IrisRenderer {
     }
     
     private fun drawFlowers(canvas: Canvas, paint: Paint, flowers: List<IrisFlower>) {
-        for (flower in flowers) {
-            if (flower.bloomProgress > 0f) {
-                drawIrisFlower(canvas, paint, flower)
-            }
+        // Trier par couches : arrière-plan d'abord, puis premier plan
+        val backgroundFlowers = flowers.filter { it.renderLayer < 30 && it.bloomProgress > 0f }
+        val foregroundFlowers = flowers.filter { it.renderLayer >= 30 && it.bloomProgress > 0f }
+        
+        // Dessiner arrière-plan avec transparence
+        for (flower in backgroundFlowers) {
+            paint.alpha = 120 // Semi-transparent
+            drawIrisFlower(canvas, paint, flower)
+        }
+        
+        // Dessiner premier plan normalement
+        paint.alpha = 255
+        for (flower in foregroundFlowers) {
+            drawIrisFlower(canvas, paint, flower)
         }
     }
     
@@ -110,7 +120,7 @@ class IrisRenderer {
         canvas.save()
         canvas.translate(flower.position.x, flower.position.y)
         
-        val size = 88.5f * flower.bloomProgress  // 15% plus petit (208f → 177f) donc 50% plus petit 88.5f
+        val size = 177f * flower.bloomProgress  // 15% plus petit (208f → 177f)
         
         // Couleurs dégradées pour plus de réalisme
         val upperPetalColor = Color.rgb(138, 43, 226)  // Violet
@@ -186,65 +196,59 @@ class IrisRenderer {
         canvas.restore()
     }
     
-    private fun drawDetailedIrisPetal(canvas: Canvas, paint: Paint, size: Float, isUpper: Boolean) {
+    // Pétale supérieur - court et arrondi
+    private fun drawUpperPetal(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
-        
-        if (isUpper) {
-            // Pétale supérieur - forme plus élégante
-            path.moveTo(0f, 0f)
-            path.quadTo(-size * 0.35f, -size * 0.15f, -size * 0.25f, -size * 0.5f)
-            path.quadTo(-size * 0.15f, -size * 0.75f, 0f, -size * 0.85f)
-            path.quadTo(size * 0.15f, -size * 0.75f, size * 0.25f, -size * 0.5f)
-            path.quadTo(size * 0.35f, -size * 0.15f, 0f, 0f)
-        } else {
-            // Pétale inférieur - plus arrondi et charnu
-            path.moveTo(0f, 0f)
-            path.quadTo(-size * 0.45f, size * 0.1f, -size * 0.35f, size * 0.35f)
-            path.quadTo(-size * 0.2f, size * 0.55f, 0f, size * 0.6f)
-            path.quadTo(size * 0.2f, size * 0.55f, size * 0.35f, size * 0.35f)
-            path.quadTo(size * 0.45f, size * 0.1f, 0f, 0f)
-        }
-        
+        path.moveTo(0f, 0f)
+        path.quadTo(-size * 0.3f, -size * 0.15f, -size * 0.25f, -size * 0.4f)
+        path.quadTo(0f, -size * 0.5f, size * 0.25f, -size * 0.4f)
+        path.quadTo(size * 0.3f, -size * 0.15f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
-    private fun drawDetailedIrisPetalOutline(canvas: Canvas, paint: Paint, size: Float, isUpper: Boolean) {
+    // Pétales inférieurs - longs, pointus et pendants
+    private fun drawLowerPetal(canvas: Canvas, paint: Paint, size: Float) {
         val path = Path()
+        path.moveTo(0f, 0f)
+        path.quadTo(-size * 0.4f, size * 0.1f, -size * 0.35f, size * 0.4f)
+        path.quadTo(-size * 0.25f, size * 0.7f, -size * 0.15f, size * 0.9f)
         
-        if (isUpper) {
-            path.moveTo(0f, 0f)
-            path.quadTo(-size * 0.35f, -size * 0.15f, -size * 0.25f, -size * 0.5f)
-            path.quadTo(-size * 0.15f, -size * 0.75f, 0f, -size * 0.85f)
-            path.quadTo(size * 0.15f, -size * 0.75f, size * 0.25f, -size * 0.5f)
-            path.quadTo(size * 0.35f, -size * 0.15f, 0f, 0f)
-        } else {
-            path.moveTo(0f, 0f)
-            path.quadTo(-size * 0.45f, size * 0.1f, -size * 0.35f, size * 0.35f)
-            path.quadTo(-size * 0.2f, size * 0.55f, 0f, size * 0.6f)
-            path.quadTo(size * 0.2f, size * 0.55f, size * 0.35f, size * 0.35f)
-            path.quadTo(size * 0.45f, size * 0.1f, 0f, 0f)
-        }
+        // Pointe chétive et pendante
+        path.quadTo(-size * 0.05f, size * 1.1f, 0f, size * 1.15f)
+        path.quadTo(size * 0.05f, size * 1.1f, size * 0.15f, size * 0.9f)
         
+        path.quadTo(size * 0.25f, size * 0.7f, size * 0.35f, size * 0.4f)
+        path.quadTo(size * 0.4f, size * 0.1f, 0f, 0f)
         canvas.drawPath(path, paint)
     }
     
-    private fun drawPetalVeins(canvas: Canvas, paint: Paint, size: Float, isUpper: Boolean) {
-        if (isUpper) {
-            // Veines sur pétale supérieur - en éventail
-            for (i in -2..2) {
-                val startX = size * 0.1f * i
-                val endX = size * 0.15f * i
-                val endY = -size * 0.7f
-                canvas.drawLine(startX, 0f, endX, endY, paint)
-            }
-        } else {
-            // Veines sur pétale inférieur - rayonnantes
-            for (i in -2..2) {
-                val startX = size * 0.05f * i
-                val endX = size * 0.2f * i
-                val endY = size * 0.4f
-                canvas.drawLine(startX, 0f, endX, endY, paint)
-            }
+    private fun drawLowerPetalOutline(canvas: Canvas, paint: Paint, size: Float) {
+        val path = Path()
+        path.moveTo(0f, 0f)
+        path.quadTo(-size * 0.4f, size * 0.1f, -size * 0.35f, size * 0.4f)
+        path.quadTo(-size * 0.25f, size * 0.7f, -size * 0.15f, size * 0.9f)
+        path.quadTo(-size * 0.05f, size * 1.1f, 0f, size * 1.15f)
+        path.quadTo(size * 0.05f, size * 1.1f, size * 0.15f, size * 0.9f)
+        path.quadTo(size * 0.25f, size * 0.7f, size * 0.35f, size * 0.4f)
+        path.quadTo(size * 0.4f, size * 0.1f, 0f, 0f)
+        canvas.drawPath(path, paint)
+    }
+    
+    private fun drawUpperPetalVeins(canvas: Canvas, paint: Paint, size: Float) {
+        for (i in -1..1) {
+            val startX = size * 0.1f * i
+            val endX = size * 0.15f * i
+            val endY = -size * 0.4f
+            canvas.drawLine(startX, 0f, endX, endY, paint)
+        }
+    }
+    
+    private fun drawLowerPetalVeins(canvas: Canvas, paint: Paint, size: Float) {
+        for (i in -2..2) {
+            val startX = size * 0.05f * i
+            val endX = size * 0.1f * i
+            val endY = size * 0.8f
+            canvas.drawLine(startX, 0f, endX, endY, paint)
         }
     }
     
