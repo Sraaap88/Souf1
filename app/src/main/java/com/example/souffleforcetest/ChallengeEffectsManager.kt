@@ -1,217 +1,171 @@
 package com.example.souffleforcetest
 
 class ChallengeEffectsManager {
-
-     // ==================== DATA CLASS POUR LA DISSOLUTION ====================
+    
+    // ==================== DATA CLASSES ====================
     
     data class DissolveInfo(
-        val progress: Float = 0f,
-        // Effets communs
-        val stemsWilting: Boolean = false,
-        val stemsCollapsing: Boolean = false,
-        // Effets spécifiques marguerite
-        val petalsFalling: Boolean = false,
-        // Effets spécifiques rose
-        val petalsDrooping: Boolean = false,
-        val thornsWeakening: Boolean = false,
-        val branchesDissolving: Boolean = false,
-        // Effets spécifiques lupin
-        val spikesWilting: Boolean = false,
-        val colorsBlending: Boolean = false,
-        // Effets spécifiques iris
-        val fallsDropping: Boolean = false,
-        val standardsWilting: Boolean = false,
-        val beardDissolving: Boolean = false,
-        val leavesShriveling: Boolean = false
+        val progress: Float,                    // 0.0 à 1.0
+        val stemsCollapsing: Boolean,          // Tiges qui s'effondrent
+        val leavesShriveling: Boolean,         // Feuilles qui se ratatinent
+        val flowersPetalsWilting: Boolean,     // Pétales qui flétrissent
+        
+        // Spécifiques à l'Iris
+        val shouldFallsDropPetals: Boolean = false,    // Pétales tombantes qui tombent
+        val shouldStandardsWilt: Boolean = false,      // Pétales dressés qui flétrissent
+        val shouldBeardDissolve: Boolean = false,      // Barbe qui se dissout
+        val shouldLeavesShrive: Boolean = leavesShriveling  // Alias pour cohérence
     )
     
-    // ==================== GESTIONNAIRES D'EFFETS ====================
+    // ==================== VARIABLES PRINCIPALES ====================
     
     private var fireworkManager: FireworkManager? = null
-    private var onFireworkStarted: (() -> Unit)? = null
-    
     private var rainManager: RainManager? = null
-    private var onRainStarted: (() -> Unit)? = null
     
-    // Gestionnaires de défis pour la dissolution
-    private val margueriteChallengeHandler = MargueriteChallengeHandler()
-    private val roseChallengeHandler = RoseChallengeHandler()
-    private val lupinChallengeHandler = LupinChallengeHandler()
-    private val irisChallengeHandler = IrisChallengeHandler()
+    // Callbacks pour notifier l'UI
+    private var onFireworkStartedCallback: (() -> Unit)? = null
+    private var onRainStartedCallback: (() -> Unit)? = null
     
-    // ==================== CONFIGURATION DES GESTIONNAIRES ====================
+    // État de dissolution par type de fleur
+    private val dissolveStates = mutableMapOf<String, MutableMap<String, Any>>()
+    
+    // ==================== CONFIGURATION ====================
     
     fun setFireworkManager(manager: FireworkManager) {
         fireworkManager = manager
-    }
-    
-    fun setOnFireworkStartedCallback(callback: () -> Unit) {
-        onFireworkStarted = callback
     }
     
     fun setRainManager(manager: RainManager) {
         rainManager = manager
     }
     
+    fun setOnFireworkStartedCallback(callback: () -> Unit) {
+        onFireworkStartedCallback = callback
+    }
+    
     fun setOnRainStartedCallback(callback: () -> Unit) {
-        onRainStarted = callback
+        onRainStartedCallback = callback
     }
     
-    // ==================== GESTION DU FEU D'ARTIFICE ====================
+    // ==================== GESTION DES EFFETS ====================
     
-    fun triggerFirework() {
-        fireworkManager?.startFirework()
-        onFireworkStarted?.invoke()
-        println("🎆 FEU D'ARTIFICE DÉCLENCHÉ ! 🎆")
+    fun startFireworks() {
+        fireworkManager?.startFireworks()
+        onFireworkStartedCallback?.invoke()
     }
     
-    fun isFireworkActive(): Boolean {
-        return fireworkManager?.isPlaying() ?: false
-    }
-    
-    // ==================== GESTION DE LA PLUIE ====================
-    
-    fun triggerRain(currentFlowerType: String, challengeData: MutableMap<String, Any>) {
+    fun startRain(flowerType: String) {
         rainManager?.startRain()
-        onRainStarted?.invoke()
-        println("🌧️ LA PLUIE COMMENCE ! 🌧️")
+        onRainStartedCallback?.invoke()
         
-        // Mettre à jour la progression de dissolution dans les gestionnaires de défis
-        updateDissolveProgress(currentFlowerType, challengeData)
+        // Initialiser la dissolution pour ce type de fleur
+        initializeDissolve(flowerType)
     }
-    
-    fun isRainActive(): Boolean {
-        return rainManager?.isPlaying() ?: false
-    }
-    
-    // ==================== GESTION DE LA DISSOLUTION ====================
-    
-    fun updateDissolveProgress(currentFlowerType: String, challengeData: MutableMap<String, Any>) {
-        val dissolveProgress = rainManager?.getDissolveProgress() ?: 0f
-        
-        when (currentFlowerType) {
-            "MARGUERITE" -> margueriteChallengeHandler.updateDissolveProgress(dissolveProgress, challengeData)
-            "ROSE" -> roseChallengeHandler.updateDissolveProgress(dissolveProgress, challengeData)
-            "LUPIN" -> lupinChallengeHandler.updateDissolveProgress(dissolveProgress, challengeData)
-            "IRIS" -> irisChallengeHandler.updateDissolveProgress(dissolveProgress, challengeData)
-        }
-    }
-    
-    fun getDissolveProgress(currentFlowerType: String, challengeData: MutableMap<String, Any>): Float {
-        return when (currentFlowerType) {
-            "MARGUERITE" -> margueriteChallengeHandler.getDissolveProgress(challengeData)
-            "ROSE" -> roseChallengeHandler.getDissolveProgress(challengeData)
-            "LUPIN" -> lupinChallengeHandler.getDissolveProgress(challengeData)
-            "IRIS" -> irisChallengeHandler.getDissolveProgress(challengeData)
-            else -> 0f
-        }
-    }
-    
-    // ==================== EFFETS SPÉCIFIQUES PAR FLEUR ====================
-    
-    // Marguerite
-    fun shouldMargueritePetalsFall(challengeData: MutableMap<String, Any>): Boolean {
-        return margueriteChallengeHandler.shouldPetalsFall(challengeData)
-    }
-    
-    fun shouldMargueriteStemsWilt(challengeData: MutableMap<String, Any>): Boolean {
-        return margueriteChallengeHandler.shouldStemsWilt(challengeData)
-    }
-    
-    // Rose
-    fun shouldRosePetalsDroop(challengeData: MutableMap<String, Any>): Boolean {
-        return roseChallengeHandler.shouldPetalsDroop(challengeData)
-    }
-    
-    fun shouldRoseThornsWeaken(challengeData: MutableMap<String, Any>): Boolean {
-        return roseChallengeHandler.shouldThornsWeaken(challengeData)
-    }
-    
-    fun shouldRoseBranchesDissolve(challengeData: MutableMap<String, Any>): Boolean {
-        return roseChallengeHandler.shouldBranchesDissolve(challengeData)
-    }
-    
-    // Lupin
-    fun shouldLupinSpikesWilt(challengeData: MutableMap<String, Any>): Boolean {
-        return lupinChallengeHandler.shouldSpikesWilt(challengeData)
-    }
-    
-    fun shouldLupinColorsBlend(challengeData: MutableMap<String, Any>): Boolean {
-        return lupinChallengeHandler.shouldColorsBlend(challengeData)
-    }
-    
-    fun shouldLupinStemsCollapse(challengeData: MutableMap<String, Any>): Boolean {
-        return lupinChallengeHandler.shouldStemsCollapse(challengeData)
-    }
-    
-    // Iris
-    fun shouldIrisFallsDropPetals(challengeData: MutableMap<String, Any>): Boolean {
-        return irisChallengeHandler.shouldFallsDropPetals(challengeData)
-    }
-    
-    fun shouldIrisStandardsWilt(challengeData: MutableMap<String, Any>): Boolean {
-        return irisChallengeHandler.shouldStandardsWilt(challengeData)
-    }
-    
-    fun shouldIrisBeardDissolve(challengeData: MutableMap<String, Any>): Boolean {
-        return irisChallengeHandler.shouldBeardDissolve(challengeData)
-    }
-    
-    fun shouldIrisLeavesShrive(challengeData: MutableMap<String, Any>): Boolean {
-        return irisChallengeHandler.shouldLeavesShrive(challengeData)
-    }
-    
-    // ==================== CONTRÔLE GÉNÉRAL ====================
     
     fun stopAllEffects() {
-        fireworkManager?.stop()
-        rainManager?.stop()
+        fireworkManager?.stopFireworks()
+        rainManager?.stopRain()
+        
+        // Reset de toutes les dissolutions
+        dissolveStates.clear()
     }
     
     fun updateEffects(deltaTime: Float) {
         fireworkManager?.update(deltaTime)
         rainManager?.update(deltaTime)
-    }
-    
-    fun isAnyEffectActive(): Boolean {
-        return isFireworkActive() || isRainActive()
-    }
-    
-    // ==================== MÉTHODES POUR LES RENDERERS ====================
-    
-    /**
-     * Retourne les informations de dissolution pour un type de fleur spécifique
-     * Utilisé par les renderers pour adapter l'affichage
-     */
-    fun getDissolveInfo(flowerType: String, challengeData: MutableMap<String, Any>): DissolveInfo {
-        val progress = getDissolveProgress(flowerType, challengeData)
         
-        return when (flowerType) {
-            "MARGUERITE" -> DissolveInfo(
-                progress = progress,
-                petalsFalling = shouldMargueritePetalsFall(challengeData),
-                stemsWilting = shouldMargueriteStemsWilt(challengeData)
-            )
-            "ROSE" -> DissolveInfo(
-                progress = progress,
-                petalsDrooping = shouldRosePetalsDroop(challengeData),
-                thornsWeakening = shouldRoseThornsWeaken(challengeData),
-                branchesDissolving = shouldRoseBranchesDissolve(challengeData)
-            )
-            "LUPIN" -> DissolveInfo(
-                progress = progress,
-                spikesWilting = shouldLupinSpikesWilt(challengeData),
-                colorsBlending = shouldLupinColorsBlend(challengeData),
-                stemsCollapsing = shouldLupinStemsCollapse(challengeData)
-            )
-            "IRIS" -> DissolveInfo(
-                progress = progress,
-                fallsDropping = shouldIrisFallsDropPetals(challengeData),
-                standardsWilting = shouldIrisStandardsWilt(challengeData),
-                beardDissolving = shouldIrisBeardDissolve(challengeData),
-                leavesShriveling = shouldIrisLeavesShrive(challengeData)
-            )
-            else -> DissolveInfo(progress = 0f)
+        // Mettre à jour la dissolution pour toutes les fleurs actives
+        for ((flowerType, challengeData) in dissolveStates) {
+            if (rainManager?.isActive() == true) {
+                updateDissolveProgress(deltaTime * 0.5f, challengeData) // Vitesse de dissolution
+            }
         }
     }
+    
+    // ==================== GESTION DE LA DISSOLUTION ====================
+    
+    private fun initializeDissolve(flowerType: String) {
+        val challengeData = mutableMapOf<String, Any>(
+            "dissolveProgress" to 0f,
+            "stemsCollapsing" to true,
+            "leavesShriveling" to true,
+            "flowersPetalsWilting" to true
+        )
+        
+        // Effets spécifiques selon le type de fleur
+        when (flowerType) {
+            "IRIS" -> {
+                challengeData["shouldFallsDropPetals"] = true
+                challengeData["shouldStandardsWilt"] = true
+                challengeData["shouldBeardDissolve"] = true
+            }
+            "LUPIN" -> {
+                challengeData["flowersPetalsWilting"] = true
+            }
+            "ROSE" -> {
+                challengeData["stemsCollapsing"] = true
+                challengeData["flowersPetalsWilting"] = true
+            }
+            "MARGUERITE" -> {
+                challengeData["flowersPetalsWilting"] = true
+            }
+        }
+        
+        dissolveStates[flowerType] = challengeData
+    }
+    
+    fun updateDissolveProgress(deltaProgress: Float, challengeData: MutableMap<String, Any>) {
+        val currentProgress = challengeData["dissolveProgress"] as? Float ?: 0f
+        val newProgress = (currentProgress + deltaProgress).coerceIn(0f, 1f)
+        challengeData["dissolveProgress"] = newProgress
+    }
+    
+    fun getDissolveProgress(flowerType: String, challengeData: MutableMap<String, Any>): Float {
+        return dissolveStates[flowerType]?.get("dissolveProgress") as? Float ?: 0f
+    }
+    
+    fun getDissolveInfo(flowerType: String): DissolveInfo? {
+        val challengeData = dissolveStates[flowerType] ?: return null
+        
+        val progress = challengeData["dissolveProgress"] as? Float ?: 0f
+        if (progress <= 0f) return null
+        
+        return DissolveInfo(
+            progress = progress,
+            stemsCollapsing = challengeData["stemsCollapsing"] as? Boolean ?: false,
+            leavesShriveling = challengeData["leavesShriveling"] as? Boolean ?: false,
+            flowersPetalsWilting = challengeData["flowersPetalsWilting"] as? Boolean ?: false,
+            shouldFallsDropPetals = challengeData["shouldFallsDropPetals"] as? Boolean ?: false,
+            shouldStandardsWilt = challengeData["shouldStandardsWilt"] as? Boolean ?: false,
+            shouldBeardDissolve = challengeData["shouldBeardDissolve"] as? Boolean ?: false
+        )
+    }
+    
+    fun resetDissolveEffects() {
+        dissolveStates.clear()
+    }
+    
+    // ==================== MÉTHODES SPÉCIFIQUES POUR IRIS ====================
+    
+    fun shouldFallsDropPetals(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["shouldFallsDropPetals"] as? Boolean ?: false
+    }
+    
+    fun shouldStandardsWilt(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["shouldStandardsWilt"] as? Boolean ?: false
+    }
+    
+    fun shouldBeardDissolve(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["shouldBeardDissolve"] as? Boolean ?: false
+    }
+    
+    fun shouldLeavesShrive(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["leavesShriveling"] as? Boolean ?: false
+    }
+    
+    // ==================== GETTERS D'ÉTAT ====================
+    
+    fun isFireworksActive(): Boolean = fireworkManager?.isActive() ?: false
+    fun isRainActive(): Boolean = rainManager?.isActive() ?: false
+    fun isAnyEffectActive(): Boolean = isFireworksActive() || isRainActive()
 }
