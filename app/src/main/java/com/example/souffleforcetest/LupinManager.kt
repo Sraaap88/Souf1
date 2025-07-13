@@ -12,7 +12,7 @@ private var flowerIdCounter = 0
 fun generateStemId(): String {
     stemIdCounter++
     return "lupinstem_$stemIdCounter"
-}
+} 
 
 fun generateFlowerId(): String {
     flowerIdCounter++
