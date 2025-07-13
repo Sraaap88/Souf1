@@ -14,7 +14,80 @@ class IrisChallengeHandler {
             1 -> updateIrisChallenge1_CentralZone(force, plantState, challengeData)
             2 -> updateIrisChallenge2_MixedObjective(force, plantState, challengeData)
             3 -> updateIrisChallenge3_AdvancedMastery(force, plantState, challengeData)
+            // ==================== NOUVEAU: SUPPORT DISSOLUTION ====================
+    
+    /**
+     * Fonction appelée pour déclencher la dissolution des iris lors d'un échec
+     * @param dissolveProgress Progression de la dissolution (0.0 = intact, 1.0 = complètement dissous)
+     */
+    fun updateDissolveProgress(dissolveProgress: Float, challengeData: MutableMap<String, Any>) {
+        challengeData["dissolveProgress"] = dissolveProgress.coerceIn(0f, 1f)
+        
+        // Effets spécifiques aux iris lors de la dissolution
+        if (dissolveProgress > 0.2f) {
+            challengeData["fallsPetalsDropping"] = true // Les pétales "falls" tombent d'abord
         }
+        if (dissolveProgress > 0.4f) {
+            challengeData["standardsWilting"] = true // Les pétales "standards" flétrissent
+        }
+        if (dissolveProgress > 0.6f) {
+            challengeData["beardDissolving"] = true // La barbe se dissout
+        }
+        if (dissolveProgress > 0.8f) {
+            challengeData["leavesShriveling"] = true // Les feuilles se ratatinent
+        }
+        if (dissolveProgress >= 1f) {
+            challengeData["fullyDissolved"] = true // Complètement dissous
+        }
+    }
+    
+    /**
+     * Retourne le niveau de dissolution actuel
+     */
+    fun getDissolveProgress(challengeData: MutableMap<String, Any>): Float {
+        return challengeData["dissolveProgress"] as? Float ?: 0f
+    }
+    
+    /**
+     * Indique si les pétales "falls" doivent tomber
+     */
+    fun shouldFallsDropPetals(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["fallsPetalsDropping"] as? Boolean ?: false
+    }
+    
+    /**
+     * Indique si les pétales "standards" doivent flétrir
+     */
+    fun shouldStandardsWilt(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["standardsWilting"] as? Boolean ?: false
+    }
+    
+    /**
+     * Indique si la barbe doit se dissoudre
+     */
+    fun shouldBeardDissolve(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["beardDissolving"] as? Boolean ?: false
+    }
+    
+    /**
+     * Indique si les feuilles doivent se ratatiner
+     */
+    fun shouldLeavesShrive(challengeData: MutableMap<String, Any>): Boolean {
+        return challengeData["leavesShriveling"] as? Boolean ?: false
+    }
+    
+    /**
+     * Reset de la dissolution pour un nouveau défi
+     */
+    fun resetDissolveEffects(challengeData: MutableMap<String, Any>) {
+        challengeData.remove("dissolveProgress")
+        challengeData.remove("fallsPetalsDropping")
+        challengeData.remove("standardsWilting")
+        challengeData.remove("beardDissolving")
+        challengeData.remove("leavesShriveling")
+        challengeData.remove("fullyDissolved")
+    }
+}
     }
     
     private fun updateIrisChallenge1_CentralZone(
