@@ -24,9 +24,9 @@ class ChallengeDefinitions {
     private val margueriteHandler = MargueriteChallengeHandler()
     private val roseHandler = RoseChallengeHandler()
     private val lupinHandler = LupinChallengeHandler()
-    private val irisHandler = IrisChallengeHandler()  // NOUVEAU: Handler pour l'iris
+    private val irisHandler = IrisChallengeHandler()  // Handler pour l'iris
     private val orchideeHandler = OrchideeChallengeHandler()
-    private val zoneHelper = ChallengeZoneHelper()
+    private val zoneHelper = ChallengeZoneHelper()  // CORRIGÉ: Utilise les zones corrigées
     
     // ==================== DÉFINITIONS DES DÉFIS ====================
     
@@ -34,7 +34,7 @@ class ChallengeDefinitions {
         Challenge(
             id = 1,
             title = "Défi 1: Zone Verte",
-            description = "Faire pousser 1 fleur dans la zone verte",
+            description = "Faire pousser 1 fleur dans la zone verte (1 pouce de haut)",
             briefText = "Défi 1: 1 fleur en zone verte"
         ),
         Challenge(
@@ -47,7 +47,7 @@ class ChallengeDefinitions {
         Challenge(
             id = 3,
             title = "Défi 3: Précision",
-            description = "Faire 2 fleurs en zone verte ET 1 bourgeon", 
+            description = "Faire 2 fleurs en zone verte (1 pouce) ET 1 bourgeon", 
             briefText = "Défi 3: 2 fleurs + 1 bourgeon",
             isUnlocked = false
         )
@@ -57,8 +57,8 @@ class ChallengeDefinitions {
         Challenge(
             id = 1,
             title = "Défi 1: Jardin Ordonné",
-            description = "Faire pousser 6 fleurs dans la zone verte",
-            briefText = "Défi 1: 6 fleurs en zone verte"
+            description = "Faire pousser 6 fleurs dans la zone centrale (2 pouces)",
+            briefText = "Défi 1: 6 fleurs en zone centrale"
         ),
         Challenge(
             id = 2,
@@ -70,7 +70,7 @@ class ChallengeDefinitions {
         Challenge(
             id = 3,
             title = "Défi 3: Expertise Totale",
-            description = "15 fleurs dont 5 en zone verte + 8 divisions", 
+            description = "15 fleurs dont 5 en zone centrale (2 pouces) + 8 divisions", 
             briefText = "Défi 3: 15 fleurs (5 en zone) + 8 divisions",
             isUnlocked = false
         )
@@ -80,7 +80,7 @@ class ChallengeDefinitions {
         Challenge(
             id = 1,
             title = "Défi 1: Épis Colorés",
-            description = "Faire pousser 3 épis de lupin de couleurs différentes",
+            description = "Faire pousser 3 épis de lupin de couleurs différentes dans la zone verte (1 pouce)",
             briefText = "Défi 1: 3 épis colorés"
         ),
         Challenge(
@@ -93,32 +93,31 @@ class ChallengeDefinitions {
         Challenge(
             id = 3,
             title = "Défi 3: Maître Lupins",
-            description = "12 fleurs individuelles dans les épis", 
+            description = "12 fleurs individuelles dans les épis en zone centrale (2 pouces)", 
             briefText = "Défi 3: 12 fleurs totales",
             isUnlocked = false
         )
     )
 
-    // NOUVEAU: Défis pour l'iris
     val irisChallenges = listOf(
         Challenge(
             id = 1,
             title = "Défi 1: Élégance Bleue",
-            description = "Faire pousser 4 iris dans la zone centrale",
+            description = "Faire pousser 4 iris dans la zone centrale (2 pouces)",
             briefText = "Défi 1: 4 iris en zone centrale"
         ),
         Challenge(
             id = 2,
             title = "Défi 2: Jardin d'Iris", 
-            description = "Créer 8 tiges d'iris avec ramifications",
-            briefText = "Défi 2: 8 tiges ramifiées",
+            description = "Créer 10 iris avec ramifications dans la zone centrale",
+            briefText = "Défi 2: 10 iris + ramifications",
             isUnlocked = false
         ),
         Challenge(
             id = 3,
             title = "Défi 3: Maître Iris",
-            description = "12 iris parfaits + 6 ramifications précises", 
-            briefText = "Défi 3: 12 iris + 6 ramifications",
+            description = "16 iris parfaits dont 8 en zone centrale (2 pouces)", 
+            briefText = "Défi 3: 16 iris + 8 en zone",
             isUnlocked = false
         )
     )
@@ -127,7 +126,7 @@ class ChallengeDefinitions {
         Challenge(
             id = 1,
             title = "Défi 1: Orchidée Royale",
-            description = "Faire éclore 2 orchidées parfaites",
+            description = "Faire éclore 2 orchidées parfaites en zone centrale",
             briefText = "Défi 1: 2 orchidées parfaites"
         ),
         Challenge(
@@ -198,7 +197,8 @@ class ChallengeDefinitions {
         return lupinHandler.getFailMessage(challengeId, lupinSpikeColors, lupinCompleteStems, lupinFlowers)
     }
     
-    // NOUVEAU: Logique pour l'iris
+    // ==================== LOGIQUE IRIS ====================
+    
     fun updateIrisChallenge(challengeId: Int, force: Float, plantState: String, challengeData: MutableMap<String, Any>) {
         irisHandler.updateChallenge(challengeId, force, plantState, challengeData)
     }
@@ -231,7 +231,7 @@ class ChallengeDefinitions {
         return orchideeHandler.getFailMessage(challengeId, orchideeFlowers, orchideeRamifications, orchideeInZone)
     }
     
-    // ==================== GESTION DES ZONES ====================
+    // ==================== GESTION DES ZONES CORRIGÉES ====================
     
     fun isInMargueriteZone(flowerY: Float, screenHeight: Float, challengeId: Int): Boolean {
         return zoneHelper.isInMargueriteZone(flowerY, screenHeight, challengeId)
@@ -249,7 +249,6 @@ class ChallengeDefinitions {
         return zoneHelper.isInLupinZone(flowerY, screenHeight, challengeId)
     }
     
-    // NOUVEAU: Zone pour l'iris
     fun isInIrisZone(flowerY: Float, screenHeight: Float): Boolean {
         return zoneHelper.isInIrisZone(flowerY, screenHeight)
     }
@@ -273,7 +272,7 @@ class ChallengeDefinitions {
                 2 -> "LUPIN" to 3
                 else -> null
             }
-            "IRIS" -> when (completedId) {  // NOUVEAU: Défis iris
+            "IRIS" -> when (completedId) {
                 1 -> "IRIS" to 2
                 2 -> "IRIS" to 3
                 else -> null
@@ -291,7 +290,7 @@ class ChallengeDefinitions {
         return when {
             currentFlowerType == "MARGUERITE" && completedChallengeId == 3 -> "ROSE"
             currentFlowerType == "ROSE" && completedChallengeId == 3 -> "LUPIN"
-            currentFlowerType == "LUPIN" && completedChallengeId == 3 -> "IRIS"  // NOUVEAU: Débloque l'iris
+            currentFlowerType == "LUPIN" && completedChallengeId == 3 -> "IRIS"
             currentFlowerType == "IRIS" && completedChallengeId == 3 -> "ORCHIDEE"
             else -> null
         }
@@ -304,7 +303,7 @@ class ChallengeDefinitions {
             "MARGUERITE" -> margueriteChallenges
             "ROSE" -> roseChallenges
             "LUPIN" -> lupinChallenges
-            "IRIS" -> irisChallenges  // NOUVEAU: Retourner les défis iris
+            "IRIS" -> irisChallenges
             "ORCHIDEE" -> orchideeChallenges
             else -> margueriteChallenges
         }
