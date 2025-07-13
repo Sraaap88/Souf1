@@ -240,7 +240,7 @@ class OrganicLineView @JvmOverloads constructor(
                     stateStartTime = currentTime
                     
                     // NOUVEAU: Déclencher la pluie SEULEMENT si le défi a échoué
-                    if (lastChallengeResult != null && !lastChallengeResult!!.isSuccess) {
+                    if (lastChallengeResult != null && !lastChallengeResult!!.success) {
                         challengeEffectsManager?.startRain(selectedFlowerType)
                     }
                 }
