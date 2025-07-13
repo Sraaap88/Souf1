@@ -10,7 +10,7 @@ class ChallengeEffectsManager {
         val leavesShriveling: Boolean,         // Feuilles qui se ratatinent
         val flowersPetalsWilting: Boolean,     // Pétales qui flétrissent
         
-        // Spécifiques à l'Iris
+        // Spécifiques à l'Iris - NOMS CORRECTS
         val shouldFallsDropPetals: Boolean = false,    // Pétales tombantes qui tombent
         val shouldStandardsWilt: Boolean = false,      // Pétales dressés qui flétrissent
         val shouldBeardDissolve: Boolean = false,      // Barbe qui se dissout
@@ -50,7 +50,7 @@ class ChallengeEffectsManager {
     // ==================== GESTION DES EFFETS ====================
     
     fun startFireworks() {
-        fireworkManager?.startFireworks()
+        fireworkManager?.start()  // CORRIGÉ: start() au lieu de startFireworks()
         onFireworkStartedCallback?.invoke()
     }
     
@@ -63,8 +63,8 @@ class ChallengeEffectsManager {
     }
     
     fun stopAllEffects() {
-        fireworkManager?.stopFireworks()
-        rainManager?.stopRain()
+        fireworkManager?.stop()  // CORRIGÉ: stop() au lieu de stopFireworks()
+        rainManager?.stop()      // CORRIGÉ: stop() au lieu de stopRain()
         
         // Reset de toutes les dissolutions
         dissolveStates.clear()
@@ -76,7 +76,7 @@ class ChallengeEffectsManager {
         
         // Mettre à jour la dissolution pour toutes les fleurs actives
         for ((flowerType, challengeData) in dissolveStates) {
-            if (rainManager?.isActive() == true) {
+            if (rainManager?.isActive == true) {  // CORRIGÉ: isActive sans ()
                 updateDissolveProgress(deltaTime * 0.5f, challengeData) // Vitesse de dissolution
             }
         }
@@ -165,7 +165,7 @@ class ChallengeEffectsManager {
     
     // ==================== GETTERS D'ÉTAT ====================
     
-    fun isFireworksActive(): Boolean = fireworkManager?.isActive() ?: false
-    fun isRainActive(): Boolean = rainManager?.isActive() ?: false
+    fun isFireworksActive(): Boolean = fireworkManager?.isActive ?: false  // CORRIGÉ: isActive sans ()
+    fun isRainActive(): Boolean = rainManager?.isActive ?: false           // CORRIGÉ: isActive sans ()
     fun isAnyEffectActive(): Boolean = isFireworksActive() || isRainActive()
 }
