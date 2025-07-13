@@ -217,25 +217,25 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
     
     // ==================== DÉLÉGATION POUR LE RENDU DES PLANTES - CORRIGÉ ====================
     
-    // CORRECTION: Ajouter dissolveInfo à toutes les méthodes
-    fun drawMainStem(canvas: Canvas, mainStem: List<PlantStem.StemPoint>, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
-        flowerComponents.drawMainStem(canvas, mainStem, dissolveInfo)
+    // CORRECTION: Supprimer dissolveInfo des signatures puisque FlowerUIComponents ne l'accepte pas
+    fun drawMainStem(canvas: Canvas, mainStem: List<PlantStem.StemPoint>) {
+        flowerComponents.drawMainStem(canvas, mainStem)
     }
     
-    fun drawBranches(canvas: Canvas, branches: List<PlantStem.Branch>, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
-        flowerComponents.drawBranches(canvas, branches, dissolveInfo)
+    fun drawBranches(canvas: Canvas, branches: List<PlantStem.Branch>) {
+        flowerComponents.drawBranches(canvas, branches)
     }
     
-    fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>, stem: PlantStem, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
-        flowerComponents.drawLeaves(canvas, leaves, stem, dissolveInfo)
+    fun drawLeaves(canvas: Canvas, leaves: List<PlantLeavesManager.Leaf>, stem: PlantStem) {
+        flowerComponents.drawLeaves(canvas, leaves, stem)
     }
     
-    fun drawBackgroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
-        flowerComponents.drawBackgroundFlowers(canvas, flowers, stem, dissolveInfo)
+    fun drawBackgroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem) {
+        flowerComponents.drawBackgroundFlowers(canvas, flowers, stem)
     }
     
-    fun drawForegroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
-        flowerComponents.drawForegroundFlowers(canvas, flowers, stem, dissolveInfo)
+    fun drawForegroundFlowers(canvas: Canvas, flowers: List<FlowerManager.Flower>, stem: PlantStem) {
+        flowerComponents.drawForegroundFlowers(canvas, flowers, stem)
     }
     
     // ==================== FONCTION UTILITAIRE ====================
