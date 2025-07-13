@@ -118,8 +118,8 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     private fun createMainStemGroup() {
-        // 40% plus de tiges (7-14 au lieu de 5-10)
-        val stemCount = 7 + Random.nextInt(8) // 7 à 14 tiges
+        // DOUBLE de tiges (14-28 au lieu de 7-14)
+        val stemCount = 14 + Random.nextInt(15) // 14 à 28 tiges
         val radius = 240f
         val centerX = screenWidth / 2f
         val centerY = screenHeight * 0.85f
@@ -164,11 +164,11 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     fun processFlowerGrowth(force: Float) {
         if (force > forceThreshold) {
             for (stem in stems) {
-                // 15% moins de fleurs : 68% des tiges ont des fleurs (80% → 68%)
-                // Seuil plus élevé aussi (20% → 25%)
-                if (stem.currentHeight > stem.maxHeight * 0.25f && !stem.hasFlower) {
-                    // 68% de chance au lieu de 80%
-                    if (Random.nextFloat() < 0.68f) {
+                // MOINS de fleurs malgré plus de tiges : 40% des tiges ont des fleurs (68% → 40%)
+                // Seuil plus élevé aussi (25% → 35%)
+                if (stem.currentHeight > stem.maxHeight * 0.35f && !stem.hasFlower) {
+                    // 40% de chance au lieu de 68%
+                    if (Random.nextFloat() < 0.40f) {
                         createFlowerOnStem(stem)
                     }
                 }
@@ -259,8 +259,8 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             .coerceIn(marginFromEdges, screenWidth - marginFromEdges)
         val groupBaseY = bottomY + (Random.nextFloat() - 0.5f) * 80f
         
-        // 40% plus de tiges (4-7 au lieu de 3-5)
-        val stemCount = 4 + Random.nextInt(4) // 4 à 7 tiges par groupe
+        // DOUBLE de tiges (8-14 au lieu de 4-7)
+        val stemCount = 8 + Random.nextInt(7) // 8 à 14 tiges par groupe
         
         for (i in 0 until stemCount) {
             val angle = Random.nextFloat() * 8f - 4f
@@ -285,12 +285,12 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     }
     
     private fun growActiveGroup(force: Float) {
-        // Groupes adaptés aux nouvelles quantités
+        // Groupes adaptés aux nouvelles quantités (DOUBLE)
         for (activeStemsInGroup in listOf(
-            stems.take(14), // Premier groupe plus gros (jusqu'à 14 tiges)
-            if (stems.size > 14) stems.drop(14).take(7) else emptyList(),
-            if (stems.size > 21) stems.drop(21).take(7) else emptyList(),
-            if (stems.size > 28) stems.drop(28) else emptyList()
+            stems.take(28), // Premier groupe DOUBLE (jusqu'à 28 tiges)
+            if (stems.size > 28) stems.drop(28).take(14) else emptyList(),
+            if (stems.size > 42) stems.drop(42).take(14) else emptyList(),
+            if (stems.size > 56) stems.drop(56) else emptyList()
         )) {
             for (activeStem in activeStemsInGroup) {
                 if (activeStem.currentHeight >= activeStem.maxHeight) continue
@@ -329,8 +329,8 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
         
         for ((index, stem) in stems.withIndex()) {
             val groupId = when {
-                index < 8 -> 0  // Premier groupe (adapté aux nouvelles quantités)
-                else -> 1 + (index - 8) / 4  // Groupes suivants
+                index < 16 -> 0  // Premier groupe (adapté au DOUBLE)
+                else -> 1 + (index - 16) / 8  // Groupes suivants
             }
             
             if (!processedGroups.contains(groupId) && stem.currentHeight > 30f) {
@@ -387,8 +387,8 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
         stem.hasFlower = true
         val flowerId = "iris_${stem.id}_${System.currentTimeMillis()}"
         
-        // Taille variable des fleurs (0.7x à 1.3x)
-        val sizeVariation = 0.7f + Random.nextFloat() * 0.6f
+        // Taille variable des fleurs (15% plus grande : 0.7x à 1.3x → 0.805x à 1.495x)
+        val sizeVariation = 0.805f + Random.nextFloat() * 0.69f // 15% plus grande
         
         val flower = IrisFlower(
             stemId = stem.id,
