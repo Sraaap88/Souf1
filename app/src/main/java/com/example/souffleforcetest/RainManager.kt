@@ -31,20 +31,22 @@ class RainManager(private val screenWidth: Int, private val screenHeight: Int) {
     private var duration = 0L
     private val maxDuration = 4000L // 4 secondes
     private var rainIntensity = 0f // 0.0 à 1.0
+    private var currentFlowerType: String = "MARGUERITE" // NOUVEAU: Type de fleur actuel
     
     // Couleurs de la pluie
     private val rainColor = Color.argb(180, 100, 120, 150) // Bleu-gris transparent
     private val splashColor = Color.argb(120, 150, 170, 200) // Bleu clair
     private val skyColor = Color.argb(0, 60, 60, 80) // Gris foncé (alpha progressif)
     
-    fun startRain() {
+    fun startRain(flowerType: String = "MARGUERITE") { // NOUVEAU: Paramètre flowerType
         isActive = true
         duration = 0L
         rainIntensity = 0f
+        currentFlowerType = flowerType // NOUVEAU: Stocker le type
         raindrops.clear()
         splashes.clear()
         
-        println("🌧️ La pluie commence à tomber...")
+        println("🌧️ La pluie commence à tomber sur $flowerType...")
     }
     
     fun update(deltaTime: Float) {
@@ -104,15 +106,16 @@ class RainManager(private val screenWidth: Int, private val screenHeight: Int) {
             drop.y += drop.speed * deltaTime
             drop.x += Random.nextFloat() * 20f - 10f // Léger mouvement horizontal (vent)
             
-            // NOUVEAU: Sol différent selon le type de plante
-            val groundLevel = screenHeight * 0.85f // Sol par défaut pour roses, lupins, iris
-            val margueriteGroundLevel = screenHeight - 100f // Sol spécial pour marguerite
+            // NOUVEAU: Sol adaptatif selon le type de fleur
+            val groundLevel = when (currentFlowerType) {
+                "MARGUERITE" -> screenHeight - 100f // Sol spécial marguerite
+                else -> screenHeight * 0.85f // Sol standard pour autres fleurs
+            }
             
             // Créer éclaboussure quand la goutte touche le sol
-            // TODO: Détecter le type de fleur actuel pour choisir le bon sol
-            if (drop.y >= margueriteGroundLevel) { // Pour l'instant, utiliser sol marguerite
+            if (drop.y >= groundLevel) {
                 if (Random.nextFloat() < 0.3f) { // 30% de chance d'éclaboussure
-                    createSplash(drop.x, margueriteGroundLevel)
+                    createSplash(drop.x, groundLevel)
                 }
                 iterator.remove()
             }
