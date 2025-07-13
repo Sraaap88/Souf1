@@ -91,7 +91,8 @@ class FlowerManager(private val plantStem: PlantStem) {
         lastForce = 0f
     }
     
-    fun drawFlowers(canvas: Canvas, flowerPaint: Paint, centerPaint: Paint) {
+    // NOUVEAU: Version avec dissolution
+    fun drawFlowers(canvas: Canvas, flowerPaint: Paint, centerPaint: Paint, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
         // Dessiner d'abord les boutons avec leurs propres Paint
         val budPaint = Paint().apply {
             isAntiAlias = true
@@ -104,15 +105,16 @@ class FlowerManager(private val plantStem: PlantStem) {
         }
         budManager.drawBuds(canvas, budPaint, budPetalPaint)
         
-        // Puis dessiner les fleurs avec LEUR centre jaune
+        // Puis dessiner les fleurs avec dissolution
         for (flower in flowers) {
             if (flower.currentSize > 0) {
-                drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
+                drawSingleFlower(canvas, flower, flowerPaint, centerPaint, dissolveInfo)
             }
         }
     }
     
-    fun drawSpecificFlowers(canvas: Canvas, specificFlowers: List<Flower>, flowerPaint: Paint, centerPaint: Paint) {
+    // NOUVEAU: Version avec dissolution pour fleurs spécifiques
+    fun drawSpecificFlowersWithDissolution(canvas: Canvas, specificFlowers: List<Flower>, flowerPaint: Paint, centerPaint: Paint, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
         // Dessiner les boutons avec leurs propres Paint
         val budPaint = Paint().apply {
             isAntiAlias = true
@@ -125,12 +127,17 @@ class FlowerManager(private val plantStem: PlantStem) {
         }
         budManager.drawBuds(canvas, budPaint, budPetalPaint)
         
-        // Puis dessiner les fleurs spécifiques avec LEUR centre jaune
+        // Puis dessiner les fleurs spécifiques avec dissolution
         for (flower in specificFlowers) {
             if (flower.currentSize > 0) {
-                drawSingleFlower(canvas, flower, flowerPaint, centerPaint)
+                drawSingleFlower(canvas, flower, flowerPaint, centerPaint, dissolveInfo)
             }
         }
+    }
+    
+    // ANCIEN: Version sans dissolution (rétrocompatibilité)
+    fun drawSpecificFlowers(canvas: Canvas, specificFlowers: List<Flower>, flowerPaint: Paint, centerPaint: Paint) {
+        drawSpecificFlowersWithDissolution(canvas, specificFlowers, flowerPaint, centerPaint, null)
     }
     
     // ==================== FONCTIONS PRIVÉES ====================
@@ -313,36 +320,65 @@ class FlowerManager(private val plantStem: PlantStem) {
         }
     }
     
-    // ==================== FONCTIONS DE RENDU ====================
+    // ==================== FONCTIONS DE RENDU AVEC DISSOLUTION ====================
     
-    private fun drawSingleFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint) {
+    private fun drawSingleFlower(canvas: Canvas, flower: Flower, flowerPaint: Paint, centerPaint: Paint, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         val currentX = flower.x
         val currentY = flower.y
         
-        // Dessiner les pétales - STATIQUES une fois développés
+        // NOUVEAU: Appliquer les effets de dissolution globaux
+        val baseAlpha = if (dissolveInfo != null && dissolveInfo.progress > 0f) {
+            ((1f - dissolveInfo.progress) * 255f).toInt().coerceIn(0, 255)
+        } else 255
+        
+        // Dessiner les pétales avec dissolution
         val sortedPetals = flower.petals.sortedBy { it.perspective.depthFactor }
         
-        for (petal in sortedPetals) {
+        // NOUVEAU: Moins de pétales si dissolution avancée
+        val visiblePetals = if (dissolveInfo?.flowersPetalsWilting == true) {
+            val keepRatio = 1f - dissolveInfo.progress * 0.7f
+            val petalsToKeep = (sortedPetals.size * keepRatio).toInt().coerceAtLeast(5)
+            sortedPetals.take(petalsToKeep)
+        } else sortedPetals
+        
+        for ((index, petal) in visiblePetals.withIndex()) {
             if (petal.currentLength > 0) {
-                drawPetal(canvas, currentX, currentY, petal, flower, flowerPaint)
+                // NOUVEAU: Pétales qui tombent progressivement
+                var petalAlpha = baseAlpha
+                if (dissolveInfo?.flowersPetalsWilting == true) {
+                    // Les derniers pétales (par index) disparaissent en premier
+                    val petalWiltChance = dissolveInfo.progress + (index.toFloat() / visiblePetals.size) * 0.4f
+                    if (petalWiltChance > 0.6f) {
+                        petalAlpha = (petalAlpha * (1f - (petalWiltChance - 0.6f) / 0.4f)).toInt().coerceAtLeast(0)
+                    }
+                }
+                
+                drawPetal(canvas, currentX, currentY, petal, flower, flowerPaint, petalAlpha, dissolveInfo)
             }
         }
         
-        // Dessiner le centre par-dessus - STATIQUE
+        // Dessiner le centre par-dessus avec dissolution
         if (flower.centerSize > 0) {
-            drawFlowerCenter(canvas, currentX, currentY, flower, centerPaint)
+            drawFlowerCenter(canvas, currentX, currentY, flower, centerPaint, baseAlpha, dissolveInfo)
         }
     }
     
-    private fun drawPetal(canvas: Canvas, centerX: Float, centerY: Float, petal: Petal, flower: Flower, paint: Paint) {
+    private fun drawPetal(canvas: Canvas, centerX: Float, centerY: Float, petal: Petal, flower: Flower, paint: Paint, alpha: Int, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
         val perspective = petal.perspective
         val flowerPerspective = flower.perspective
         
         val adjustedAngle = petal.angle + flowerPerspective.rotationAngle
         val radians = Math.toRadians(adjustedAngle.toDouble())
         
-        val baseDistance = petal.currentLength * 0.3f
-        val tipDistance = petal.currentLength
+        var baseDistance = petal.currentLength * 0.3f
+        var tipDistance = petal.currentLength
+        
+        // NOUVEAU: Pétales qui se rétractent
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            val shrinkFactor = 1f - dissolveInfo.progress * 0.6f
+            baseDistance *= shrinkFactor
+            tipDistance *= shrinkFactor
+        }
         
         val cos = cos(radians).toFloat()
         val sin = sin(radians).toFloat()
@@ -353,54 +389,112 @@ class FlowerManager(private val plantStem: PlantStem) {
         val baseX = centerX + cos * baseDistance * perspectiveFactor
         val baseY = centerY + sin * baseDistance + cos * baseDistance * tiltFactor * 0.3f
         
-        val tipX = centerX + cos * tipDistance * perspectiveFactor
-        val tipY = centerY + sin * tipDistance + cos * tipDistance * tiltFactor * 0.3f
+        var tipX = centerX + cos * tipDistance * perspectiveFactor
+        var tipY = centerY + sin * tipDistance + cos * tipDistance * tiltFactor * 0.3f
         
-        val width = petal.width * perspective.widthFactor * (flower.currentSize / flower.maxSize)
+        // NOUVEAU: Pétales qui s'affaissent
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            val droopFactor = dissolveInfo.progress * 0.8f
+            tipY += droopFactor * 20f // Affaissement vers le bas
+            tipX += (tipX - centerX) * droopFactor * 0.3f // Léger écartement
+        }
         
-        val alpha = (255 * perspective.visibilityFactor).toInt()
-        paint.color = Color.argb(alpha, 255, 255, 255)
+        var width = petal.width * perspective.widthFactor * (flower.currentSize / flower.maxSize)
+        
+        // NOUVEAU: Pétales qui s'amincissent
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            width *= (1f - dissolveInfo.progress * 0.4f)
+        }
+        
+        // Couleur des pétales (ternit avec dissolution)
+        var petalRed = 255
+        var petalGreen = 255
+        var petalBlue = 255
+        
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            val wiltFactor = dissolveInfo.progress
+            petalRed = (255 * (1f - wiltFactor * 0.2f)).toInt()
+            petalGreen = (255 * (1f - wiltFactor * 0.3f)).toInt()
+            petalBlue = (255 * (1f - wiltFactor * 0.1f)).toInt()
+        }
+        
+        val finalAlpha = (alpha * perspective.visibilityFactor).toInt()
+        paint.color = Color.argb(finalAlpha, petalRed, petalGreen, petalBlue)
         paint.strokeWidth = width
         paint.strokeCap = Paint.Cap.ROUND
         
         canvas.drawLine(baseX, baseY, tipX, tipY, paint)
     }
     
-    private fun drawFlowerCenter(canvas: Canvas, centerX: Float, centerY: Float, flower: Flower, paint: Paint) {
-        val centerRadius = flower.centerSize * 0.4f
+    private fun drawFlowerCenter(canvas: Canvas, centerX: Float, centerY: Float, flower: Flower, paint: Paint, alpha: Int, dissolveInfo: ChallengeEffectsManager.DissolveInfo?) {
+        var centerRadius = flower.centerSize * 0.4f
         val perspective = flower.perspective
         
-        // Appliquer la perspective au centre - RESTAURÉ
+        // NOUVEAU: Centre qui rétrécit
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            centerRadius *= (1f - dissolveInfo.progress * 0.5f)
+        }
+        
+        // Appliquer la perspective au centre
         val perspectiveFactor = cos(Math.toRadians(perspective.viewAngle.toDouble())).toFloat()
         val radiusX = centerRadius * perspectiveFactor
         val radiusY = centerRadius
         
-        // Dégradé jaune-orange pour le centre
-        paint.color = Color.rgb(255, 200, 50)
+        // Couleur du centre (s'assombrit avec dissolution)
+        var centerRed = 255
+        var centerGreen = 200
+        var centerBlue = 50
         
-        // Dessiner le centre comme une ellipse selon la perspective - RESTAURÉ
+        if (dissolveInfo?.flowersPetalsWilting == true) {
+            val wiltFactor = dissolveInfo.progress
+            centerRed = (255 * (1f - wiltFactor * 0.3f)).toInt()
+            centerGreen = (200 * (1f - wiltFactor * 0.4f)).toInt()
+            centerBlue = (50 + (100 * wiltFactor)).toInt() // Vers brun
+        }
+        
+        paint.color = Color.argb(alpha, centerRed, centerGreen, centerBlue)
+        
+        // Dessiner le centre comme une ellipse selon la perspective
         canvas.save()
         canvas.translate(centerX, centerY)
         canvas.scale(1f, perspectiveFactor)
         canvas.drawCircle(0f, 0f, radiusY, paint)
         canvas.restore()
         
-        // Ajouter texture granuleuse avec petits points - STATIQUES
-        paint.color = Color.rgb(200, 150, 30)
-        val pointCount = (centerRadius * 0.5f).toInt()
-        
-        // Points fixes basés sur la position mais avec perspective
-        val seed = (centerX + centerY).toInt()
-        for (i in 0 until pointCount) {
-            val angleSeed = (seed + i * 137) % 360
-            val distanceSeed = ((seed + i * 97) % 100) / 100f
+        // Texture granuleuse (s'affaiblit avec dissolution)
+        if (dissolveInfo == null || dissolveInfo.progress < 0.8f) {
+            var textureRed = 200
+            var textureGreen = 150
+            var textureBlue = 30
             
-            val angle = angleSeed * PI / 180.0
-            val distance = distanceSeed * radiusY * 0.8f
-            val pointX = centerX + cos(angle).toFloat() * distance * perspectiveFactor
-            val pointY = centerY + sin(angle).toFloat() * distance
+            if (dissolveInfo?.flowersPetalsWilting == true) {
+                val wiltFactor = dissolveInfo.progress
+                textureRed = (200 * (1f - wiltFactor * 0.4f)).toInt()
+                textureGreen = (150 * (1f - wiltFactor * 0.5f)).toInt()
+                textureBlue = (30 + (80 * wiltFactor)).toInt()
+            }
             
-            canvas.drawCircle(pointX, pointY, 1.5f, paint)
+            paint.color = Color.argb(alpha, textureRed, textureGreen, textureBlue)
+            val pointCount = (centerRadius * 0.5f).toInt()
+            
+            // Points fixes basés sur la position mais avec perspective
+            val seed = (centerX + centerY).toInt()
+            for (i in 0 until pointCount) {
+                val angleSeed = (seed + i * 137) % 360
+                val distanceSeed = ((seed + i * 97) % 100) / 100f
+                
+                val angle = angleSeed * PI / 180.0
+                val distance = distanceSeed * radiusY * 0.8f
+                val pointX = centerX + cos(angle).toFloat() * distance * perspectiveFactor
+                val pointY = centerY + sin(angle).toFloat() * distance
+                
+                var pointSize = 1.5f
+                if (dissolveInfo?.flowersPetalsWilting == true) {
+                    pointSize *= (1f - dissolveInfo.progress * 0.3f)
+                }
+                
+                canvas.drawCircle(pointX, pointY, pointSize, paint)
+            }
         }
     }
     
