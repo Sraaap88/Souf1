@@ -39,7 +39,8 @@ class UIDrawingManager(private val context: Context, private val screenWidth: In
         
         when (lightState) {
             OrganicLineView.LightState.START -> {
-                flowerComponents.drawFlowerChoice(canvas, challengeManager)  // Délégation
+                // CORRECTION : Utiliser flowerComponents directement (pas de nouveau renderer)
+                flowerComponents.drawFlowerChoice(canvas, challengeManager)
             }        
             OrganicLineView.LightState.MODE_CHOICE -> {
                 drawStartButtons(canvas)
