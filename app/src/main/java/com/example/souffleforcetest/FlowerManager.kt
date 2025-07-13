@@ -103,7 +103,7 @@ class FlowerManager(private val plantStem: PlantStem) {
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
         }
-        budManager.drawBuds(canvas, budPaint, budPetalPaint)
+        budManager.drawBuds(canvas, budPaint, budPetalPaint, dissolveInfo)
         
         // Puis dessiner les fleurs avec dissolution
         for (flower in flowers) {
@@ -125,7 +125,7 @@ class FlowerManager(private val plantStem: PlantStem) {
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
         }
-        budManager.drawBuds(canvas, budPaint, budPetalPaint)
+        budManager.drawBuds(canvas, budPaint, budPetalPaint, dissolveInfo)
         
         // Puis dessiner les fleurs spécifiques avec dissolution
         for (flower in specificFlowers) {
