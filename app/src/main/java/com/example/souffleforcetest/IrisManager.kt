@@ -46,7 +46,9 @@ data class IrisFlower(
     val position: PointF,
     var bloomProgress: Float = 0f,
     val id: String,
-    var isFullyBloomed: Boolean = false
+    var isFullyBloomed: Boolean = false,
+    val sizeMultiplier: Float = 1f,
+    val renderLayer: Int = Random.nextInt(100) // 0-29 = arrière, 30-99 = avant
 )
 
 class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
@@ -130,7 +132,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             
             val heightVariation = 0.8f + Random.nextFloat() * 0.6f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation * 0.8f
+            val maxHeight = screenHeight * maxStemHeight * heightVariation
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -161,8 +163,8 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     fun processFlowerGrowth(force: Float) {
         if (force > forceThreshold) {
             for (stem in stems) {
-                // Plus facile d'avoir des fleurs (50% de hauteur au lieu de 70%)
-                if (stem.currentHeight > stem.maxHeight * 0.5f && !stem.hasFlower) {
+                // 80% des tiges ont des fleurs (20% de hauteur au lieu de 50%)
+                if (stem.currentHeight > stem.maxHeight * 0.2f && !stem.hasFlower) {
                     createFlowerOnStem(stem)
                 }
             }
@@ -224,7 +226,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             val spacing = 40f * i - 20f // Espacement serré
             val stemX = (centerX + spacing).coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             val heightVariation = 0.8f + Random.nextFloat() * 0.4f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation * 0.8f
+            val maxHeight = screenHeight * maxStemHeight * heightVariation
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -259,7 +261,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             val spacing = 50f * i - 25f // Plus d'espacement (30f → 50f)
             val stemX = (groupBaseX + spacing).coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             val heightVariation = 0.8f + Random.nextFloat() * 0.4f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation * 0.8f
+            val maxHeight = screenHeight * maxStemHeight * heightVariation
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -352,7 +354,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             
             // Feuilles 10x plus longues et croissance plus rapide
             val heightVariation = 0.6f + (i * 0.2f) + Random.nextFloat() * 0.3f
-            val leafLength = 1200f + Random.nextFloat() * 800f * heightVariation * 0.5f // 5x plus long
+            val leafLength = 1200f + Random.nextFloat() * 800f * heightVariation // 10x plus long
             val leafWidth = 15f + Random.nextFloat() * 8f // Légèrement plus larges aussi
             
             val leaf = IrisLeaf(
@@ -379,10 +381,14 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
         stem.hasFlower = true
         val flowerId = "iris_${stem.id}_${System.currentTimeMillis()}"
         
+        // Taille variable des fleurs (0.7x à 1.3x)
+        val sizeVariation = 0.7f + Random.nextFloat() * 0.6f
+        
         val flower = IrisFlower(
             stemId = stem.id,
             position = PointF(stem.currentPoint.x, stem.currentPoint.y - 20f),
-            id = flowerId
+            id = flowerId,
+            sizeMultiplier = sizeVariation
         )
         
         flowers.add(flower)
