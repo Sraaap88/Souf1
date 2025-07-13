@@ -187,10 +187,21 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
             }
             "IRIS" -> {
                 if (isUnlocked) {
-                    // Iris débloqué (pour le futur)
-                    flowerTextPaint.textSize = radius * 1.6f
+                    // Iris débloqué - MEILLEUR RENDU
+                    flowerTextPaint.style = Paint.Style.FILL
                     flowerTextPaint.color = 0xFF4B0082.toInt()  // Indigo
-                    canvas.drawText("🌷", x, y + 15f, flowerTextPaint)  // Tulipe comme approximation
+                    
+                    // Dessiner 3 pétales stylisés pour simuler un iris
+                    for (i in 0..2) {
+                        val angle = (i * 120f) * Math.PI / 180f
+                        val petalX = x + kotlin.math.cos(angle).toFloat() * radius * 0.4f
+                        val petalY = y + kotlin.math.sin(angle).toFloat() * radius * 0.4f
+                        canvas.drawCircle(petalX, petalY, radius * 0.25f, flowerTextPaint)
+                    }
+                    
+                    // Centre doré
+                    flowerTextPaint.color = 0xFFFFD700.toInt()  // Or
+                    canvas.drawCircle(x, y, radius * 0.15f, flowerTextPaint)
                 } else {
                     // Iris verrouillé
                     drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
@@ -217,10 +228,10 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
             flowers.add("LUPIN")
         }
         
-        // Retirer IRIS pour l'instant car pas encore implémenté
-        // if (challengeManager.isFlowerUnlocked("IRIS")) {
-        //     flowers.add("IRIS")
-        // }
+        // IRIS maintenant activé !
+        if (challengeManager.isFlowerUnlocked("IRIS")) {
+            flowers.add("IRIS")
+        }
         
         return flowers
     }
