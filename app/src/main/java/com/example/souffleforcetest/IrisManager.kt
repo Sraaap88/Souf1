@@ -70,10 +70,10 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
     private var currentActiveStemGroup = -1
     private var lastForce = 0f
     
-    // Paramètres de croissance - RÉDUITS DE 50%
+    // Paramètres de croissance - RESTAURÉS
     private val forceThreshold = 0.15f
     private val baseGrowthSpeed = 6f
-    private val maxStemHeight = 0.225f // 50% moins haut (0.45f → 0.225f)
+    private val maxStemHeight = 0.45f // Restauré à la hauteur originale
     private val stemsPerGroup = 3
     private val maxGroups = 4
     
@@ -133,7 +133,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             stemX = stemX.coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             
             val heightVariation = 0.8f + Random.nextFloat() * 0.6f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation // Déjà réduit de 50%
+            val maxHeight = screenHeight * maxStemHeight * heightVariation // Hauteur restaurée
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -231,7 +231,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             val spacing = 40f * i - 20f // Espacement serré
             val stemX = (centerX + spacing).coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             val heightVariation = 0.8f + Random.nextFloat() * 0.4f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation // Déjà réduit de 50%
+            val maxHeight = screenHeight * maxStemHeight * heightVariation // Hauteur restaurée
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -267,7 +267,7 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             val spacing = 50f * i - 25f
             val stemX = (groupBaseX + spacing).coerceIn(marginFromEdges, screenWidth - marginFromEdges)
             val heightVariation = 0.8f + Random.nextFloat() * 0.4f
-            val maxHeight = screenHeight * maxStemHeight * heightVariation // Déjà réduit de 50%
+            val maxHeight = screenHeight * maxStemHeight * heightVariation // Hauteur restaurée
             
             val stem = IrisStem(
                 id = nextStemId++,
@@ -358,9 +358,9 @@ class IrisManager(private val screenWidth: Int, private val screenHeight: Int) {
             // Angles variés mais tous pointant vers le haut
             val leafAngle = Random.nextFloat() * 40f - 20f // -20° à +20°
             
-            // Feuilles 10x plus longues et croissance plus rapide
+            // Feuilles 50% MOINS longues (réduction demandée)
             val heightVariation = 0.6f + (i * 0.2f) + Random.nextFloat() * 0.3f
-            val leafLength = 1200f + Random.nextFloat() * 800f * heightVariation // 10x plus long
+            val leafLength = 600f + Random.nextFloat() * 400f * heightVariation // 50% moins long (1200f → 600f)
             val leafWidth = 15f + Random.nextFloat() * 8f // Légèrement plus larges aussi
             
             val leaf = IrisLeaf(
