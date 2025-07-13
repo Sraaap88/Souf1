@@ -2,7 +2,7 @@ package com.example.souffleforcetest
 
 class LupinChallengeHandler {
      
-    // ==================== LOGIQUE DES DÉFIS LUPIN CORRIGÉE ====================
+    // ==================== LOGIQUE DES DÉFIS LUPIN AUGMENTÉE ====================
     
     fun updateChallenge(
         challengeId: Int, 
@@ -41,7 +41,7 @@ class LupinChallengeHandler {
         challengeData["currentPhase"] = plantState
     }
     
-    // ==================== CONDITIONS DE DÉFIS CORRIGÉES ====================
+    // ==================== CONDITIONS DE DÉFIS AUGMENTÉES ====================
     
     fun checkChallenge(
         challengeId: Int,
@@ -51,17 +51,16 @@ class LupinChallengeHandler {
     ): Boolean {
         return when (challengeId) {
             1 -> {
-                // DÉFI 1 CORRIGÉ: 3 épis de couleurs différentes dans la zone verte (1 pouce)
-                // Note: La vérification de zone se fait dans ChallengeDataManager
-                lupinSpikeColors.size >= 3
+                // DÉFI 1 AUGMENTÉ: 3 → 4 couleurs d'épis
+                lupinSpikeColors.size >= 4
             }
             2 -> {
-                // DÉFI 2 INCHANGÉ: 5 tiges complètes avec leurs épis floraux
-                lupinCompleteStems.size >= 5
+                // DÉFI 2 AUGMENTÉ: 5 → 8 tiges complètes
+                lupinCompleteStems.size >= 8
             }
             3 -> {
-                // DÉFI 3 CORRIGÉ: 12 fleurs individuelles dans les épis en zone centrale (2 pouces)
-                lupinFlowers.size >= 12
+                // DÉFI 3 AUGMENTÉ: 12 → 20 fleurs individuelles
+                lupinFlowers.size >= 20
             }
             else -> false
         }
@@ -74,9 +73,9 @@ class LupinChallengeHandler {
         lupinFlowers: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi réussi! ${lupinSpikeColors.size} épis de couleurs différentes dans la zone verte (1 pouce)!"
-            2 -> "Défi réussi! ${lupinCompleteStems.size} tiges complètes avec épis floraux!"
-            3 -> "Défi réussi! ${lupinFlowers.size} fleurs dans les épis en zone centrale (2 pouces)!\n🌺 IRIS DÉBLOQUÉ!"
+            1 -> "Défi réussi! ${lupinSpikeColors.size} épis de couleurs différentes!"
+            2 -> "Défi réussi! ${lupinCompleteStems.size} tiges complètes!"
+            3 -> "Défi réussi! ${lupinFlowers.size} fleurs dans les épis!\n🌺 IRIS DÉBLOQUÉ!"
             else -> "Défi réussi!"
         }
     }
@@ -88,9 +87,9 @@ class LupinChallengeHandler {
         lupinFlowers: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi échoué - Seulement ${lupinSpikeColors.size}/3 couleurs d'épis dans la zone verte (1 pouce)!"
-            2 -> "Défi échoué - Seulement ${lupinCompleteStems.size}/5 tiges complètes avec épis!"
-            3 -> "Défi échoué - Seulement ${lupinFlowers.size}/12 fleurs dans les épis en zone centrale (2 pouces)!"
+            1 -> "Défi échoué - Seulement ${lupinSpikeColors.size}/4 couleurs d'épis!"
+            2 -> "Défi échoué - Seulement ${lupinCompleteStems.size}/8 tiges complètes!"
+            3 -> "Défi échoué - Seulement ${lupinFlowers.size}/20 fleurs dans les épis!"
             else -> "Défi échoué!"
         }
     }
