@@ -41,7 +41,7 @@ class RoseChallengeHandler {
         challengeData["currentPhase"] = plantState
     }
     
-    // ==================== CONDITIONS DE DÉFIS CORRIGÉES ====================
+    // ==================== CONDITIONS DE DÉFIS AUGMENTÉES ====================
     
     fun checkChallenge(
         challengeId: Int,
@@ -52,16 +52,16 @@ class RoseChallengeHandler {
     ): Boolean {
         return when (challengeId) {
             1 -> {
-                // DÉFI 1 CORRIGÉ: 6 fleurs dans la zone centrale (2 pouces de haut)
-                roseFlowersInZone.size >= 6
+                // DÉFI 1 AUGMENTÉ: 6 → 10 fleurs dans la zone centrale
+                roseFlowersInZone.size >= 10
             }
             2 -> {
-                // DÉFI 2 INCHANGÉ: 10 divisions avec saccades précises
-                roseDivisions.size >= 10
+                // DÉFI 2 AUGMENTÉ: 10 → 15 divisions
+                roseDivisions.size >= 15
             }
             3 -> {
-                // DÉFI 3 CORRIGÉ: 15 fleurs dont 5 en zone centrale (2 pouces) + 8 divisions
-                roseTotalFlowers.size >= 15 && roseFlowersInZoneDefi3.size >= 5 && roseDivisions.size >= 8
+                // DÉFI 3 AUGMENTÉ: 25 fleurs total + 8 en zone + 12 divisions
+                roseTotalFlowers.size >= 25 && roseFlowersInZoneDefi3.size >= 8 && roseDivisions.size >= 12
             }
             else -> false
         }
@@ -75,8 +75,8 @@ class RoseChallengeHandler {
         roseFlowersInZoneDefi3: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi réussi! ${roseFlowersInZone.size} fleurs parfaitement alignées en zone centrale (2 pouces)!"
-            2 -> "Défi réussi! ${roseDivisions.size} divisions créées avec maîtrise des saccades!"
+            1 -> "Défi réussi! ${roseFlowersInZone.size} fleurs parfaitement alignées en zone centrale!"
+            2 -> "Défi réussi! ${roseDivisions.size} divisions créées avec maîtrise!"
             3 -> "Défi réussi! ${roseTotalFlowers.size} fleurs (${roseFlowersInZoneDefi3.size} en zone centrale) + ${roseDivisions.size} divisions!\n🌼 LUPIN DÉBLOQUÉ!"
             else -> "Défi réussi!"
         }
@@ -90,9 +90,9 @@ class RoseChallengeHandler {
         roseFlowersInZoneDefi3: List<String>
     ): String {
         return when (challengeId) {
-            1 -> "Défi échoué - Seulement ${roseFlowersInZone.size}/6 fleurs en zone centrale (2 pouces)!"
-            2 -> "Défi échoué - Seulement ${roseDivisions.size}/10 divisions créées avec saccades!"
-            3 -> "Défi échoué - ${roseTotalFlowers.size}/15 fleurs (${roseFlowersInZoneDefi3.size}/5 en zone centrale) + ${roseDivisions.size}/8 divisions!"
+            1 -> "Défi échoué - Seulement ${roseFlowersInZone.size}/10 fleurs en zone centrale!"
+            2 -> "Défi échoué - Seulement ${roseDivisions.size}/15 divisions créées!"
+            3 -> "Défi échoué - ${roseTotalFlowers.size}/25 fleurs (${roseFlowersInZoneDefi3.size}/8 en zone centrale) + ${roseDivisions.size}/12 divisions!"
             else -> "Défi échoué!"
         }
     }
