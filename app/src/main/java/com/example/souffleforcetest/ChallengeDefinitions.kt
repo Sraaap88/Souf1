@@ -28,26 +28,26 @@ class ChallengeDefinitions {
     private val orchideeHandler = OrchideeChallengeHandler()
     private val zoneHelper = ChallengeZoneHelper()
     
-    // ==================== DÉFINITIONS CORRIGÉES SELON LA VRAIE DÉTECTION ====================
+    // ==================== DÉFINITIONS AVEC DESCRIPTIONS CORRIGÉES ====================
     
     val margueriteChallenges = listOf(
         Challenge(
             id = 1,
             title = "Défi 1: Zone Précise",
-            description = "Faire pousser 1 fleur dans la zone verte (détection: flowersInZone >= 1)",
+            description = "Faire pousser 1 fleur dans la zone verte",
             briefText = "Défi 1: 1 fleur en zone verte"
         ),
         Challenge(
             id = 2,
             title = "Défi 2: Souffle Doux", 
-            description = "Faire pousser 2 bourgeons (détection: budsCreated >= 2, peu importe la zone)",
+            description = "Faire pousser 2 bourgeons avec un souffle très doux",
             briefText = "Défi 2: 2 bourgeons",
             isUnlocked = false
         ),
         Challenge(
             id = 3,
             title = "Défi 3: Zone + Bourgeons",
-            description = "Faire 2 fleurs en zone verte ET 1 bourgeon (détection: flowersInZoneDefi3 >= 2 ET budsCreatedDefi3 >= 1)", 
+            description = "Faire 2 fleurs dans la zone verte ET créer 1 bourgeon", 
             briefText = "Défi 3: 2 fleurs zone + 1 bourgeon",
             isUnlocked = false
         )
@@ -57,20 +57,20 @@ class ChallengeDefinitions {
         Challenge(
             id = 1,
             title = "Défi 1: Jardin Ordonné",
-            description = "Faire pousser 6 fleurs dans la zone centrale (détection: roseFlowersInZone >= 6)",
+            description = "Faire pousser 6 fleurs dans la zone centrale",
             briefText = "Défi 1: 6 fleurs en zone centrale"
         ),
         Challenge(
             id = 2,
             title = "Défi 2: Maître Ramification", 
-            description = "Créer 10 divisions avec saccades (détection: roseDivisions >= 10, peu importe la zone)",
+            description = "Créer 10 divisions en utilisant des saccades de souffle",
             briefText = "Défi 2: 10 divisions",
             isUnlocked = false
         ),
         Challenge(
             id = 3,
             title = "Défi 3: Triple Objectif",
-            description = "15 fleurs au total ET 5 fleurs en zone centrale ET 8 divisions (détection: roseTotalFlowers >= 15 ET roseFlowersInZoneDefi3 >= 5 ET roseDivisions >= 8)", 
+            description = "Créer 15 fleurs au total, dont 5 dans la zone centrale, et 8 divisions", 
             briefText = "Défi 3: 15 total + 5 zone + 8 divisions",
             isUnlocked = false
         )
@@ -80,20 +80,20 @@ class ChallengeDefinitions {
         Challenge(
             id = 1,
             title = "Défi 1: Palette Colorée",
-            description = "Faire pousser 3 épis de couleurs différentes (détection: lupinSpikeColors >= 3, AUCUNE vérification de zone)",
+            description = "Faire pousser 3 épis de couleurs différentes",
             briefText = "Défi 1: 3 couleurs d'épis"
         ),
         Challenge(
             id = 2,
             title = "Défi 2: Jardinage Expert", 
-            description = "Créer 5 tiges complètes avec épis (détection: lupinCompleteStems >= 5, peu importe la zone)",
+            description = "Créer 5 tiges complètes avec leurs épis",
             briefText = "Défi 2: 5 tiges complètes",
             isUnlocked = false
         ),
         Challenge(
             id = 3,
             title = "Défi 3: Production Totale",
-            description = "Créer 12 fleurs individuelles dans les épis (détection: lupinFlowers >= 12, AUCUNE vérification de zone)", 
+            description = "Créer 12 fleurs individuelles dans les épis", 
             briefText = "Défi 3: 12 fleurs au total",
             isUnlocked = false
         )
@@ -103,20 +103,20 @@ class ChallengeDefinitions {
         Challenge(
             id = 1,
             title = "Défi 1: Élégance Centrée",
-            description = "Faire pousser 4 iris dans la zone centrale (détection: irisFlowersInZone >= 4)",
+            description = "Faire pousser 4 iris dans la zone centrale",
             briefText = "Défi 1: 4 iris en zone centrale"
         ),
         Challenge(
             id = 2,
             title = "Défi 2: Double Objectif", 
-            description = "Créer 10 iris au total ET 6 iris en zone centrale (détection: irisTotalFlowers >= 10 ET irisFlowersInZone >= 6)",
+            description = "Créer 10 iris au total dont 6 dans la zone centrale",
             briefText = "Défi 2: 10 total + 6 en zone",
             isUnlocked = false
         ),
         Challenge(
             id = 3,
             title = "Défi 3: Maîtrise Complète",
-            description = "Créer 16 iris au total ET 8 iris en zone centrale (détection: irisTotalFlowers >= 16 ET irisFlowersInZone >= 8)", 
+            description = "Créer 16 iris au total dont 8 dans la zone centrale", 
             briefText = "Défi 3: 16 total + 8 en zone",
             isUnlocked = false
         )
