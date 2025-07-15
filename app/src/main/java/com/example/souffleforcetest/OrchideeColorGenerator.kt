@@ -148,7 +148,7 @@ class OrchideeColorGenerator {
             
             return OrchideeColorPalette(
                 primary = noveltyBase,
-                secondary = generateHarmoniousColor(noveltyBase, ColorHarmony.ANALOGOUS),
+                secondary = generateAnalogousColor(noveltyBase, rng),
                 accent = accentColor,
                 throat = generateContrastingCenter(noveltyBase, rng),
                 veining = generateDarkerShade(accentColor, 0.4f),
@@ -442,19 +442,73 @@ class OrchideeColorGenerator {
         }
         
         /**
-         * Génère une couleur d'accent harmonieuse
+         * Génère une couleur d'accent harmonieuse - VERSION CORRIGÉE
          */
         fun generateHarmoniousAccent(baseColor: Int, rng: Random = Random): Int {
-            val harmonies = ColorHarmony.values()
-            val harmony = harmonies[rng.nextInt(harmonies.size)]
-            return OrchideeColorHelper.generateHarmoniousColor(baseColor, harmony)
+            // Au lieu d'utiliser generateHarmoniousColor qui n'existe pas,
+            // on génère manuellement des couleurs harmonieuses
+            val harmonies = listOf(
+                generateComplementaryColor(baseColor),
+                generateAnalogousColor(baseColor, rng),
+                generateTriadicColor(baseColor, rng),
+                generateMonochromaticColor(baseColor, rng)
+            )
+            return harmonies[rng.nextInt(harmonies.size)]
         }
         
         /**
          * Génère une couleur complémentaire
          */
         fun generateComplementaryColor(baseColor: Int): Int {
-            return OrchideeColorHelper.generateHarmoniousColor(baseColor, ColorHarmony.COMPLEMENTARY)
+            val r = android.graphics.Color.red(baseColor)
+            val g = android.graphics.Color.green(baseColor)
+            val b = android.graphics.Color.blue(baseColor)
+            
+            return OrchideeColorHelper.rgb(255 - r, 255 - g, 255 - b)
+        }
+        
+        /**
+         * Génère une couleur analogue
+         */
+        fun generateAnalogousColor(baseColor: Int, rng: Random = Random): Int {
+            val r = android.graphics.Color.red(baseColor)
+            val g = android.graphics.Color.green(baseColor)
+            val b = android.graphics.Color.blue(baseColor)
+            
+            val variation = 30 + rng.nextInt(40) // 30-70
+            val newR = (r + variation * (if (rng.nextBoolean()) 1 else -1)).coerceIn(0, 255)
+            val newG = (g + variation * (if (rng.nextBoolean()) 1 else -1)).coerceIn(0, 255)
+            val newB = (b + variation * (if (rng.nextBoolean()) 1 else -1)).coerceIn(0, 255)
+            
+            return OrchideeColorHelper.rgb(newR, newG, newB)
+        }
+        
+        /**
+         * Génère une couleur triadique
+         */
+        fun generateTriadicColor(baseColor: Int, rng: Random = Random): Int {
+            val r = android.graphics.Color.red(baseColor)
+            val g = android.graphics.Color.green(baseColor)
+            val b = android.graphics.Color.blue(baseColor)
+            
+            // Rotation des canaux pour créer une triade
+            return when (rng.nextInt(3)) {
+                0 -> OrchideeColorHelper.rgb(g, b, r)
+                1 -> OrchideeColorHelper.rgb(b, r, g)
+                else -> OrchideeColorHelper.rgb(r, b, g)
+            }
+        }
+        
+        /**
+         * Génère une couleur monochromatique
+         */
+        fun generateMonochromaticColor(baseColor: Int, rng: Random = Random): Int {
+            val factor = 0.3f + rng.nextFloat() * 0.4f // 0.3-0.7
+            return if (rng.nextBoolean()) {
+                generateLighterShade(baseColor, factor)
+            } else {
+                generateDarkerShade(baseColor, factor)
+            }
         }
         
         /**
