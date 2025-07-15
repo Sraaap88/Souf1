@@ -1,471 +1,332 @@
 package com.example.souffleforcetest
 
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Color
+import android.content.Context
 
-class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: Int) {
+class ChallengeManager(private val context: Context? = null) {
     
-    // ==================== FONCTIONS POUR LES DÉFIS ====================
+    // ==================== GESTIONNAIRES DÉLÉGUÉS ====================
     
-    fun drawChallengeSelection(canvas: Canvas, challengeManager: ChallengeManager, textPaint: Paint, buttonPaint: Paint) {
-        // Titre avec retour à la ligne
-        textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = 100f  // Réduit de 120f à 100f
-        textPaint.color = 0xFFFFFFFF.toInt()
-        textPaint.isFakeBoldText = true
-        
-        // Première ligne : "SÉLECTIONNER"
-        canvas.drawText("SÉLECTIONNER", screenWidth / 2f, screenHeight * 0.15f, textPaint)
-        
-        // Deuxième ligne : "DÉFI"
-        canvas.drawText("DÉFI", screenWidth / 2f, screenHeight * 0.22f, textPaint)
-        
-        // Sous-titre adaptatif selon la fleur ACTUELLE
-        textPaint.textSize = 60f
-        textPaint.isFakeBoldText = false
-        
-        // Utiliser getCurrentFlowerType() du ChallengeManager
-        val flowerType = challengeManager.getCurrentFlowerType()
-        
-        // Afficher le nom de la fleur actuelle
-        val displayName = when (flowerType) {
-            "MARGUERITE" -> "MARGUERITE"
-            "ROSE" -> "ROSIER"
-            "LUPIN" -> "LUPIN"
-            "IRIS" -> "IRIS"
-            "ORCHIDEE" -> "ORCHIDÉE"
-            else -> "MARGUERITE" // Fallback
-        }
-        
-        canvas.drawText(displayName, screenWidth / 2f, screenHeight * 0.32f, textPaint)
-        
-        // Charger les défis selon le type de fleur ACTUEL
-        val challenges = when (flowerType) {
-            "MARGUERITE" -> challengeManager.getMargueriteChallenges()
-            "ROSE" -> challengeManager.getRoseChallenges()
-            "LUPIN" -> challengeManager.getLupinChallenges()
-            "IRIS" -> challengeManager.getIrisChallenges()
-            "ORCHIDEE" -> challengeManager.getIrisChallenges() // Utiliser Iris temporairement
-            else -> challengeManager.getMargueriteChallenges() // Fallback
-        }
-        
-        val buttonWidth = screenWidth * 0.25f
-        val buttonHeight = screenHeight * 0.12f
-        val startY = screenHeight * 0.45f
-        
-        // Afficher les 3 défis de la fleur actuelle
-        for (i in 1..3) {
-            val challenge = challenges.find { it.id == i }
-            val buttonY = startY + (i - 1) * (buttonHeight + 30f)
-            
-            // Couleur selon l'état
-            val color = when {
-                challenge?.isCompleted == true -> 0xFF00AA00.toInt()  // Vert si complété
-                challenge?.isUnlocked == true -> 0xFF4169E1.toInt()   // Bleu si débloqué
-                else -> 0xFF666666.toInt()  // Gris si verrouillé
-            }
-            
-            // Dessiner le bouton rectangulaire
-            buttonPaint.color = color
-            buttonPaint.style = Paint.Style.FILL
-            canvas.drawRoundRect(
-                screenWidth / 2f - buttonWidth / 2f,
-                buttonY - buttonHeight / 2f,
-                screenWidth / 2f + buttonWidth / 2f,
-                buttonY + buttonHeight / 2f,
-                20f, 20f, buttonPaint
-            )
-            
-            // Bordure
-            buttonPaint.color = 0xFF333333.toInt()
-            buttonPaint.style = Paint.Style.STROKE
-            buttonPaint.strokeWidth = 4f
-            canvas.drawRoundRect(
-                screenWidth / 2f - buttonWidth / 2f,
-                buttonY - buttonHeight / 2f,
-                screenWidth / 2f + buttonWidth / 2f,
-                buttonY + buttonHeight / 2f,
-                20f, 20f, buttonPaint
-            )
-            buttonPaint.style = Paint.Style.FILL
-            
-            // Texte du défi
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = 50f
-            textPaint.color = 0xFFFFFFFF.toInt()
-            textPaint.isFakeBoldText = false
-            
-            val buttonText = if (challenge?.isUnlocked == true) {
-                challenge.title + if (challenge.isCompleted) " ✓" else ""
-            } else {
-                "VERROUILLÉ"
-            }
-            
-            canvas.drawText(buttonText, screenWidth / 2f, buttonY + 15f, textPaint)
+    private val definitions = ChallengeDefinitions()
+    private lateinit var dataManager: ChallengeDataManager
+    private lateinit var effectsManager: ChallengeEffectsManager
+    
+    // Gestionnaires de défis spécialisés
+    private val margueriteChallengeHandler = MargueriteChallengeHandler()
+    private val roseChallengeHandler = RoseChallengeHandler()
+    private val lupinChallengeHandler = LupinChallengeHandler()
+    private val irisChallengeHandler = IrisChallengeHandler()
+    private val orchideeChallengeHandler = OrchideeChallengeHandler()
+    
+    // ==================== VARIABLES D'ÉTAT ====================
+    
+    private var currentChallenge: ChallengeDefinitions.Challenge? = null
+    private var currentFlowerType: String = "MARGUERITE"
+    private var challengeStartTime = 0L
+    private var challengeData = mutableMapOf<String, Any>()
+    
+    // ==================== INITIALISATION ====================
+    
+    init {
+        dataManager = ChallengeDataManager(context, definitions)
+        dataManager.loadProgress()
+    }
+    
+    fun setEffectsManager(manager: ChallengeEffectsManager) {
+        effectsManager = manager
+    }
+    
+    // ==================== CONFIGURATION DES GESTIONNAIRES ====================
+    
+    fun setFireworkManager(manager: FireworkManager) {
+        if (::effectsManager.isInitialized) {
+            effectsManager.setFireworkManager(manager)
         }
     }
     
-    fun drawChallengeBrief(canvas: Canvas, challengeManager: ChallengeManager, timeRemaining: Long, textPaint: Paint) {
-        val challenge = challengeManager.getCurrentChallenge()
-        val flowerType = challengeManager.getCurrentFlowerType()
-        
-        // Titre avec le nom de la fleur
-        textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = 120f
-        textPaint.color = 0xFFFFFFFF.toInt()
-        textPaint.isFakeBoldText = true
-        canvas.drawText(challenge?.title ?: "DÉFI", screenWidth / 2f, screenHeight * 0.25f, textPaint)
-        
-        // Sous-titre avec le type de fleur
-        textPaint.textSize = 60f
-        textPaint.color = 0xFFFFD700.toInt()
-        textPaint.isFakeBoldText = false
-        val displayName = when (flowerType) {
-            "MARGUERITE" -> "Marguerite"
-            "ROSE" -> "Rosier"
-            "LUPIN" -> "Lupin"
-            "IRIS" -> "Iris"
-            "ORCHIDEE" -> "Orchidée"
-            else -> "Plante"
+    fun setRainManager(manager: RainManager) {
+        if (::effectsManager.isInitialized) {
+            effectsManager.setRainManager(manager)
         }
-        canvas.drawText(displayName, screenWidth / 2f, screenHeight * 0.32f, textPaint)
-        
-        // Description avec retour à la ligne automatique
-        val description = challenge?.description ?: "Description à venir"
-        drawMultilineText(canvas, description, screenWidth / 2f, screenHeight * 0.45f, 70f, screenWidth * 0.8f, textPaint)
-        
-        // Conseils spéciaux selon le type de défi et de fleur CORRIGÉS
-        when {
-            challenge?.id == 1 && flowerType == "MARGUERITE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()  // Jaune
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Zone verte: 1 pouce de haut (~100 pixels)", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 2 && flowerType == "MARGUERITE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()  // Jaune
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Technique: souffle très doux", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 3 && flowerType == "MARGUERITE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()  // Jaune
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Zone verte: 1 pouce de haut", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 1 && flowerType == "LUPIN" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Astuce: saccades pour différentes couleurs", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 2 && flowerType == "LUPIN" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Astuce: saccades pour créer plusieurs tiges", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 3 && flowerType == "LUPIN" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Astuce: aucune zone requise, juste 12 fleurs", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 1 && flowerType == "ROSE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Zone centrale: 2 pouces de haut", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 2 && flowerType == "ROSE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Astuce: saccades pour créer des divisions", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 3 && flowerType == "ROSE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Zone centrale: 2 pouces + divisions", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 1 && flowerType == "IRIS" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Zone centrale: 2 pouces de haut", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 2 && flowerType == "IRIS" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Zone centrale: ramifications + 2 pouces", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 3 && flowerType == "IRIS" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Zone centrale: 2 pouces de haut", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            // ==================== NOUVEAUX DÉFIS ORCHIDÉE ====================
-            challenge?.id == 1 && flowerType == "ORCHIDEE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Zone centrale: 3 pouces de haut (élégance)", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 2 && flowerType == "ORCHIDEE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Astuce: saccades pour créer 3 espèces différentes", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-            challenge?.id == 3 && flowerType == "ORCHIDEE" -> {
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
-                textPaint.isFakeBoldText = false
-                canvas.drawText("Maîtrise totale: 6 espèces dans la zone", screenWidth / 2f, screenHeight * 0.62f, textPaint)
-            }
-        }
-        
-        // Compte à rebours
-        textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = 90f
-        textPaint.color = 0xFFFFD700.toInt()
-        textPaint.isFakeBoldText = false
-        canvas.drawText("Début dans: $timeRemaining", screenWidth / 2f, screenHeight * 0.8f, textPaint)
     }
     
-    fun drawChallengeResult(canvas: Canvas, challengeManager: ChallengeManager, textPaint: Paint) {
-        // Récupérer le vrai résultat du défi
-        val result = challengeManager.finalizeChallengeResult()
-        val flowerType = challengeManager.getCurrentFlowerType()
-        
-        if (result != null) {
-            // Couleur selon le succès
-            val resultColor = if (result.success) 0xFF00FF00.toInt() else 0xFFFF0000.toInt()
-            val resultText = if (result.success) "DÉFI RÉUSSI!" else "DÉFI ÉCHOUÉ!"
-            
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = 150f
-            textPaint.color = resultColor
-            textPaint.isFakeBoldText = true
-            canvas.drawText(resultText, screenWidth / 2f, screenHeight * 0.3f, textPaint)
-            
-            // Sous-titre avec le type de fleur
-            textPaint.textSize = 70f
-            textPaint.color = 0xFFFFFFFF.toInt()
-            textPaint.isFakeBoldText = false
-            val displayName = when (flowerType) {
-                "MARGUERITE" -> "Marguerite"
-                "ROSE" -> "Rosier"
-                "LUPIN" -> "Lupin"
-                "IRIS" -> "Iris"
-                "ORCHIDEE" -> "Orchidée"
-                else -> "Plante"
-            }
-            canvas.drawText("$displayName - ${result.challenge.title}", screenWidth / 2f, screenHeight * 0.42f, textPaint)
-            
-            // Message détaillé avec retour à la ligne
-            drawMultilineText(canvas, result.message, screenWidth / 2f, screenHeight * 0.55f, 60f, screenWidth * 0.9f, textPaint)
-            
-            // Messages spéciaux selon le type de défi et succès
-            when {
-                result.challenge.id == 1 && result.success && flowerType == "MARGUERITE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Précision parfaite dans la zone!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 2 && result.success && flowerType == "MARGUERITE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Excellente maîtrise du souffle!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 3 && result.success && flowerType == "MARGUERITE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Maîtrise totale zone + bourgeons!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 1 && result.success && flowerType == "LUPIN" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Magnifique palette de couleurs!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 2 && result.success && flowerType == "LUPIN" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Maître jardinier de lupins!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 3 && result.success && flowerType == "LUPIN" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Production de fleurs excellente!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 1 && result.success && flowerType == "ROSE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Jardin ordonné parfait!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 2 && result.success && flowerType == "ROSE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Expert en multiplication des rosiers!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 3 && result.success && flowerType == "ROSE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Maîtrise totale rosiers + zones!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 1 && result.success && flowerType == "IRIS" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Élégance parfaite des iris!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 2 && result.success && flowerType == "IRIS" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Maître des ramifications d'iris!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 3 && result.success && flowerType == "IRIS" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Jardinier expert en iris!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                // ==================== NOUVEAUX MESSAGES SUCCÈS ORCHIDÉE ====================
-                result.challenge.id == 1 && result.success && flowerType == "ORCHIDEE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Grâce et sophistication parfaites!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 2 && result.success && flowerType == "ORCHIDEE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Maître de la diversité orchidéenne!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-                result.challenge.id == 3 && result.success && flowerType == "ORCHIDEE" -> {
-                    textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = 50f
-                    textPaint.color = 0xFFFFD700.toInt()
-                    canvas.drawText("Grand maître des orchidées exotiques!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
-                }
-            }
-            
-            // Message de déblocage si applicable
-            if (result.success) {
-                when {
-                    flowerType == "MARGUERITE" && result.challenge.id == 3 -> {
-                        textPaint.textAlign = Paint.Align.CENTER
-                        textPaint.textSize = 55f
-                        textPaint.color = 0xFFFF69B4.toInt() // Rose
-                        canvas.drawText("🌹 ROSIER DÉBLOQUÉ! 🌹", screenWidth / 2f, screenHeight * 0.75f, textPaint)
-                    }
-                    flowerType == "ROSE" && result.challenge.id == 3 -> {
-                        textPaint.textAlign = Paint.Align.CENTER
-                        textPaint.textSize = 55f
-                        textPaint.color = 0xFF9370DB.toInt() // Violet
-                        canvas.drawText("🌼 LUPIN DÉBLOQUÉ! 🌼", screenWidth / 2f, screenHeight * 0.75f, textPaint)
-                    }
-                    flowerType == "LUPIN" && result.challenge.id == 3 -> {
-                        textPaint.textAlign = Paint.Align.CENTER
-                        textPaint.textSize = 55f
-                        textPaint.color = 0xFF4169E1.toInt() // Bleu
-                        canvas.drawText("🌺 IRIS DÉBLOQUÉ! 🌺", screenWidth / 2f, screenHeight * 0.75f, textPaint)
-                    }
-                    flowerType == "IRIS" && result.challenge.id == 3 -> {
-                        textPaint.textAlign = Paint.Align.CENTER
-                        textPaint.textSize = 55f
-                        textPaint.color = 0xFFFF1493.toInt() // Rose profond
-                        canvas.drawText("🌸 ORCHIDÉE DÉBLOQUÉE! 🌸", screenWidth / 2f, screenHeight * 0.75f, textPaint)
-                    }
-                    // ==================== NOUVEAU MESSAGE DÉBLOQUAGE ORCHIDÉE ====================
-                    flowerType == "ORCHIDEE" && result.challenge.id == 3 -> {
-                        textPaint.textAlign = Paint.Align.CENTER
-                        textPaint.textSize = 55f
-                        textPaint.color = 0xFFDAA520.toInt() // Or
-                        canvas.drawText("🏆 TOUTES LES FLEURS MAÎTRISÉES! 🏆", screenWidth / 2f, screenHeight * 0.75f, textPaint)
-                    }
-                }
-            }
-        } else {
-            // Fallback si pas de résultat
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = 150f
-            textPaint.color = 0xFF00FF00.toInt()
-            textPaint.isFakeBoldText = true
-            canvas.drawText("DÉFI TERMINÉ!", screenWidth / 2f, screenHeight * 0.4f, textPaint)
+    fun setOnFireworkStartedCallback(callback: () -> Unit) {
+        if (::effectsManager.isInitialized) {
+            effectsManager.setOnFireworkStartedCallback(callback)
         }
-        
-        // Statut de sauvegarde
-        textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = 60f
-        textPaint.color = 0xFFFFFFFF.toInt()
-        textPaint.isFakeBoldText = false
-        canvas.drawText("Progression sauvegardée", screenWidth / 2f, screenHeight * 0.85f, textPaint)
     }
     
-    // ==================== FONCTION UTILITAIRE POUR TEXTE MULTILIGNE ====================
+    fun setOnRainStartedCallback(callback: () -> Unit) {
+        if (::effectsManager.isInitialized) {
+            effectsManager.setOnRainStartedCallback(callback)
+        }
+    }
     
-    private fun drawMultilineText(canvas: Canvas, text: String, centerX: Float, startY: Float, textSize: Float, maxWidth: Float, textPaint: Paint) {
-        textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = textSize
-        textPaint.color = 0xFFFFFFFF.toInt()
-        textPaint.isFakeBoldText = false
+    // ==================== DÉLÉGATION AUX GESTIONNAIRES ====================
+    
+    fun getDissolveProgress(): Float {
+        return if (::effectsManager.isInitialized) {
+            effectsManager.getDissolveProgress(currentFlowerType, challengeData)
+        } else 0f
+    }
+    
+    fun getDissolveInfo(flowerType: String): ChallengeEffectsManager.DissolveInfo? {
+        return if (::effectsManager.isInitialized) {
+            effectsManager.getDissolveInfo(flowerType)
+        } else null
+    }
+    
+    fun isRainActive(): Boolean {
+        return if (::effectsManager.isInitialized) {
+            effectsManager.isRainActive()
+        } else false
+    }
+    
+    // ==================== FONCTIONS PUBLIQUES ====================
+    
+    // Délégation vers ChallengeDefinitions
+    fun getMargueriteChallenges(): List<ChallengeDefinitions.Challenge> = definitions.margueriteChallenges
+    fun getRoseChallenges(): List<ChallengeDefinitions.Challenge> = definitions.roseChallenges
+    fun getLupinChallenges(): List<ChallengeDefinitions.Challenge> = definitions.lupinChallenges
+    fun getIrisChallenges(): List<ChallengeDefinitions.Challenge> = definitions.irisChallenges
+    fun getOrchideeChallenges(): List<ChallengeDefinitions.Challenge> = definitions.orchideeChallenges
+    
+    fun setCurrentFlowerType(flowerType: String) {
+        currentFlowerType = flowerType
+    }
+    
+    fun getCurrentFlowerType(): String = currentFlowerType
+    fun getCurrentChallenge(): ChallengeDefinitions.Challenge? = currentChallenge
+    fun getCurrentChallengeBrief(): String? = currentChallenge?.briefText
+    
+    // Délégation vers DataManager
+    fun getUnlockedFlowers() = dataManager.getUnlockedFlowers()
+    fun isFlowerUnlocked(flowerType: String) = dataManager.isFlowerUnlocked(flowerType)
+    fun getFlowerUnlockMessage(flowerType: String) = dataManager.getFlowerUnlockMessage(flowerType)
+    fun resetAllChallenges() = dataManager.resetAllChallenges()
+    fun activateCheatMode() = dataManager.activateCheatMode()
+    
+    // ==================== GESTION DES DÉFIS ====================
+    
+    fun startChallenge(challengeId: Int) {
+        currentChallenge = definitions.findChallengeById(currentFlowerType, challengeId)
+        challengeStartTime = System.currentTimeMillis()
+        challengeData.clear()
         
-        val words = text.split(" ")
-        var currentLine = ""
-        var currentY = startY
-        val lineHeight = textSize * 1.2f
+        // Reset des données selon le type de fleur
+        dataManager.clearFlowerData(currentFlowerType)
+        resetDissolveEffects()
         
-        for (word in words) {
-            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
-            val testWidth = textPaint.measureText(testLine)
-            
-            if (testWidth <= maxWidth) {
-                currentLine = testLine
-            } else {
-                // Dessiner la ligne actuelle et commencer une nouvelle ligne
-                if (currentLine.isNotEmpty()) {
-                    canvas.drawText(currentLine, centerX, currentY, textPaint)
-                    currentY += lineHeight
-                }
-                currentLine = word
-            }
+        // Arrêter les effets en cours
+        if (::effectsManager.isInitialized) {
+            effectsManager.stopAllEffects()
         }
         
-        // Dessiner la dernière ligne
-        if (currentLine.isNotEmpty()) {
-            canvas.drawText(currentLine, centerX, currentY, textPaint)
+        println("Défi démarré: ${currentChallenge?.title} (${currentFlowerType})")
+    }
+    
+    private fun resetDissolveEffects() {
+        if (::effectsManager.isInitialized) {
+            effectsManager.resetDissolveEffects()
+        }
+        
+        when (currentFlowerType) {
+            "MARGUERITE" -> margueriteChallengeHandler.resetDissolveEffects(challengeData)
+            "ROSE" -> roseChallengeHandler.resetDissolveEffects(challengeData)
+            "LUPIN" -> lupinChallengeHandler.resetDissolveEffects(challengeData)
+            "IRIS" -> irisChallengeHandler.resetDissolveEffects(challengeData)
+            "ORCHIDEE" -> orchideeChallengeHandler.resetDissolveEffects(challengeData)
+        }
+    }
+    
+    fun updateChallengeProgress(force: Float, plantState: String) {
+        val challenge = currentChallenge ?: return
+        
+        // Déléguer vers les gestionnaires spécialisés
+        when (currentFlowerType) {
+            "MARGUERITE" -> margueriteChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
+            "ROSE" -> roseChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
+            "LUPIN" -> lupinChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
+            "IRIS" -> irisChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
+            "ORCHIDEE" -> orchideeChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
+        }
+        
+        // Mettre à jour la dissolution si la pluie est active
+        if (::effectsManager.isInitialized && effectsManager.isRainActive()) {
+            effectsManager.updateDissolveProgress(0.016f, challengeData)
+        }
+    }
+    
+    fun updateScreenDimensions(width: Int, height: Int) {
+        challengeData["screenWidth"] = width.toFloat()
+        challengeData["screenHeight"] = height.toFloat()
+    }
+    
+    // ==================== NOTIFICATIONS D'ÉVÉNEMENTS ====================
+    
+    fun notifyFlowerCreated(flowerX: Float, flowerY: Float, flowerId: String) {
+        dataManager.notifyFlowerCreated(currentChallenge, currentFlowerType, flowerY, challengeData, flowerId, definitions)
+    }
+    
+    fun notifyOrchideeCreated(orchideeX: Float, orchideeY: Float, orchideeId: String, species: String) {
+        dataManager.notifyOrchideeCreated(currentChallenge, currentFlowerType, orchideeY, challengeData, orchideeId, species, definitions)
+    }
+    
+    fun notifyLupinSpikeCreated(spikeColor: String, stemId: String) {
+        dataManager.notifyLupinSpikeCreated(currentChallenge, currentFlowerType, spikeColor, stemId)
+    }
+    
+    fun notifyDivisionCreated(divisionId: String) {
+        dataManager.notifyDivisionCreated(currentChallenge, currentFlowerType, divisionId)
+    }
+    
+    fun notifyBudCreated(budX: Float, budY: Float, budId: String) {
+        dataManager.notifyBudCreated(currentChallenge, currentFlowerType, budId)
+    }
+    
+    // ==================== VÉRIFICATION ET FINALISATION DES DÉFIS ====================
+    
+    fun checkChallengeCompletion(): ChallengeDefinitions.ChallengeResult? {
+        val challenge = currentChallenge ?: return null
+        
+        val isSuccessful = when (currentFlowerType) {
+            "MARGUERITE" -> {
+                val data = dataManager.getMargueriteData()
+                margueriteChallengeHandler.checkChallenge(
+                    challenge.id, data.flowersInZone, data.budsCreated, 
+                    data.flowersInZoneDefi3, data.budsCreatedDefi3
+                )
+            }
+            "ROSE" -> {
+                val data = dataManager.getRoseData()
+                roseChallengeHandler.checkChallenge(
+                    challenge.id, data.roseFlowersInZone, data.roseDivisions,
+                    data.roseTotalFlowers, data.roseFlowersInZoneDefi3
+                )
+            }
+            "LUPIN" -> {
+                val data = dataManager.getLupinData()
+                lupinChallengeHandler.checkChallenge(
+                    challenge.id, data.lupinSpikeColors, data.lupinCompleteStems, data.lupinFlowers
+                )
+            }
+            "IRIS" -> {
+                val data = dataManager.getIrisData()
+                irisChallengeHandler.checkChallenge(
+                    challenge.id, data.irisFlowersInZone, data.irisRamifications, data.irisTotalFlowers
+                )
+            }
+            "ORCHIDEE" -> {
+                val data = dataManager.getOrchideeData()
+                orchideeChallengeHandler.checkChallenge(
+                    challenge.id, data.orchideeFlowersInZone, data.orchideeSpeciesCount, data.orchideeTotalFlowers
+                )
+            }
+            else -> false
+        }
+        
+        if (isSuccessful) {
+            challenge.isCompleted = true
+            dataManager.unlockNextChallenge(definitions, currentFlowerType, challenge.id)
+            dataManager.unlockNextFlower(definitions, currentFlowerType, challenge.id)
+            dataManager.saveProgress()
+            
+            if (::effectsManager.isInitialized) {
+                effectsManager.startFireworks()
+            }
+            
+            val successMessage = getSuccessMessage(challenge.id)
+            return ChallengeDefinitions.ChallengeResult(challenge, true, successMessage)
+        }
+        
+        return null
+    }
+    
+    fun finalizeChallengeResult(): ChallengeDefinitions.ChallengeResult? {
+        val challenge = currentChallenge ?: return null
+        
+        val result = checkChallengeCompletion() ?: run {
+            // SUPPRIMÉ: startRain() - maintenant géré dans OrganicLineView
+            val failMessage = getFailMessage(challenge.id)
+            ChallengeDefinitions.ChallengeResult(challenge, false, failMessage)
+        }
+        
+        currentChallenge = null
+        return result
+    }
+    
+    private fun getSuccessMessage(challengeId: Int): String {
+        return when (currentFlowerType) {
+            "MARGUERITE" -> {
+                val data = dataManager.getMargueriteData()
+                margueriteChallengeHandler.getSuccessMessage(
+                    challengeId, data.flowersInZone, data.budsCreated,
+                    data.flowersInZoneDefi3, data.budsCreatedDefi3
+                )
+            }
+            "ROSE" -> {
+                val data = dataManager.getRoseData()
+                roseChallengeHandler.getSuccessMessage(
+                    challengeId, data.roseFlowersInZone, data.roseDivisions,
+                    data.roseTotalFlowers, data.roseFlowersInZoneDefi3
+                )
+            }
+            "LUPIN" -> {
+                val data = dataManager.getLupinData()
+                lupinChallengeHandler.getSuccessMessage(
+                    challengeId, data.lupinSpikeColors, data.lupinCompleteStems, data.lupinFlowers
+                )
+            }
+            "IRIS" -> {
+                val data = dataManager.getIrisData()
+                irisChallengeHandler.getSuccessMessage(
+                    challengeId, data.irisFlowersInZone, data.irisRamifications, data.irisTotalFlowers
+                )
+            }
+            "ORCHIDEE" -> {
+                val data = dataManager.getOrchideeData()
+                orchideeChallengeHandler.getSuccessMessage(
+                    challengeId, data.orchideeFlowersInZone, data.orchideeSpeciesCount, data.orchideeTotalFlowers
+                )
+            }
+            else -> "Défi réussi!"
+        }
+    }
+    
+    private fun getFailMessage(challengeId: Int): String {
+        return when (currentFlowerType) {
+            "MARGUERITE" -> {
+                val data = dataManager.getMargueriteData()
+                margueriteChallengeHandler.getFailMessage(
+                    challengeId, data.flowersInZone, data.budsCreated,
+                    data.flowersInZoneDefi3, data.budsCreatedDefi3
+                )
+            }
+            "ROSE" -> {
+                val data = dataManager.getRoseData()
+                roseChallengeHandler.getFailMessage(
+                    challengeId, data.roseFlowersInZone, data.roseDivisions,
+                    data.roseTotalFlowers, data.roseFlowersInZoneDefi3
+                )
+            }
+            "LUPIN" -> {
+                val data = dataManager.getLupinData()
+                lupinChallengeHandler.getFailMessage(
+                    challengeId, data.lupinSpikeColors, data.lupinCompleteStems, data.lupinFlowers
+                )
+            }
+            "IRIS" -> {
+                val data = dataManager.getIrisData()
+                irisChallengeHandler.getFailMessage(
+                    challengeId, data.irisFlowersInZone, data.irisRamifications, data.irisTotalFlowers
+                )
+            }
+            "ORCHIDEE" -> {
+                val data = dataManager.getOrchideeData()
+                orchideeChallengeHandler.getFailMessage(
+                    challengeId, data.orchideeFlowersInZone, data.orchideeSpeciesCount, data.orchideeTotalFlowers
+                )
+            }
+            else -> "Défi échoué!"
         }
     }
 }
