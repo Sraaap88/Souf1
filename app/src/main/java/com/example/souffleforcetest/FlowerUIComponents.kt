@@ -82,7 +82,7 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
         
         // Obtenir les fleurs débloquées
         val unlockedFlowers = getUnlockedFlowersList(challengeManager)
-        val flowerButtonRadius = screenWidth * 0.18f  // AUGMENTÉ de 0.12f à 0.18f pour plus grandes images
+        val flowerButtonRadius = screenWidth * 0.18f  // Maintenu pour grandes images
         val centerX = screenWidth / 2f
         val buttonY = screenHeight / 2f
         
@@ -101,7 +101,7 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 drawFlowerButton(canvas, roseX, buttonY, flowerButtonRadius, "ROSE", challengeManager)
             }
             3 -> {
-                // Marguerite + Rose + Lupin - en triangle, ajusté pour images plus grandes
+                // Marguerite + Rose + Lupin - en triangle
                 val spacing = flowerButtonRadius * 3.0f
                 val topY = buttonY - spacing * 0.4f
                 val bottomY = buttonY + spacing * 0.4f
@@ -117,20 +117,46 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 val lupinX = centerX + spacing / 2f
                 drawFlowerButton(canvas, lupinX, bottomY, flowerButtonRadius, "LUPIN", challengeManager)
             }
-            else -> {
-                // 4+ fleurs - en carré ou plus (pour futures fleurs)
-                val spacing = flowerButtonRadius * 3f
+            4 -> {
+                // 4 fleurs exactement - en carré
+                val spacing = flowerButtonRadius * 2.8f
+                
+                // Marguerite en haut à gauche
+                val margueriteX = centerX - spacing / 2f
+                val margueriteY = buttonY - spacing / 2f
+                drawFlowerButton(canvas, margueriteX, margueriteY, flowerButtonRadius * 0.9f, "MARGUERITE", challengeManager)
+                
+                // Rose en haut à droite
+                val roseX = centerX + spacing / 2f
+                val roseY = buttonY - spacing / 2f
+                drawFlowerButton(canvas, roseX, roseY, flowerButtonRadius * 0.9f, "ROSE", challengeManager)
+                
+                // Lupin en bas à gauche
+                val lupinX = centerX - spacing / 2f
+                val lupinY = buttonY + spacing / 2f
+                drawFlowerButton(canvas, lupinX, lupinY, flowerButtonRadius * 0.9f, "LUPIN", challengeManager)
+                
+                // Iris en bas à droite
+                val irisX = centerX + spacing / 2f
+                val irisY = buttonY + spacing / 2f
+                drawFlowerButton(canvas, irisX, irisY, flowerButtonRadius * 0.9f, "IRIS", challengeManager)
+            }
+            else -> { // ✅ MODIFIÉ: Configuration 5+ fleurs avec ORCHIDÉE
+                // 5+ fleurs avec orchidée - disposition pentagonale optimisée
+                val spacing = flowerButtonRadius * 2.2f
+                
                 val positions = listOf(
-                    Pair(centerX - spacing / 2f, buttonY - spacing / 2f), // Haut gauche
-                    Pair(centerX + spacing / 2f, buttonY - spacing / 2f), // Haut droite  
-                    Pair(centerX - spacing / 2f, buttonY + spacing / 2f), // Bas gauche
-                    Pair(centerX + spacing / 2f, buttonY + spacing / 2f)  // Bas droite
+                    Triple("MARGUERITE", centerX, buttonY - spacing * 0.8f), // Haut centre
+                    Triple("ROSE", centerX - spacing * 0.7f, buttonY - spacing * 0.2f), // Gauche haut
+                    Triple("LUPIN", centerX + spacing * 0.7f, buttonY - spacing * 0.2f), // Droite haut
+                    Triple("IRIS", centerX - spacing * 0.7f, buttonY + spacing * 0.4f), // Gauche bas
+                    Triple("ORCHIDEE", centerX + spacing * 0.7f, buttonY + spacing * 0.4f) // Droite bas
                 )
                 
-                val flowerTypes = listOf("MARGUERITE", "ROSE", "LUPIN", "IRIS")
-                for (i in unlockedFlowers.indices.take(4)) {
-                    val (x, y) = positions[i]
-                    drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.9f, flowerTypes[i], challengeManager)
+                for ((flower, x, y) in positions) {
+                    if (unlockedFlowers.contains(flower)) {
+                        drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.8f, flower, challengeManager)
+                    }
                 }
             }
         }
@@ -157,7 +183,7 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
             }
             "LUPIN" -> {
                 if (isUnlocked) {
-                    // Lupin débloqué - MEILLEURE REPRÉSENTATION
+                    // Lupin débloqué - REPRÉSENTATION AMÉLIORÉE
                     flowerTextPaint.textSize = radius * 1.4f
                     flowerTextPaint.color = 0xFF9370DB.toInt()  // Violet (couleur typique du lupin)
                     
@@ -207,7 +233,75 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                     drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
                 }
             }
+            "ORCHIDEE" -> { // ✅ NOUVEAU: Bouton orchidée
+                if (isUnlocked) {
+                    drawOrchideeButton(canvas, x, y, radius)
+                } else {
+                    drawLockedFlower(canvas, x, y, radius, "VERROUILLÉ")
+                }
+            }
         }
+    }
+    
+    // ✅ NOUVEAU: Fonction spécialisée pour dessiner le bouton orchidée
+    private fun drawOrchideeButton(canvas: Canvas, x: Float, y: Float, radius: Float) {
+        // Option 1: Emoji orchidée si disponible
+        flowerTextPaint.textSize = radius * 1.6f
+        flowerTextPaint.color = 0xFFFF1493.toInt() // Rose vif pour orchidées
+        
+        try {
+            // Essayer l'emoji orchidée
+            canvas.drawText("🌺", x, y + 15f, flowerTextPaint)
+        } catch (e: Exception) {
+            // Fallback: Dessiner une orchidée stylisée
+            drawStylizedOrchidee(canvas, x, y, radius)
+        }
+        
+        // ✅ NOUVEAU: Ajouter texte descriptif sous l'icône
+        flowerTextPaint.textSize = radius * 0.25f
+        flowerTextPaint.color = 0xAAFFFFFF.toInt() // Blanc semi-transparent
+        canvas.drawText("ORCHIDÉE", x, y + radius * 1.2f, flowerTextPaint)
+    }
+    
+    // ✅ NOUVEAU: Dessiner une orchidée stylisée si emoji pas disponible
+    private fun drawStylizedOrchidee(canvas: Canvas, x: Float, y: Float, radius: Float) {
+        val orchideePaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+        }
+        
+        // Pétales (5 pétales stylisés)
+        for (i in 0 until 5) {
+            val angle = i * 72f // 360° / 5 pétales
+            val petalLength = radius * 0.8f
+            val petalWidth = radius * 0.3f
+            
+            canvas.save()
+            canvas.translate(x, y)
+            canvas.rotate(angle)
+            
+            // Couleur dégradée pour chaque pétale
+            orchideePaint.color = when (i) {
+                0 -> Color.rgb(255, 20, 147)  // Rose vif
+                1 -> Color.rgb(255, 105, 180) // Rose clair
+                2 -> Color.rgb(186, 85, 211)  // Violet
+                3 -> Color.rgb(138, 43, 226)  // Violet foncé
+                else -> Color.rgb(255, 182, 193) // Rose pâle
+            }
+            
+            // Forme de pétale ovale
+            canvas.drawOval(
+                -petalWidth / 2f, -petalLength / 2f,
+                petalWidth / 2f, petalLength / 2f,
+                orchideePaint
+            )
+            
+            canvas.restore()
+        }
+        
+        // Centre de l'orchidée (colonne)
+        orchideePaint.color = Color.rgb(255, 215, 0) // Or
+        canvas.drawCircle(x, y, radius * 0.15f, orchideePaint)
     }
     
     private fun drawLockedFlower(canvas: Canvas, x: Float, y: Float, radius: Float, text: String) {
@@ -228,9 +322,12 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
             flowers.add("LUPIN")
         }
         
-        // IRIS maintenant activé !
         if (challengeManager.isFlowerUnlocked("IRIS")) {
             flowers.add("IRIS")
+        }
+        
+        if (challengeManager.isFlowerUnlocked("ORCHIDEE")) { // ✅ NOUVEAU: Vérification orchidée
+            flowers.add("ORCHIDEE")
         }
         
         return flowers
@@ -453,43 +550,102 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
         val zoneTop: Float
         val zoneBottom: Float
         
-        if (currentFlowerType == "MARGUERITE") {
-            // Zones existantes pour marguerite
-            when (challengeId) {
-                1 -> {
-                    zoneTop = screenHeight / 3f - 60f
-                    zoneBottom = screenHeight / 3f + 360f
-                }
-                3 -> {
-                    zoneTop = screenHeight / 3f - 120f
-                    zoneBottom = screenHeight / 3f + 120f
-                }
-                else -> {
-                    zoneTop = screenHeight / 3f - 60f
-                    zoneBottom = screenHeight / 3f + 360f
+        when (currentFlowerType) {
+            "MARGUERITE" -> {
+                // Zones existantes pour marguerite
+                when (challengeId) {
+                    1 -> {
+                        zoneTop = screenHeight / 3f - 60f
+                        zoneBottom = screenHeight / 3f + 360f
+                    }
+                    3 -> {
+                        zoneTop = screenHeight / 3f - 120f
+                        zoneBottom = screenHeight / 3f + 120f
+                    }
+                    else -> {
+                        zoneTop = screenHeight / 3f - 60f
+                        zoneBottom = screenHeight / 3f + 360f
+                    }
                 }
             }
-        } else {
-            // Zones pour rosier et lupin - bande de 2 pouces (~192px) au centre
-            val zoneHeight = 192f  // 2 pouces
-            zoneTop = (screenHeight - zoneHeight) / 2f
-            zoneBottom = zoneTop + zoneHeight
+            "ORCHIDEE" -> { // ✅ NOUVEAU: Zones cibles spécifiques aux orchidées
+                when (challengeId) {
+                    1 -> {
+                        // Zone élargie pour orchidées (plus de précision requise)
+                        zoneTop = screenHeight / 3f - 100f
+                        zoneBottom = screenHeight / 3f + 300f
+                    }
+                    2 -> {
+                        // Zone très précise pour défi souffle délicat
+                        zoneTop = screenHeight / 2f - 80f
+                        zoneBottom = screenHeight / 2f + 80f
+                    }
+                    3 -> {
+                        // Zone moyenne pour défi patience
+                        zoneTop = screenHeight / 3f - 150f
+                        zoneBottom = screenHeight / 3f + 200f
+                    }
+                    else -> {
+                        zoneTop = screenHeight / 3f - 100f
+                        zoneBottom = screenHeight / 3f + 300f
+                    }
+                }
+            }
+            else -> {
+                // Zones pour rosier, lupin et iris - bande de 2 pouces (~192px) au centre
+                val zoneHeight = 192f  // 2 pouces
+                zoneTop = (screenHeight - zoneHeight) / 2f
+                zoneBottom = zoneTop + zoneHeight
+            }
         }
         
         val zoneLeft = 0f
         val zoneRight = screenWidth.toFloat()
         
-        // Dessiner le rectangle transparent vert lime
+        // ✅ MODIFIÉ: Couleur différente selon le type de plante
+        val zoneColor = when (currentFlowerType) {
+            "ORCHIDEE" -> 0x40FF1493.toInt()  // Rose vif transparent pour orchidées
+            "IRIS" -> 0x404B0082.toInt()      // Indigo transparent pour iris
+            "LUPIN" -> 0x409370DB.toInt()     // Violet transparent pour lupin
+            "ROSIER" -> 0x40FF69B4.toInt()    // Rose transparent pour rosier
+            else -> 0x4000FF00.toInt()        // Vert lime transparent pour marguerite
+        }
+        
+        targetZonePaint.color = zoneColor
+        
+        // Dessiner le rectangle transparent
         canvas.drawRect(zoneLeft, zoneTop, zoneRight, zoneBottom, targetZonePaint)
         
-        // Bordures pour mieux voir la zone
+        // ✅ MODIFIÉ: Bordures assorties à la couleur de la zone
         val borderPaint = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
             strokeWidth = 4f
-            color = 0x8000FF00.toInt()  // Vert lime plus opaque pour les bordures
+            color = when (currentFlowerType) {
+                "ORCHIDEE" -> 0x80FF1493.toInt()  // Rose vif pour orchidées
+                "IRIS" -> 0x804B0082.toInt()      // Indigo pour iris
+                "LUPIN" -> 0x809370DB.toInt()     // Violet pour lupin
+                "ROSIER" -> 0x80FF69B4.toInt()    // Rose pour rosier
+                else -> 0x8000FF00.toInt()        // Vert lime pour marguerite
+            }
         }
         canvas.drawRect(zoneLeft, zoneTop, zoneRight, zoneBottom, borderPaint)
+        
+        // ✅ NOUVEAU: Ajouter indicateur textuel pour orchidées
+        if (currentFlowerType == "ORCHIDEE") {
+            flowerTextPaint.textSize = 30f
+            flowerTextPaint.color = 0x99FFFFFF.toInt()
+            flowerTextPaint.textAlign = Paint.Align.CENTER
+            
+            val zoneText = when (challengeId) {
+                1 -> "Zone saccades régulières"
+                2 -> "Zone souffle délicat"
+                3 -> "Zone patience orchidées"
+                else -> "Zone croissance orchidées"
+            }
+            
+            canvas.drawText(zoneText, screenWidth / 2f, zoneTop - 20f, flowerTextPaint)
+        }
     }
     
     fun shouldShowTargetZone(lightState: OrganicLineView.LightState): Boolean {
@@ -512,6 +668,36 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
         return x >= zoneLeft && x <= zoneRight && y >= zoneTop && y <= zoneBottom
     }
     
+    // ✅ NOUVEAU: Fonction pour vérifier si un point est dans la zone orchidée
+    fun isPointInOrchideeTargetZone(x: Float, y: Float, challengeId: Int = 1): Boolean {
+        val zoneTop: Float
+        val zoneBottom: Float
+        
+        when (challengeId) {
+            1 -> {
+                zoneTop = screenHeight / 3f - 100f
+                zoneBottom = screenHeight / 3f + 300f
+            }
+            2 -> {
+                zoneTop = screenHeight / 2f - 80f
+                zoneBottom = screenHeight / 2f + 80f
+            }
+            3 -> {
+                zoneTop = screenHeight / 3f - 150f
+                zoneBottom = screenHeight / 3f + 200f
+            }
+            else -> {
+                zoneTop = screenHeight / 3f - 100f
+                zoneBottom = screenHeight / 3f + 300f
+            }
+        }
+        
+        val zoneLeft = 0f
+        val zoneRight = screenWidth.toFloat()
+        
+        return x >= zoneLeft && x <= zoneRight && y >= zoneTop && y <= zoneBottom
+    }
+    
     // ==================== FONCTIONS UTILITAIRES ====================
     
     private fun detectCurrentFlowerType(challengeManager: ChallengeManager): String {
@@ -522,11 +708,15 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
                 challengeManager.getMargueriteChallenges().any { it == currentChallenge } -> "MARGUERITE"
                 challengeManager.getRoseChallenges().any { it == currentChallenge } -> "ROSIER"
                 challengeManager.getLupinChallenges().any { it == currentChallenge } -> "LUPIN"
+                challengeManager.getIrisChallenges().any { it == currentChallenge } -> "IRIS" // ✅ NOUVEAU
+                challengeManager.getOrchideeChallenges().any { it == currentChallenge } -> "ORCHIDEE" // ✅ NOUVEAU
                 else -> "MARGUERITE"
             }
         } else {
             // Fallback: détecter selon les fleurs débloquées
             when {
+                challengeManager.isFlowerUnlocked("ORCHIDEE") -> "ORCHIDEE" // ✅ NOUVEAU: Priorité orchidée
+                challengeManager.isFlowerUnlocked("IRIS") -> "IRIS" // ✅ NOUVEAU
                 challengeManager.isFlowerUnlocked("LUPIN") -> "LUPIN"
                 challengeManager.isFlowerUnlocked("ROSE") -> "ROSIER"  
                 else -> "MARGUERITE"
@@ -541,4 +731,42 @@ class FlowerUIComponents(private val context: Context, private val screenWidth: 
     fun getLeafPaint(): Paint = leafPaint
     fun getFlowerPaint(): Paint = flowerPaint
     fun getFlowerCenterPaint(): Paint = flowerCenterPaint
+    
+    // ==================== NOUVELLES FONCTIONS ORCHIDÉES ====================
+    
+    // ✅ NOUVEAU: Fonctions utilitaires spécifiques aux orchidées
+    fun getOrchideeButtonColor(species: String): Int {
+        return when (species.uppercase()) {
+            "PHALAENOPSIS" -> Color.rgb(255, 182, 193) // Rose pâle
+            "CATTLEYA" -> Color.rgb(138, 43, 226)      // Violet royal
+            "DENDROBIUM" -> Color.rgb(255, 255, 255)   // Blanc
+            "VANDA" -> Color.rgb(65, 105, 225)         // Bleu royal
+            "ONCIDIUM" -> Color.rgb(255, 215, 0)       // Jaune or
+            "CYMBIDIUM" -> Color.rgb(255, 253, 208)    // Crème
+            else -> Color.rgb(255, 20, 147)            // Rose vif par défaut
+        }
+    }
+    
+    fun shouldShowOrchideeInfo(challengeManager: ChallengeManager): Boolean {
+        return challengeManager.isFlowerUnlocked("ORCHIDEE") && 
+               challengeManager.getCurrentFlowerType() == "ORCHIDEE"
+    }
+    
+    // ✅ NOUVEAU: Affichage d'informations sur les orchidées dans la sélection
+    fun drawOrchideeSelectionInfo(canvas: Canvas, challengeManager: ChallengeManager) {
+        if (!challengeManager.isFlowerUnlocked("ORCHIDEE")) return
+        
+        flowerTextPaint.textSize = 28f
+        flowerTextPaint.color = 0x77FFFFFF.toInt()
+        flowerTextPaint.textAlign = Paint.Align.CENTER
+        
+        canvas.drawText("6 espèces d'orchidées procédurales", screenWidth / 2f, screenHeight * 0.85f, flowerTextPaint)
+        canvas.drawText("Chaque fleur est 100% unique", screenWidth / 2f, screenHeight * 0.88f, flowerTextPaint)
+        
+        // Liste des espèces disponibles
+        flowerTextPaint.textSize = 22f
+        flowerTextPaint.color = 0x55FFFFFF.toInt()
+        val species = "Phalaenopsis • Cattleya • Dendrobium • Vanda • Oncidium • Cymbidium"
+        canvas.drawText(species, screenWidth / 2f, screenHeight * 0.92f, flowerTextPaint)
+    }
 }
