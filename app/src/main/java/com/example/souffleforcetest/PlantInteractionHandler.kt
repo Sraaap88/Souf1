@@ -20,7 +20,8 @@ class PlantInteractionHandler(
         plantStem: PlantStem?,
         roseBushManager: RoseBushManager?,
         lupinManager: LupinManager?,
-        irisManager: IrisManager?
+        irisManager: IrisManager?,
+        orchideeManager: OrchideeManager? // ✅ NOUVEAU: Ajout OrchideeManager
     ) {
         when (selectedFlowerType) {
             "MARGUERITE" -> {
@@ -34,6 +35,9 @@ class PlantInteractionHandler(
             }
             "IRIS" -> {
                 handleIrisGrowth(lightState, force, irisManager)
+            }
+            "ORCHIDEE" -> { // ✅ NOUVEAU: Gestion des orchidées
+                handleOrchideeGrowth(lightState, force, orchideeManager)
             }
         }
     }
@@ -115,9 +119,28 @@ class PlantInteractionHandler(
         }
     }
     
+    // ✅ NOUVEAU: Gestion de la croissance des orchidées
+    private fun handleOrchideeGrowth(
+        lightState: OrganicLineView.LightState,
+        force: Float,
+        orchideeManager: OrchideeManager?
+    ) {
+        when (lightState) {
+            OrganicLineView.LightState.GREEN_GROW -> {
+                orchideeManager?.processStemGrowth(force)
+            }
+            OrganicLineView.LightState.GREEN_LEAVES -> {
+                orchideeManager?.processLeafGrowth(force)
+            }
+            OrganicLineView.LightState.GREEN_FLOWER -> {
+                orchideeManager?.processFlowerGrowth(force)
+            }
+            else -> {}
+        }
+    }
+    
     // ==================== GESTION DE L'AFFICHAGE AVEC DISSOLUTION ====================
     
-    // CORRIGÉ: Retirer dissolveInfo puisque UIDrawingManager ne l'accepte pas
     fun drawPlants(
         canvas: Canvas,
         selectedFlowerType: String,
@@ -126,14 +149,16 @@ class PlantInteractionHandler(
         roseBushManager: RoseBushManager?,
         lupinManager: LupinManager?,
         irisManager: IrisManager?,
+        orchideeManager: OrchideeManager?, // ✅ NOUVEAU: Paramètre OrchideeManager
         uiDrawing: UIDrawingManager,
-        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null  // Gardé pour compatibilité mais pas utilisé
+        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null
     ) {
         when (selectedFlowerType) {
             "MARGUERITE" -> drawPlantStem(canvas, lightState, plantStem, uiDrawing, dissolveInfo)
             "ROSE" -> drawRoseBush(canvas, roseBushManager, dissolveInfo)
             "LUPIN" -> drawLupin(canvas, lupinManager, dissolveInfo)
             "IRIS" -> drawIris(canvas, irisManager, dissolveInfo)
+            "ORCHIDEE" -> drawOrchidee(canvas, orchideeManager, dissolveInfo) // ✅ NOUVEAU: Rendu des orchidées
         }
     }
     
@@ -142,33 +167,33 @@ class PlantInteractionHandler(
         lightState: OrganicLineView.LightState,
         stem: PlantStem?,
         uiDrawing: UIDrawingManager,
-        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null  // Pas utilisé
+        dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null
     ) {
         stem ?: return
         
         // Dessiner les fleurs de profil/arrière DERRIÈRE les tiges
         if (lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawBackgroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
+            uiDrawing.drawBackgroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)
         }
         
         // Dessiner la tige principale
-        uiDrawing.drawMainStem(canvas, stem.mainStem, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
+        uiDrawing.drawMainStem(canvas, stem.mainStem, dissolveInfo)
         
         // Dessiner les branches
-        uiDrawing.drawBranches(canvas, stem.branches, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
+        uiDrawing.drawBranches(canvas, stem.branches, dissolveInfo)
         
         // Dessiner les feuilles pendant GREEN_LEAVES et après
         if (lightState == OrganicLineView.LightState.GREEN_LEAVES || 
             lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawLeaves(canvas, stem.getLeaves(), stem, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
+            uiDrawing.drawLeaves(canvas, stem.getLeaves(), stem, dissolveInfo)
         }
         
         // Dessiner les fleurs de face/3-4 PAR-DESSUS les tiges
         if (lightState == OrganicLineView.LightState.GREEN_FLOWER || 
             lightState == OrganicLineView.LightState.RED) {
-            uiDrawing.drawForegroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)  // CORRIGÉ: Passer dissolveInfo
+            uiDrawing.drawForegroundFlowers(canvas, stem.getFlowers(), stem, dissolveInfo)
         }
     }
     
@@ -190,7 +215,6 @@ class PlantInteractionHandler(
                 style = Paint.Style.FILL
             }
             
-            // NOUVEAU: Passer dissolveInfo
             manager.drawRoseBush(canvas, branchPaint, leafPaint, flowerPaint, dissolveInfo)
         }
     }
@@ -213,7 +237,6 @@ class PlantInteractionHandler(
                 style = Paint.Style.FILL
             }
             
-            // CORRIGÉ: Passer dissolveInfo au lupin
             manager.drawLupin(canvas, stemPaint, leafPaint, flowerPaint, dissolveInfo)
         }
     }
@@ -237,8 +260,34 @@ class PlantInteractionHandler(
             }
             
             val renderer = IrisRenderer()
-            // NOUVEAU: Passer dissolveInfo
             renderer.drawIris(canvas, stemPaint, leafPaint, flowerPaint, manager.getStems(), manager.getFlowers(), dissolveInfo)
+        }
+    }
+    
+    // ✅ NOUVEAU: Fonction de rendu des orchidées
+    private fun drawOrchidee(canvas: Canvas, orchideeManager: OrchideeManager?, dissolveInfo: ChallengeEffectsManager.DissolveInfo? = null) {
+        orchideeManager?.let { manager ->
+            val stemPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.STROKE
+                strokeCap = Paint.Cap.ROUND
+                strokeWidth = 5f
+                color = android.graphics.Color.rgb(40, 120, 40) // Vert foncé pour tiges d'orchidées
+            }
+            
+            val leafPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.FILL
+                color = android.graphics.Color.rgb(60, 140, 60) // Vert moyen pour feuilles
+            }
+            
+            val flowerPaint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.FILL
+                // Couleur sera définie par la génétique de chaque fleur
+            }
+            
+            manager.drawOrchidees(canvas, stemPaint, leafPaint, flowerPaint, dissolveInfo)
         }
     }
     
@@ -287,13 +336,28 @@ class PlantInteractionHandler(
                     if (distance <= flowerButtonRadius * 1.5f) return flower
                 }
             }
-            else -> {
-                val spacing = flowerButtonRadius * 3f
+            4 -> { // ✅ NOUVEAU: Configuration à 4 fleurs avec IRIS
+                val spacing = flowerButtonRadius * 2.5f
                 val positions = listOf(
                     Triple("MARGUERITE", centerX - spacing / 2f, buttonY - spacing / 2f),
                     Triple("ROSE", centerX + spacing / 2f, buttonY - spacing / 2f),
                     Triple("LUPIN", centerX - spacing / 2f, buttonY + spacing / 2f),
                     Triple("IRIS", centerX + spacing / 2f, buttonY + spacing / 2f)
+                )
+                
+                for ((flower, x, y) in positions) {
+                    val distance = sqrt((event.x - x).pow(2) + (event.y - y).pow(2))
+                    if (distance <= flowerButtonRadius * 1.5f) return flower
+                }
+            }
+            else -> { // ✅ MODIFIÉ: Configuration à 5 fleurs avec ORCHIDEE
+                val spacing = flowerButtonRadius * 2.2f
+                val positions = listOf(
+                    Triple("MARGUERITE", centerX, buttonY - spacing * 0.8f), // Haut centre
+                    Triple("ROSE", centerX - spacing * 0.7f, buttonY - spacing * 0.2f), // Gauche haut
+                    Triple("LUPIN", centerX + spacing * 0.7f, buttonY - spacing * 0.2f), // Droite haut
+                    Triple("IRIS", centerX - spacing * 0.7f, buttonY + spacing * 0.4f), // Gauche bas
+                    Triple("ORCHIDEE", centerX + spacing * 0.7f, buttonY + spacing * 0.4f) // Droite bas
                 )
                 
                 for ((flower, x, y) in positions) {
@@ -350,6 +414,7 @@ class PlantInteractionHandler(
                     "ROSE" -> challengeManager.getRoseChallenges()
                     "LUPIN" -> challengeManager.getLupinChallenges()
                     "IRIS" -> challengeManager.getIrisChallenges()
+                    "ORCHIDEE" -> challengeManager.getOrchideeChallenges() // ✅ NOUVEAU: Défis orchidées
                     else -> challengeManager.getMargueriteChallenges()
                 }
                 
@@ -369,10 +434,15 @@ class PlantInteractionHandler(
         plantStem: PlantStem?,
         roseBushManager: RoseBushManager?,
         lupinManager: LupinManager?,
-        irisManager: IrisManager?
+        irisManager: IrisManager?,
+        orchideeManager: OrchideeManager? // ✅ NOUVEAU: Paramètre OrchideeManager
     ): Boolean {
         return when (selectedFlowerType) {
             "MARGUERITE" -> (plantStem?.getStemHeight() ?: 0f) > 30f
+            "ROSE" -> true // Les roses ont toujours un bouton reset
+            "LUPIN" -> true // Les lupins ont toujours un bouton reset
+            "IRIS" -> true // Les iris ont toujours un bouton reset
+            "ORCHIDEE" -> true // ✅ NOUVEAU: Les orchidées ont toujours un bouton reset
             else -> true
         }
     }
@@ -383,7 +453,27 @@ class PlantInteractionHandler(
         if (challengeManager.isFlowerUnlocked("ROSE")) flowers.add("ROSE")
         if (challengeManager.isFlowerUnlocked("LUPIN")) flowers.add("LUPIN")
         if (challengeManager.isFlowerUnlocked("IRIS")) flowers.add("IRIS")
+        if (challengeManager.isFlowerUnlocked("ORCHIDEE")) flowers.add("ORCHIDEE") // ✅ NOUVEAU: Déverrouillage orchidées
         
         return flowers
+    }
+    
+    // ✅ NOUVEAU: Fonctions utilitaires spécifiques aux orchidées
+    fun getOrchideeStats(orchideeManager: OrchideeManager?): String {
+        return orchideeManager?.getOrchideeStats() ?: "Aucune orchidée"
+    }
+    
+    fun getCurrentOrchideeSpecies(orchideeManager: OrchideeManager?): List<String> {
+        return orchideeManager?.getCurrentSpecies() ?: emptyList()
+    }
+    
+    // ✅ NOUVEAU: Réinitialisation spécifique aux orchidées
+    fun resetOrchidees(orchideeManager: OrchideeManager?) {
+        orchideeManager?.reset()
+    }
+    
+    // ✅ NOUVEAU: Initialisation des orchidées
+    fun initializeOrchidees(orchideeManager: OrchideeManager?, centerX: Float, bottomY: Float) {
+        orchideeManager?.initialize(centerX, bottomY)
     }
 }
