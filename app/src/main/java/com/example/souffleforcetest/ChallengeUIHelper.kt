@@ -34,6 +34,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             "ROSE" -> "ROSIER"
             "LUPIN" -> "LUPIN"
             "IRIS" -> "IRIS"
+            "ORCHIDEE" -> "ORCHIDÉE"
             else -> "MARGUERITE" // Fallback
         }
         
@@ -45,6 +46,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             "ROSE" -> challengeManager.getRoseChallenges()
             "LUPIN" -> challengeManager.getLupinChallenges()
             "IRIS" -> challengeManager.getIrisChallenges()
+            "ORCHIDEE" -> challengeManager.getOrchideeChallenges()
             else -> challengeManager.getMargueriteChallenges() // Fallback
         }
         
@@ -124,6 +126,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             "ROSE" -> "Rosier"
             "LUPIN" -> "Lupin"
             "IRIS" -> "Iris"
+            "ORCHIDEE" -> "Orchidée"
             else -> "Plante"
         }
         canvas.drawText(displayName, screenWidth / 2f, screenHeight * 0.32f, textPaint)
@@ -151,7 +154,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
             challenge?.id == 3 && flowerType == "MARGUERITE" -> {
                 textPaint.textAlign = Paint.Align.CENTER
                 textPaint.textSize = 55f
-                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.color = 0xFFFFD700.toInt()  // Jaune
                 textPaint.isFakeBoldText = false
                 canvas.drawText("Zone verte: 1 pouce de haut", screenWidth / 2f, screenHeight * 0.62f, textPaint)
             }
@@ -218,6 +221,28 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                 textPaint.isFakeBoldText = false
                 canvas.drawText("Zone centrale: 2 pouces de haut", screenWidth / 2f, screenHeight * 0.62f, textPaint)
             }
+            // ==================== NOUVEAUX DÉFIS ORCHIDÉE ====================
+            challenge?.id == 1 && flowerType == "ORCHIDEE" -> {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = 55f
+                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.isFakeBoldText = false
+                canvas.drawText("Zone centrale: 3 pouces de haut (élégance)", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+            }
+            challenge?.id == 2 && flowerType == "ORCHIDEE" -> {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = 55f
+                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.isFakeBoldText = false
+                canvas.drawText("Astuce: saccades pour créer 3 espèces différentes", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+            }
+            challenge?.id == 3 && flowerType == "ORCHIDEE" -> {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = 55f
+                textPaint.color = 0xFFFFD700.toInt()
+                textPaint.isFakeBoldText = false
+                canvas.drawText("Maîtrise totale: 6 espèces dans la zone", screenWidth / 2f, screenHeight * 0.62f, textPaint)
+            }
         }
         
         // Compte à rebours
@@ -253,6 +278,7 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                 "ROSE" -> "Rosier"
                 "LUPIN" -> "Lupin"
                 "IRIS" -> "Iris"
+                "ORCHIDEE" -> "Orchidée"
                 else -> "Plante"
             }
             canvas.drawText("$displayName - ${result.challenge.title}", screenWidth / 2f, screenHeight * 0.42f, textPaint)
@@ -334,6 +360,25 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                     textPaint.color = 0xFFFFD700.toInt()
                     canvas.drawText("Jardinier expert en iris!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
                 }
+                // ==================== NOUVEAUX MESSAGES SUCCÈS ORCHIDÉE ====================
+                result.challenge.id == 1 && result.success && flowerType == "ORCHIDEE" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Grâce et sophistication parfaites!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
+                result.challenge.id == 2 && result.success && flowerType == "ORCHIDEE" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Maître de la diversité orchidéenne!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
+                result.challenge.id == 3 && result.success && flowerType == "ORCHIDEE" -> {
+                    textPaint.textAlign = Paint.Align.CENTER
+                    textPaint.textSize = 50f
+                    textPaint.color = 0xFFFFD700.toInt()
+                    canvas.drawText("Grand maître des orchidées exotiques!", screenWidth / 2f, screenHeight * 0.68f, textPaint)
+                }
             }
             
             // Message de déblocage si applicable
@@ -362,6 +407,13 @@ class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: 
                         textPaint.textSize = 55f
                         textPaint.color = 0xFFFF1493.toInt() // Rose profond
                         canvas.drawText("🌸 ORCHIDÉE DÉBLOQUÉE! 🌸", screenWidth / 2f, screenHeight * 0.75f, textPaint)
+                    }
+                    // ==================== NOUVEAU MESSAGE DÉBLOQUAGE ORCHIDÉE ====================
+                    flowerType == "ORCHIDEE" && result.challenge.id == 3 -> {
+                        textPaint.textAlign = Paint.Align.CENTER
+                        textPaint.textSize = 55f
+                        textPaint.color = 0xFFDAA520.toInt() // Or
+                        canvas.drawText("🏆 TOUTES LES FLEURS MAÎTRISÉES! 🏆", screenWidth / 2f, screenHeight * 0.75f, textPaint)
                     }
                 }
             }
