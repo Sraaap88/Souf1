@@ -5,6 +5,7 @@ import android.graphics.Paint
 import android.graphics.Color
 import android.graphics.Path
 import kotlin.math.*
+import kotlin.random.Random
 
 class OrchideeFlowerDrawer {
     
@@ -180,8 +181,8 @@ class OrchideeFlowerDrawer {
         when (patternType.primary) {
             PatternStyle.SPOTTED -> {
                 for (i in 0..2) {
-                    val x = (Random.nextFloat() - 0.5f) * size * 0.3f
-                    val y = (Random.nextFloat() - 0.5f) * size * 0.2f
+                    val x = (kotlin.random.Random.nextFloat() - 0.5f) * size * 0.3f
+                    val y = (kotlin.random.Random.nextFloat() - 0.5f) * size * 0.2f
                     canvas.drawCircle(x, y, size * 0.02f, paint)
                 }
             }
