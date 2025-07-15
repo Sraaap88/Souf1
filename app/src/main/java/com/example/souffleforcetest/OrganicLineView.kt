@@ -32,7 +32,7 @@ class OrganicLineView @JvmOverloads constructor(
     private val cheatTimeWindow = 3000L
     private val cheatRequiredTaps = 3
     
-    // NOUVEAU: Variable pour stocker le résultat du défi
+    // Variable pour stocker le résultat du défi
     private var lastChallengeResult: ChallengeDefinitions.ChallengeResult? = null
     
     // ==================== GESTIONNAIRES ====================
@@ -41,11 +41,12 @@ class OrganicLineView @JvmOverloads constructor(
     private var roseBushManager: RoseBushManager? = null
     private var lupinManager: LupinManager? = null
     private var irisManager: IrisManager? = null
+    private var orchideeManager: OrchideeManager? = null // ✅ NOUVEAU: Gestionnaire d'orchidées
     private var uiDrawing: UIDrawingManager? = null
     private val challengeManager = ChallengeManager(context)
     private var selectedChallengeId = -1
     
-    // NOUVEAUX: Système d'effets complet
+    // Système d'effets complet
     private var fireworkManager: FireworkManager? = null
     private var rainManager: RainManager? = null
     private var challengeEffectsManager: ChallengeEffectsManager? = null
@@ -74,15 +75,16 @@ class OrganicLineView @JvmOverloads constructor(
             roseBushManager = RoseBushManager(w, h)
             lupinManager = LupinManager(w, h)
             irisManager = IrisManager(w, h)
+            orchideeManager = OrchideeManager(w, h) // ✅ NOUVEAU: Initialisation OrchideeManager
             uiDrawing = UIDrawingManager(context, w, h, challengeManager)
             
-            // NOUVEAU: Initialisation complète du système d'effets
+            // Initialisation complète du système d'effets
             fireworkManager = FireworkManager(w, h)
             rainManager = RainManager(w, h)
             challengeEffectsManager = ChallengeEffectsManager()
             interactionHandler = PlantInteractionHandler(w, h, challengeManager)
             
-            // NOUVEAU: Configuration du système d'effets
+            // Configuration du système d'effets
             challengeEffectsManager?.setFireworkManager(fireworkManager!!)
             challengeEffectsManager?.setRainManager(rainManager!!)
             challengeEffectsManager?.setOnFireworkStartedCallback {
@@ -92,7 +94,7 @@ class OrganicLineView @JvmOverloads constructor(
                 post { invalidate() } // Post sur le thread UI pour la pluie
             }
             
-            // NOUVEAU: Configuration des gestionnaires dans ChallengeManager
+            // Configuration des gestionnaires dans ChallengeManager
             challengeManager.setEffectsManager(challengeEffectsManager!!)
             challengeManager.setFireworkManager(fireworkManager!!)
             challengeManager.setRainManager(rainManager!!)
@@ -103,12 +105,13 @@ class OrganicLineView @JvmOverloads constructor(
                 post { invalidate() }
             }
             
-            // Injecter le ChallengeManager
+            // Injecter le ChallengeManager dans tous les gestionnaires
             challengeManager.updateScreenDimensions(w, h)
             plantStem?.getFlowerManager()?.setChallengeManager(challengeManager)
             roseBushManager?.setChallengeManager(challengeManager)
             lupinManager?.setChallengeManager(challengeManager)
             irisManager?.setChallengeManager(challengeManager)
+            orchideeManager?.setChallengeManager(challengeManager) // ✅ NOUVEAU: Injection ChallengeManager
             
             isInitialized = true
             
@@ -127,7 +130,7 @@ class OrganicLineView @JvmOverloads constructor(
         showResetButton = false
         selectedMode = ""
         selectedFlowerType = "MARGUERITE"
-        lastChallengeResult = null  // NOUVEAU: Reset du résultat
+        lastChallengeResult = null
         
         // PROTECTION: Reset seulement si initialisé
         try {
@@ -135,8 +138,9 @@ class OrganicLineView @JvmOverloads constructor(
             roseBushManager?.reset()
             lupinManager?.reset()
             irisManager?.reset()
+            orchideeManager?.reset() // ✅ NOUVEAU: Reset des orchidées
             
-            // NOUVEAU: Arrêter tous les effets
+            // Arrêter tous les effets
             challengeEffectsManager?.stopAllEffects()
             
         } catch (e: Exception) {
@@ -155,16 +159,16 @@ class OrganicLineView @JvmOverloads constructor(
         try {
             updateLightState()
             
-            // Déléguer la logique de croissance au gestionnaire d'interaction
+            // ✅ MODIFIÉ: Déléguer la logique de croissance avec orchideeManager
             interactionHandler?.handlePlantGrowth(
                 selectedFlowerType, lightState, force, 
-                plantStem, roseBushManager, lupinManager, irisManager
+                plantStem, roseBushManager, lupinManager, irisManager, orchideeManager
             )
             
-            // Gérer le bouton reset
+            // ✅ MODIFIÉ: Gérer le bouton reset avec orchideeManager
             if (!showResetButton) {
                 showResetButton = interactionHandler?.shouldShowResetButton(
-                    selectedFlowerType, plantStem, roseBushManager, lupinManager, irisManager
+                    selectedFlowerType, plantStem, roseBushManager, lupinManager, irisManager, orchideeManager
                 ) ?: false
             }
             
@@ -180,12 +184,12 @@ class OrganicLineView @JvmOverloads constructor(
                 challengeManager.checkChallengeCompletion()
             }
             
-            // NOUVEAU: Continuer à mettre à jour les effets même en état RED pour la dissolution
+            // Continuer à mettre à jour les effets même en état RED pour la dissolution
             if (lightState == LightState.RED) {
                 challengeManager.updateChallengeProgress(force, "DISSOLVING")
             }
             
-            // NOUVEAU: Mettre à jour tous les effets (feu d'artifice + pluie)
+            // Mettre à jour tous les effets (feu d'artifice + pluie)
             challengeEffectsManager?.updateEffects(0.016f)
             
             invalidate()
@@ -230,7 +234,7 @@ class OrganicLineView @JvmOverloads constructor(
             LightState.GREEN_FLOWER -> {
                 if (elapsedTime >= 4000) {
                     if (selectedMode == "DÉFI") {
-                        // NOUVEAU: Stocker le résultat avant de passer à CHALLENGE_RESULT
+                        // Stocker le résultat avant de passer à CHALLENGE_RESULT
                         lastChallengeResult = challengeManager.finalizeChallengeResult()
                         lightState = LightState.CHALLENGE_RESULT
                     } else {
@@ -240,11 +244,11 @@ class OrganicLineView @JvmOverloads constructor(
                 }
             }
             LightState.CHALLENGE_RESULT -> {
-                if (elapsedTime >= 3000) { // CORRIGÉ: 3 secondes au lieu de 4 - pluie démarre 1 seconde plus tôt
+                if (elapsedTime >= 3000) {
                     lightState = LightState.RED
                     stateStartTime = currentTime
                     
-                    // NOUVEAU: Déclencher la pluie SEULEMENT si le défi a échoué
+                    // Déclencher la pluie SEULEMENT si le défi a échoué
                     if (lastChallengeResult != null && !lastChallengeResult!!.success) {
                         challengeEffectsManager?.startRain(selectedFlowerType)
                     }
@@ -285,18 +289,18 @@ class OrganicLineView @JvmOverloads constructor(
                 lightState == LightState.GREEN_FLOWER || 
                 lightState == LightState.RED) {
                 
-                // NOUVEAU: Récupérer dissolveInfo et le passer à drawPlants
+                // ✅ MODIFIÉ: Récupérer dissolveInfo et passer orchideeManager à drawPlants
                 val dissolveInfo = challengeEffectsManager?.getDissolveInfo(selectedFlowerType)
                 interactionHandler?.drawPlants(
                     canvas, selectedFlowerType, lightState,
-                    plantStem, roseBushManager, lupinManager, irisManager, uiDrawing!!, dissolveInfo
+                    plantStem, roseBushManager, lupinManager, irisManager, orchideeManager, uiDrawing!!, dissolveInfo
                 )
             }
             
             // Dessiner l'UI
             uiDrawing?.drawCurrentState(canvas, lightState, timeRemaining, resetButtonX, resetButtonY, resetButtonRadius, challengeManager)
             
-            // NOUVEAU: Dessiner tous les effets par-dessus tout
+            // Dessiner tous les effets par-dessus tout
             val paint = Paint()
             fireworkManager?.draw(canvas, paint)
             rainManager?.draw(canvas, paint)
@@ -411,6 +415,7 @@ class OrganicLineView @JvmOverloads constructor(
                 "ROSE" -> roseBushManager?.initialize(width / 2f, height * 0.85f)
                 "LUPIN" -> lupinManager?.initialize(width / 2f, height * 0.85f)
                 "IRIS" -> irisManager?.initialize(width / 2f, height * 0.85f)
+                "ORCHIDEE" -> orchideeManager?.initialize(width / 2f, height * 0.85f) // ✅ NOUVEAU: Initialisation des orchidées
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -442,6 +447,38 @@ class OrganicLineView @JvmOverloads constructor(
         return false
     }
     
+    // ==================== FONCTIONS DE DÉBOGAGE ORCHIDÉES ====================
+    
+    // ✅ NOUVEAU: Fonctions utilitaires pour le débogage des orchidées
+    fun getOrchideeStats(): String {
+        return interactionHandler?.getOrchideeStats(orchideeManager) ?: "Aucune orchidée"
+    }
+    
+    fun getCurrentOrchideeSpecies(): List<String> {
+        return interactionHandler?.getCurrentOrchideeSpecies(orchideeManager) ?: emptyList()
+    }
+    
+    fun forceOrchideeReset() {
+        interactionHandler?.resetOrchidees(orchideeManager)
+        invalidate()
+    }
+    
+    // ✅ NOUVEAU: Fonction pour tester les orchidées sans interface
+    fun testOrchideeGeneration() {
+        try {
+            orchideeManager?.initialize(width / 2f, height * 0.85f)
+            // Simuler de la croissance pour test
+            for (i in 1..50) {
+                orchideeManager?.processStemGrowth(0.5f)
+                orchideeManager?.processLeafGrowth(0.5f)
+                orchideeManager?.processFlowerGrowth(0.5f)
+            }
+            invalidate()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    
     // ==================== CYCLE DE VIE ANDROID ====================
     
     override fun onDetachedFromWindow() {
@@ -457,4 +494,12 @@ class OrganicLineView @JvmOverloads constructor(
         super.onAttachedToWindow()
         // Rien à faire ici, onSizeChanged se chargera de l'initialisation
     }
+    
+    // ==================== GETTERS POUR DÉBOGAGE ====================
+    
+    // ✅ NOUVEAU: Getters pour accéder aux gestionnaires (utile pour le débogage)
+    fun getOrchideeManager(): OrchideeManager? = orchideeManager
+    fun getCurrentLightState(): LightState = lightState
+    fun getSelectedFlowerType(): String = selectedFlowerType
+    fun isOrchideeMode(): Boolean = selectedFlowerType == "ORCHIDEE"
 }
