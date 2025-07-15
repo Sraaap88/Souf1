@@ -8,7 +8,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
     // ==================== DATA CLASSES ====================
     
     data class UnlockedFlower(
-        val flowerType: String,  // "MARGUERITE", "ROSE", "LUPIN", "IRIS", etc.
+        val flowerType: String,  // "MARGUERITE", "ROSE", "LUPIN", "IRIS", "ORCHIDEE"
         val unlockedBy: String,  // "Défi 3 Marguerite", etc.
         val dateUnlocked: Long = System.currentTimeMillis()
     )
@@ -67,6 +67,25 @@ class ChallengeDataManager(private val context: Context?, private val definition
         }
     }
     
+    // ✅ NOUVEAU: Classe de données pour orchidées
+    class OrchideeData {
+        val orchideeFlowersInZone = mutableListOf<String>()
+        val orchideeSpeciesCreated = mutableSetOf<String>() // Espèces d'orchidées créées
+        val orchideeCompleteStems = mutableListOf<String>() // Tiges complètes avec fleurs
+        val orchideeSaccadesCompleted = mutableListOf<String>() // Saccades réussies
+        val orchideeSpeciesCollected = mutableMapOf<String, Int>() // Compteur par espèce
+        val orchideeTotalFlowers = mutableListOf<String>() // Toutes les fleurs d'orchidées
+        
+        fun clear() {
+            orchideeFlowersInZone.clear()
+            orchideeSpeciesCreated.clear()
+            orchideeCompleteStems.clear()
+            orchideeSaccadesCompleted.clear()
+            orchideeSpeciesCollected.clear()
+            orchideeTotalFlowers.clear()
+        }
+    }
+    
     // ==================== VARIABLES D'ÉTAT ====================
     
     // Variables de suivi par type de fleur
@@ -74,6 +93,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
     private val roseData = RoseData()
     private val lupinData = LupinData()
     private val irisData = IrisData()
+    private val orchideeData = OrchideeData() // ✅ NOUVEAU: Données orchidées
     
     // Gestion des fleurs débloquées
     private val unlockedFlowers = mutableListOf<UnlockedFlower>()
@@ -85,11 +105,12 @@ class ChallengeDataManager(private val context: Context?, private val definition
     }
     
     init {
-        // FORCE LES 4 FLEURS POUR TESTER
+        // FORCE LES 5 FLEURS POUR TESTER (including orchidées)
         unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
         unlockedFlowers.add(UnlockedFlower("ROSE", "Test forcé"))
         unlockedFlowers.add(UnlockedFlower("LUPIN", "Test forcé"))
         unlockedFlowers.add(UnlockedFlower("IRIS", "Test forcé"))
+        unlockedFlowers.add(UnlockedFlower("ORCHIDEE", "Test forcé")) // ✅ NOUVEAU: Force orchidées
     }
     
     // ==================== ACCESSEURS DES DONNÉES ====================
@@ -98,6 +119,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
     fun getRoseData(): RoseData = roseData
     fun getLupinData(): LupinData = lupinData
     fun getIrisData(): IrisData = irisData
+    fun getOrchideeData(): OrchideeData = orchideeData // ✅ NOUVEAU: Accesseur orchidées
     
     fun clearFlowerData(flowerType: String) {
         when (flowerType) {
@@ -105,6 +127,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
             "ROSE" -> roseData.clear()
             "LUPIN" -> lupinData.clear()
             "IRIS" -> irisData.clear()
+            "ORCHIDEE" -> orchideeData.clear() // ✅ NOUVEAU: Clear orchidées
         }
     }
     
@@ -138,6 +161,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
             "ROSE" -> handleRoseFlower(challenge, flowerY, screenHeight, flowerId, definitions)
             "LUPIN" -> handleLupinFlower(flowerId)
             "IRIS" -> handleIrisFlower(challenge, flowerY, screenHeight, flowerId, definitions)
+            "ORCHIDEE" -> handleOrchideeFlower(challenge, flowerY, screenHeight, flowerId, definitions) // ✅ NOUVEAU
         }
     }
     
@@ -240,6 +264,46 @@ class ChallengeDataManager(private val context: Context?, private val definition
         }
     }
     
+    // ✅ NOUVEAU: Gestion des fleurs d'orchidées
+    private fun handleOrchideeFlower(
+        challenge: ChallengeDefinitions.Challenge, 
+        flowerY: Float, 
+        screenHeight: Float, 
+        flowerId: String,
+        definitions: ChallengeDefinitions
+    ) {
+        // Ajouter à la liste totale
+        if (!orchideeData.orchideeTotalFlowers.contains(flowerId)) {
+            orchideeData.orchideeTotalFlowers.add(flowerId)
+            println("Orchidée - Fleur créée! Total: ${orchideeData.orchideeTotalFlowers.size}")
+        }
+        
+        when (challenge.id) {
+            1 -> {
+                // Défi 1: Saccades régulières - vérifier zone
+                if (definitions.isInOrchideeZone(flowerY, screenHeight, 1)) {
+                    if (!orchideeData.orchideeFlowersInZone.contains(flowerId)) {
+                        orchideeData.orchideeFlowersInZone.add(flowerId)
+                        println("Orchidée - Fleur dans la zone! Total: ${orchideeData.orchideeFlowersInZone.size}/8")
+                    }
+                }
+            }
+            2 -> {
+                // Défi 2: Souffle délicat - zone très précise
+                if (definitions.isInOrchideeZone(flowerY, screenHeight, 2)) {
+                    if (!orchideeData.orchideeFlowersInZone.contains(flowerId)) {
+                        orchideeData.orchideeFlowersInZone.add(flowerId)
+                        println("Orchidée - Fleur délicate en zone! Total: ${orchideeData.orchideeFlowersInZone.size}/5")
+                    }
+                }
+            }
+            3 -> {
+                // Défi 3: 6 espèces différentes - pas de zone spécifique
+                println("Orchidée - Fleur pour défi patience! Total: ${orchideeData.orchideeTotalFlowers.size}/20")
+            }
+        }
+    }
+    
     fun notifyLupinSpikeCreated(
         challenge: ChallengeDefinitions.Challenge?, 
         flowerType: String, 
@@ -259,6 +323,55 @@ class ChallengeDataManager(private val context: Context?, private val definition
                     lupinData.lupinCompleteStems.add(stemId)
                     println("Lupin - Tige complète! Total: ${lupinData.lupinCompleteStems.size}/5")
                 }
+            }
+        }
+    }
+    
+    // ✅ NOUVEAU: Notification spécifique aux orchidées
+    fun notifyOrchideeCreated(
+        challenge: ChallengeDefinitions.Challenge?,
+        species: String,
+        stemId: String
+    ) {
+        challenge ?: return
+        
+        // Ajouter l'espèce créée
+        orchideeData.orchideeSpeciesCreated.add(species)
+        
+        // Compter par espèce
+        val currentCount = orchideeData.orchideeSpeciesCollected[species] ?: 0
+        orchideeData.orchideeSpeciesCollected[species] = currentCount + 1
+        
+        when (challenge.id) {
+            1 -> {
+                // Défi 1: Saccades - vérifier les espèces créées
+                println("Orchidée - Espèce $species créée! Espèces uniques: ${orchideeData.orchideeSpeciesCreated.size}/6")
+            }
+            2 -> {
+                // Défi 2: Souffle délicat - tige complète
+                if (!orchideeData.orchideeCompleteStems.contains(stemId)) {
+                    orchideeData.orchideeCompleteStems.add(stemId)
+                    println("Orchidée - Tige délicate complète! Total: ${orchideeData.orchideeCompleteStems.size}/3")
+                }
+            }
+            3 -> {
+                // Défi 3: Patience - toutes espèces
+                val totalSpecies = orchideeData.orchideeSpeciesCreated.size
+                println("Orchidée - Patience: $totalSpecies/6 espèces, ${orchideeData.orchideeTotalFlowers.size}/20 fleurs")
+            }
+        }
+    }
+    
+    fun notifyOrchideeSaccadeCompleted(
+        challenge: ChallengeDefinitions.Challenge?,
+        saccadeId: String
+    ) {
+        challenge ?: return
+        
+        if (challenge.id == 1) {
+            if (!orchideeData.orchideeSaccadesCompleted.contains(saccadeId)) {
+                orchideeData.orchideeSaccadesCompleted.add(saccadeId)
+                println("Orchidée - Saccade réussie! Total: ${orchideeData.orchideeSaccadesCompleted.size}/10")
             }
         }
     }
@@ -342,7 +455,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
                 "ROSE" -> unlockRoseFlower()
                 "LUPIN" -> unlockLupinFlower()
                 "IRIS" -> unlockIrisFlower()
-                "ORCHIDEE" -> unlockOrchideeFlower()
+                "ORCHIDEE" -> unlockOrchideeFlower() // ✅ NOUVEAU
             }
         }
     }
@@ -368,6 +481,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
         }
     }
     
+    // ✅ NOUVEAU: Débloquage des orchidées
     private fun unlockOrchideeFlower() {
         if (unlockedFlowers.none { it.flowerType == "ORCHIDEE" }) {
             unlockedFlowers.add(UnlockedFlower("ORCHIDEE", "Défi 3 Iris complété"))
@@ -385,6 +499,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
         saveFlowerChallenges(editor, "rose", definitions.roseChallenges)
         saveFlowerChallenges(editor, "lupin", definitions.lupinChallenges)
         saveFlowerChallenges(editor, "iris", definitions.irisChallenges)
+        saveFlowerChallenges(editor, "orchidee", definitions.orchideeChallenges) // ✅ NOUVEAU
         
         // Sauvegarder les fleurs débloquées
         editor.putInt("unlocked_flowers_count", unlockedFlowers.size)
@@ -395,9 +510,34 @@ class ChallengeDataManager(private val context: Context?, private val definition
             editor.putLong("unlocked_flower_${i}_date", flower.dateUnlocked)
         }
         
+        // ✅ NOUVEAU: Sauvegarder données spécifiques orchidées
+        saveOrchideeData(editor)
+        
         editor.putLong("last_save_time", System.currentTimeMillis())
         editor.apply()
         println("Progression sauvegardée!")
+    }
+    
+    // ✅ NOUVEAU: Sauvegarder données orchidées
+    private fun saveOrchideeData(editor: SharedPreferences.Editor) {
+        // Sauvegarder espèces créées
+        editor.putInt("orchidee_species_count", orchideeData.orchideeSpeciesCreated.size)
+        orchideeData.orchideeSpeciesCreated.forEachIndexed { index, species ->
+            editor.putString("orchidee_species_$index", species)
+        }
+        
+        // Sauvegarder compteurs par espèce
+        editor.putInt("orchidee_collected_count", orchideeData.orchideeSpeciesCollected.size)
+        orchideeData.orchideeSpeciesCollected.entries.forEachIndexed { index, (species, count) ->
+            editor.putString("orchidee_collected_species_$index", species)
+            editor.putInt("orchidee_collected_count_$index", count)
+        }
+        
+        // Sauvegarder listes
+        editor.putInt("orchidee_flowers_zone_count", orchideeData.orchideeFlowersInZone.size)
+        editor.putInt("orchidee_complete_stems_count", orchideeData.orchideeCompleteStems.size)
+        editor.putInt("orchidee_saccades_count", orchideeData.orchideeSaccadesCompleted.size)
+        editor.putInt("orchidee_total_flowers_count", orchideeData.orchideeTotalFlowers.size)
     }
     
     private fun saveFlowerChallenges(
@@ -419,6 +559,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
         loadFlowerChallenges(prefs, "rose", definitions.roseChallenges)
         loadFlowerChallenges(prefs, "lupin", definitions.lupinChallenges)
         loadFlowerChallenges(prefs, "iris", definitions.irisChallenges)
+        loadFlowerChallenges(prefs, "orchidee", definitions.orchideeChallenges) // ✅ NOUVEAU
         
         // Charger les fleurs débloquées
         unlockedFlowers.clear()
@@ -437,10 +578,38 @@ class ChallengeDataManager(private val context: Context?, private val definition
             }
         }
         
+        // ✅ NOUVEAU: Charger données orchidées
+        loadOrchideeData(prefs)
+        
         val lastSaveTime = prefs.getLong("last_save_time", 0L)
         if (lastSaveTime > 0) {
             println("Progression chargée depuis: ${java.util.Date(lastSaveTime)}")
         }
+    }
+    
+    // ✅ NOUVEAU: Charger données orchidées
+    private fun loadOrchideeData(prefs: SharedPreferences) {
+        // Charger espèces créées
+        val speciesCount = prefs.getInt("orchidee_species_count", 0)
+        for (i in 0 until speciesCount) {
+            val species = prefs.getString("orchidee_species_$i", null)
+            if (species != null) {
+                orchideeData.orchideeSpeciesCreated.add(species)
+            }
+        }
+        
+        // Charger compteurs par espèce
+        val collectedCount = prefs.getInt("orchidee_collected_count", 0)
+        for (i in 0 until collectedCount) {
+            val species = prefs.getString("orchidee_collected_species_$i", null)
+            val count = prefs.getInt("orchidee_collected_count_$i", 0)
+            if (species != null) {
+                orchideeData.orchideeSpeciesCollected[species] = count
+            }
+        }
+        
+        // Note: Les listes de flowersInZone, etc. ne sont pas sauvegardées car elles 
+        // sont reconstruites à chaque session de jeu
     }
     
     private fun loadFlowerChallenges(
@@ -462,7 +631,13 @@ class ChallengeDataManager(private val context: Context?, private val definition
     
     fun resetAllChallenges() {
         // Reset tous les défis via ChallengeDefinitions
-        for (challenges in listOf(definitions.margueriteChallenges, definitions.roseChallenges, definitions.lupinChallenges, definitions.irisChallenges)) {
+        for (challenges in listOf(
+            definitions.margueriteChallenges, 
+            definitions.roseChallenges, 
+            definitions.lupinChallenges, 
+            definitions.irisChallenges,
+            definitions.orchideeChallenges // ✅ NOUVEAU
+        )) {
             challenges.forEach { 
                 it.isCompleted = false
                 it.isUnlocked = (it.id == 1)
@@ -472,6 +647,9 @@ class ChallengeDataManager(private val context: Context?, private val definition
         unlockedFlowers.clear()
         unlockedFlowers.add(UnlockedFlower("MARGUERITE", "Disponible par défaut"))
         
+        // ✅ NOUVEAU: Reset données orchidées
+        orchideeData.clear()
+        
         sharedPrefs?.edit()?.clear()?.apply()
         println("Progression réinitialisée!")
     }
@@ -480,7 +658,13 @@ class ChallengeDataManager(private val context: Context?, private val definition
         println("🎮 MODE CHEAT ACTIVÉ!")
         
         // Débloquer tous les défis via ChallengeDefinitions
-        for (challenges in listOf(definitions.margueriteChallenges, definitions.roseChallenges, definitions.lupinChallenges, definitions.irisChallenges)) {
+        for (challenges in listOf(
+            definitions.margueriteChallenges, 
+            definitions.roseChallenges, 
+            definitions.lupinChallenges, 
+            definitions.irisChallenges,
+            definitions.orchideeChallenges // ✅ NOUVEAU
+        )) {
             challenges.forEach {
                 it.isCompleted = true
                 it.isUnlocked = true
@@ -493,10 +677,66 @@ class ChallengeDataManager(private val context: Context?, private val definition
         unlockedFlowers.add(UnlockedFlower("ROSE", "Débloquée par cheat code"))
         unlockedFlowers.add(UnlockedFlower("LUPIN", "Débloqué par cheat code"))
         unlockedFlowers.add(UnlockedFlower("IRIS", "Débloqué par cheat code"))
+        unlockedFlowers.add(UnlockedFlower("ORCHIDEE", "Débloquée par cheat code")) // ✅ NOUVEAU
         
         saveProgress()
         
         println("✅ Tous les défis complétés!")
         println("✅ Toutes les fleurs débloquées!")
+    }
+    
+    // ==================== NOUVELLES FONCTIONS ORCHIDÉES ====================
+    
+    // ✅ NOUVEAU: Fonctions utilitaires spécifiques aux orchidées
+    fun getOrchideeSpeciesCount(): Int = orchideeData.orchideeSpeciesCreated.size
+    
+    fun getOrchideeTotalFlowers(): Int = orchideeData.orchideeTotalFlowers.size
+    
+    fun getOrchideeSpeciesCollected(): Map<String, Int> = orchideeData.orchideeSpeciesCollected.toMap()
+    
+    fun hasCollectedAllSpecies(): Boolean = orchideeData.orchideeSpeciesCreated.size >= 6
+    
+    fun getOrchideeProgress(challengeId: Int): String {
+        return when (challengeId) {
+            1 -> {
+                val saccades = orchideeData.orchideeSaccadesCompleted.size
+                val species = orchideeData.orchideeSpeciesCreated.size
+                val flowersInZone = orchideeData.orchideeFlowersInZone.size
+                "Saccades: $saccades/10, Espèces: $species/6, Fleurs en zone: $flowersInZone/8"
+            }
+            2 -> {
+                val stemsComplete = orchideeData.orchideeCompleteStems.size
+                val flowersInZone = orchideeData.orchideeFlowersInZone.size
+                "Tiges délicates: $stemsComplete/3, Fleurs en zone: $flowersInZone/5"
+            }
+            3 -> {
+                val species = orchideeData.orchideeSpeciesCreated.size
+                val totalFlowers = orchideeData.orchideeTotalFlowers.size
+                "Patience: $species/6 espèces, $totalFlowers/20 fleurs"
+            }
+            else -> "Progression orchidées inconnue"
+        }
+    }
+    
+    fun checkOrchideeCompletion(challengeId: Int): Boolean {
+        return when (challengeId) {
+            1 -> {
+                // Défi 1: 10 saccades + 6 espèces + 8 fleurs en zone
+                orchideeData.orchideeSaccadesCompleted.size >= 10 &&
+                orchideeData.orchideeSpeciesCreated.size >= 6 &&
+                orchideeData.orchideeFlowersInZone.size >= 8
+            }
+            2 -> {
+                // Défi 2: 3 tiges délicates + 5 fleurs en zone précise
+                orchideeData.orchideeCompleteStems.size >= 3 &&
+                orchideeData.orchideeFlowersInZone.size >= 5
+            }
+            3 -> {
+                // Défi 3: 6 espèces + 20 fleurs totales
+                orchideeData.orchideeSpeciesCreated.size >= 6 &&
+                orchideeData.orchideeTotalFlowers.size >= 20
+            }
+            else -> false
+        }
     }
 }
