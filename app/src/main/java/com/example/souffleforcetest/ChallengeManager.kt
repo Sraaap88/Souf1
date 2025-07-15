@@ -15,6 +15,7 @@ class ChallengeManager(private val context: Context? = null) {
     private val roseChallengeHandler = RoseChallengeHandler()
     private val lupinChallengeHandler = LupinChallengeHandler()
     private val irisChallengeHandler = IrisChallengeHandler()
+    private val orchideeChallengeHandler = OrchideeChallengeHandler()
     
     // ==================== VARIABLES D'ÉTAT ====================
     
@@ -87,6 +88,7 @@ class ChallengeManager(private val context: Context? = null) {
     fun getRoseChallenges(): List<ChallengeDefinitions.Challenge> = definitions.roseChallenges
     fun getLupinChallenges(): List<ChallengeDefinitions.Challenge> = definitions.lupinChallenges
     fun getIrisChallenges(): List<ChallengeDefinitions.Challenge> = definitions.irisChallenges
+    fun getOrchideeChallenges(): List<ChallengeDefinitions.Challenge> = definitions.orchideeChallenges
     
     fun setCurrentFlowerType(flowerType: String) {
         currentFlowerType = flowerType
@@ -132,6 +134,7 @@ class ChallengeManager(private val context: Context? = null) {
             "ROSE" -> roseChallengeHandler.resetDissolveEffects(challengeData)
             "LUPIN" -> lupinChallengeHandler.resetDissolveEffects(challengeData)
             "IRIS" -> irisChallengeHandler.resetDissolveEffects(challengeData)
+            "ORCHIDEE" -> orchideeChallengeHandler.resetDissolveEffects(challengeData)
         }
     }
     
@@ -144,6 +147,7 @@ class ChallengeManager(private val context: Context? = null) {
             "ROSE" -> roseChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
             "LUPIN" -> lupinChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
             "IRIS" -> irisChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
+            "ORCHIDEE" -> orchideeChallengeHandler.updateChallenge(challenge.id, force, plantState, challengeData)
         }
         
         // Mettre à jour la dissolution si la pluie est active
@@ -161,6 +165,10 @@ class ChallengeManager(private val context: Context? = null) {
     
     fun notifyFlowerCreated(flowerX: Float, flowerY: Float, flowerId: String) {
         dataManager.notifyFlowerCreated(currentChallenge, currentFlowerType, flowerY, challengeData, flowerId, definitions)
+    }
+    
+    fun notifyOrchideeCreated(orchideeX: Float, orchideeY: Float, orchideeId: String, species: String) {
+        dataManager.notifyOrchideeCreated(currentChallenge, currentFlowerType, orchideeY, challengeData, orchideeId, species, definitions)
     }
     
     fun notifyLupinSpikeCreated(spikeColor: String, stemId: String) {
@@ -205,6 +213,12 @@ class ChallengeManager(private val context: Context? = null) {
                 val data = dataManager.getIrisData()
                 irisChallengeHandler.checkChallenge(
                     challenge.id, data.irisFlowersInZone, data.irisRamifications, data.irisTotalFlowers
+                )
+            }
+            "ORCHIDEE" -> {
+                val data = dataManager.getOrchideeData()
+                orchideeChallengeHandler.checkChallenge(
+                    challenge.id, data.orchideeFlowersInZone, data.orchideeSpeciesCount, data.orchideeTotalFlowers
                 )
             }
             else -> false
@@ -268,6 +282,12 @@ class ChallengeManager(private val context: Context? = null) {
                     challengeId, data.irisFlowersInZone, data.irisRamifications, data.irisTotalFlowers
                 )
             }
+            "ORCHIDEE" -> {
+                val data = dataManager.getOrchideeData()
+                orchideeChallengeHandler.getSuccessMessage(
+                    challengeId, data.orchideeFlowersInZone, data.orchideeSpeciesCount, data.orchideeTotalFlowers
+                )
+            }
             else -> "Défi réussi!"
         }
     }
@@ -298,6 +318,12 @@ class ChallengeManager(private val context: Context? = null) {
                 val data = dataManager.getIrisData()
                 irisChallengeHandler.getFailMessage(
                     challengeId, data.irisFlowersInZone, data.irisRamifications, data.irisTotalFlowers
+                )
+            }
+            "ORCHIDEE" -> {
+                val data = dataManager.getOrchideeData()
+                orchideeChallengeHandler.getFailMessage(
+                    challengeId, data.orchideeFlowersInZone, data.orchideeSpeciesCount, data.orchideeTotalFlowers
                 )
             }
             else -> "Défi échoué!"
