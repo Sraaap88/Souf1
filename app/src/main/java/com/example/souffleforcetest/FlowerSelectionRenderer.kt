@@ -78,7 +78,7 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
                 drawFlowerButton(canvas, lupinX, bottomY, flowerButtonRadius, "LUPIN", challengeManager)
             }
             4 -> {
-                // 4 fleurs exactement - en carré - COMME POUR LE CAS 3 !
+                // 4 fleurs exactement - en carré
                 val spacing = flowerButtonRadius * 2.8f
                 
                 // Marguerite en haut à gauche
@@ -101,21 +101,24 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
                 val irisY = buttonY + spacing / 2f
                 drawFlowerButton(canvas, irisX, irisY, flowerButtonRadius * 0.9f, "IRIS", challengeManager)
             }
-            5 -> {
-                // 5 fleurs avec orchidée - disposition spéciale (pour plus tard)
-                val spacing = flowerButtonRadius * 2.5f
+            else -> { // ✅ MODIFIÉ: Configuration 5+ fleurs avec ORCHIDÉE
+                // 5+ fleurs avec orchidée - disposition pentagonale optimisée
+                val spacing = flowerButtonRadius * 2.2f
                 
-                // Top row: Marguerite, Rose, Lupin
-                val topY = buttonY - spacing * 0.3f
-                drawFlowerButton(canvas, centerX - spacing, topY, flowerButtonRadius * 0.8f, "MARGUERITE", challengeManager)
-                drawFlowerButton(canvas, centerX, topY, flowerButtonRadius * 0.8f, "ROSE", challengeManager)
-                drawFlowerButton(canvas, centerX + spacing, topY, flowerButtonRadius * 0.8f, "LUPIN", challengeManager)
+                // ✅ NOUVEAU: Disposition en pentagone pour 5 fleurs
+                val positions = listOf(
+                    Triple("MARGUERITE", centerX, buttonY - spacing * 0.8f), // Haut centre
+                    Triple("ROSE", centerX - spacing * 0.7f, buttonY - spacing * 0.2f), // Gauche haut
+                    Triple("LUPIN", centerX + spacing * 0.7f, buttonY - spacing * 0.2f), // Droite haut
+                    Triple("IRIS", centerX - spacing * 0.7f, buttonY + spacing * 0.4f), // Gauche bas
+                    Triple("ORCHIDEE", centerX + spacing * 0.7f, buttonY + spacing * 0.4f) // Droite bas
+                )
                 
-                // Bottom row: Iris, Orchidée
-                val bottomY = buttonY + spacing * 0.3f
-                val bottomSpacing = spacing * 0.8f
-                drawFlowerButton(canvas, centerX - bottomSpacing / 2f, bottomY, flowerButtonRadius * 0.8f, "IRIS", challengeManager)
-                drawFlowerButton(canvas, centerX + bottomSpacing / 2f, bottomY, flowerButtonRadius * 0.8f, "ORCHIDEE", challengeManager)
+                for ((flower, x, y) in positions) {
+                    if (unlockedFlowers.contains(flower)) {
+                        drawFlowerButton(canvas, x, y, flowerButtonRadius * 0.8f, flower, challengeManager)
+                    }
+                }
             }
         }
     }
@@ -123,12 +126,12 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
     private fun drawFlowerButton(canvas: Canvas, x: Float, y: Float, radius: Float, flowerType: String, challengeManager: ChallengeManager) {
         val isUnlocked = challengeManager.isFlowerUnlocked(flowerType)
         
-        // SI PAS DÉBLOQUÉE = RIEN AFFICHER (comme avant)
+        // SI PAS DÉBLOQUÉE = RIEN AFFICHER (sauf marguerite qui est toujours débloquée)
         if (!isUnlocked && flowerType != "MARGUERITE") return
         
         when (flowerType) {
             "MARGUERITE" -> {
-                // GARDE TA MARGUERITE !
+                // Image de marguerite ou fallback
                 drawMiniDaisy(canvas, x, y, radius * 1.5f)
             }
             "ROSE" -> {
@@ -146,7 +149,71 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
                 flowerTextPaint.color = 0xFF4B0082.toInt()
                 canvas.drawText("🌷", x, y + 15f, flowerTextPaint)
             }
+            "ORCHIDEE" -> { // ✅ NOUVEAU: Bouton orchidée
+                drawOrchideeButton(canvas, x, y, radius)
+            }
         }
+    }
+    
+    // ✅ NOUVEAU: Fonction spécialisée pour dessiner le bouton orchidée
+    private fun drawOrchideeButton(canvas: Canvas, x: Float, y: Float, radius: Float) {
+        // Option 1: Emoji orchidée si disponible
+        flowerTextPaint.textSize = radius * 1.6f
+        flowerTextPaint.color = 0xFFFF1493.toInt() // Rose vif pour orchidées
+        
+        try {
+            // Essayer l'emoji orchidée
+            canvas.drawText("🌺", x, y + 15f, flowerTextPaint)
+        } catch (e: Exception) {
+            // Fallback: Dessiner une orchidée stylisée
+            drawStylizedOrchidee(canvas, x, y, radius)
+        }
+        
+        // ✅ NOUVEAU: Ajouter texte descriptif sous l'icône
+        flowerTextPaint.textSize = radius * 0.25f
+        flowerTextPaint.color = 0xAAFFFFFF.toInt() // Blanc semi-transparent
+        canvas.drawText("ORCHIDÉE", x, y + radius * 1.2f, flowerTextPaint)
+    }
+    
+    // ✅ NOUVEAU: Dessiner une orchidée stylisée si emoji pas disponible
+    private fun drawStylizedOrchidee(canvas: Canvas, x: Float, y: Float, radius: Float) {
+        val orchideePaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+        }
+        
+        // Pétales (5 pétales stylisés)
+        for (i in 0 until 5) {
+            val angle = i * 72f // 360° / 5 pétales
+            val petalLength = radius * 0.8f
+            val petalWidth = radius * 0.3f
+            
+            canvas.save()
+            canvas.translate(x, y)
+            canvas.rotate(angle)
+            
+            // Couleur dégradée pour chaque pétale
+            orchideePaint.color = when (i) {
+                0 -> Color.rgb(255, 20, 147)  // Rose vif
+                1 -> Color.rgb(255, 105, 180) // Rose clair
+                2 -> Color.rgb(186, 85, 211)  // Violet
+                3 -> Color.rgb(138, 43, 226)  // Violet foncé
+                else -> Color.rgb(255, 182, 193) // Rose pâle
+            }
+            
+            // Forme de pétale ovale
+            canvas.drawOval(
+                -petalWidth / 2f, -petalLength / 2f,
+                petalWidth / 2f, petalLength / 2f,
+                orchideePaint
+            )
+            
+            canvas.restore()
+        }
+        
+        // Centre de l'orchidée (colonne)
+        orchideePaint.color = Color.rgb(255, 215, 0) // Or
+        canvas.drawCircle(x, y, radius * 0.15f, orchideePaint)
     }
     
     private fun drawLockedFlower(canvas: Canvas, x: Float, y: Float, radius: Float, text: String) {
@@ -169,6 +236,10 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
         
         if (challengeManager.isFlowerUnlocked("IRIS")) {
             flowers.add("IRIS")
+        }
+        
+        if (challengeManager.isFlowerUnlocked("ORCHIDEE")) { // ✅ NOUVEAU: Vérification orchidée
+            flowers.add("ORCHIDEE")
         }
         
         return flowers
@@ -206,5 +277,124 @@ class FlowerSelectionRenderer(private val context: Context, private val screenWi
             }
             canvas.drawText("IMG", centerX, centerY, textPaint)
         }
+    }
+    
+    // ==================== FONCTIONS UTILITAIRES ORCHIDÉES ====================
+    
+    // ✅ NOUVEAU: Fonction pour obtenir la couleur de l'orchidée selon l'espèce
+    fun getOrchideeColor(species: String): Int {
+        return when (species.uppercase()) {
+            "PHALAENOPSIS" -> Color.rgb(255, 182, 193) // Rose pâle
+            "CATTLEYA" -> Color.rgb(138, 43, 226)      // Violet royal
+            "DENDROBIUM" -> Color.rgb(255, 255, 255)   // Blanc
+            "VANDA" -> Color.rgb(65, 105, 225)         // Bleu royal
+            "ONCIDIUM" -> Color.rgb(255, 215, 0)       // Jaune or
+            "CYMBIDIUM" -> Color.rgb(255, 253, 208)    // Crème
+            else -> Color.rgb(255, 20, 147)            // Rose vif par défaut
+        }
+    }
+    
+    // ✅ NOUVEAU: Fonction pour dessiner une mini-orchidée spécifique
+    fun drawMiniOrchideeBySpecies(canvas: Canvas, x: Float, y: Float, radius: Float, species: String) {
+        val orchideePaint = Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+            color = getOrchideeColor(species)
+        }
+        
+        when (species.uppercase()) {
+            "PHALAENOPSIS" -> {
+                // Forme papillon
+                drawButterflyShape(canvas, x, y, radius, orchideePaint)
+            }
+            "CATTLEYA" -> {
+                // Forme ruffled (ondulée)
+                drawRuffledShape(canvas, x, y, radius, orchideePaint)
+            }
+            "VANDA" -> {
+                // Forme plate
+                drawFlatShape(canvas, x, y, radius, orchideePaint)
+            }
+            "ONCIDIUM" -> {
+                // Forme dancing lady
+                drawDancingShape(canvas, x, y, radius, orchideePaint)
+            }
+            "DENDROBIUM" -> {
+                // Forme en grappe
+                drawClusterShape(canvas, x, y, radius, orchideePaint)
+            }
+            "CYMBIDIUM" -> {
+                // Forme en bateau
+                drawBoatShape(canvas, x, y, radius, orchideePaint)
+            }
+            else -> {
+                // Forme générique
+                drawStylizedOrchidee(canvas, x, y, radius)
+            }
+        }
+    }
+    
+    // ✅ NOUVEAU: Formes spécialisées par espèce d'orchidée
+    private fun drawButterflyShape(canvas: Canvas, x: Float, y: Float, radius: Float, paint: Paint) {
+        // Phalaenopsis - forme papillon
+        canvas.drawOval(x - radius * 0.6f, y - radius * 0.3f, x + radius * 0.6f, y + radius * 0.3f, paint)
+        canvas.drawOval(x - radius * 0.3f, y - radius * 0.6f, x + radius * 0.3f, y + radius * 0.6f, paint)
+    }
+    
+    private fun drawRuffledShape(canvas: Canvas, x: Float, y: Float, radius: Float, paint: Paint) {
+        // Cattleya - forme ondulée
+        for (i in 0 until 6) {
+            val angle = i * 60f
+            val ruffleRadius = radius * (0.6f + 0.2f * kotlin.math.sin(i * kotlin.math.PI / 3).toFloat())
+            canvas.save()
+            canvas.translate(x, y)
+            canvas.rotate(angle)
+            canvas.drawOval(-ruffleRadius * 0.3f, -ruffleRadius, ruffleRadius * 0.3f, 0f, paint)
+            canvas.restore()
+        }
+    }
+    
+    private fun drawFlatShape(canvas: Canvas, x: Float, y: Float, radius: Float, paint: Paint) {
+        // Vanda - forme plate
+        for (i in 0 until 5) {
+            val angle = i * 72f
+            canvas.save()
+            canvas.translate(x, y)
+            canvas.rotate(angle)
+            canvas.drawRect(-radius * 0.2f, -radius * 0.8f, radius * 0.2f, 0f, paint)
+            canvas.restore()
+        }
+    }
+    
+    private fun drawDancingShape(canvas: Canvas, x: Float, y: Float, radius: Float, paint: Paint) {
+        // Oncidium - forme dancing lady
+        canvas.drawOval(x - radius * 0.8f, y + radius * 0.2f, x + radius * 0.8f, y + radius * 0.8f, paint)
+        canvas.drawCircle(x, y - radius * 0.3f, radius * 0.3f, paint)
+    }
+    
+    private fun drawClusterShape(canvas: Canvas, x: Float, y: Float, radius: Float, paint: Paint) {
+        // Dendrobium - forme en grappe
+        for (i in 0 until 4) {
+            val offsetY = i * radius * 0.3f - radius * 0.4f
+            canvas.drawCircle(x + (i % 2 - 0.5f) * radius * 0.3f, y + offsetY, radius * 0.2f, paint)
+        }
+    }
+    
+    private fun drawBoatShape(canvas: Canvas, x: Float, y: Float, radius: Float, paint: Paint) {
+        // Cymbidium - forme en bateau
+        canvas.drawOval(x - radius * 0.7f, y - radius * 0.2f, x + radius * 0.7f, y + radius * 0.5f, paint)
+        canvas.drawOval(x - radius * 0.5f, y - radius * 0.4f, x + radius * 0.5f, y + radius * 0.2f, paint)
+    }
+    
+    // ✅ NOUVEAU: Fonction pour afficher des infos sur les orchidées débloquées
+    fun drawOrchideeInfo(canvas: Canvas, challengeManager: ChallengeManager) {
+        if (!challengeManager.isFlowerUnlocked("ORCHIDEE")) return
+        
+        flowerTextPaint.textSize = 30f
+        flowerTextPaint.color = 0x77FFFFFF.toInt()
+        flowerTextPaint.textAlign = Paint.Align.CENTER
+        
+        canvas.drawText("6 espèces d'orchidées procédurales", screenWidth / 2f, screenHeight * 0.85f, flowerTextPaint)
+        canvas.drawText("Chaque fleur est 100% unique", screenWidth / 2f, screenHeight * 0.88f, flowerTextPaint)
     }
 }
