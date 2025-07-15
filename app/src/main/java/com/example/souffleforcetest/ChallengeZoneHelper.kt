@@ -220,4 +220,26 @@ class ChallengeZoneHelper {
             else -> null
         }
     }
+    
+    fun isInOrchideeZone(flowerY: Float, screenHeight: Float, challengeId: Int): Boolean {
+    return when (challengeId) {
+        1 -> {
+            // Défi 1: Zone élégante plus haute (3 pouces = 300 pixels)
+            val zoneHeight = 300f
+            val centerY = screenHeight / 2f
+            flowerY >= centerY - zoneHeight / 2f && flowerY <= centerY + zoneHeight / 2f
+        }
+        2 -> {
+            // Défi 2: Zone très précise pour souffle délicat (2 pouces = 200 pixels)
+            val zoneHeight = 200f
+            val centerY = screenHeight / 2f
+            flowerY >= centerY - zoneHeight / 2f && flowerY <= centerY + zoneHeight / 2f
+        }
+        3 -> {
+            // Défi 3: Pas de zone spécifique (patience)
+            true
+        }
+        else -> false
+    }
+}
 }
