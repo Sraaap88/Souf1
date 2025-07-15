@@ -76,6 +76,10 @@ class ChallengeDataManager(private val context: Context?, private val definition
         val orchideeSpeciesCollected = mutableMapOf<String, Int>() // Compteur par espèce
         val orchideeTotalFlowers = mutableListOf<String>() // Toutes les fleurs d'orchidées
         
+        // ✅ AJOUTÉ: Propriété pour compatibilité avec OrchideeChallengeHandler
+        val orchideeSpeciesCount: Int
+            get() = orchideeSpeciesCreated.size
+        
         fun clear() {
             orchideeFlowersInZone.clear()
             orchideeSpeciesCreated.clear()
@@ -128,6 +132,31 @@ class ChallengeDataManager(private val context: Context?, private val definition
             "LUPIN" -> lupinData.clear()
             "IRIS" -> irisData.clear()
             "ORCHIDEE" -> orchideeData.clear() // ✅ NOUVEAU: Clear orchidées
+        }
+    }
+    
+    // ==================== ZONES SPÉCIFIQUES ====================
+    
+    // ✅ AJOUTÉ: Méthode pour zones orchidées
+    fun isInOrchideeZone(y: Float, screenHeight: Float, challengeId: Int): Boolean {
+        return when (challengeId) {
+            1 -> {
+                // Défi 1: Zone élégante plus haute (3 pouces = 300 pixels)
+                val zoneHeight = 300f
+                val centerY = screenHeight / 2f
+                y >= centerY - zoneHeight / 2f && y <= centerY + zoneHeight / 2f
+            }
+            2 -> {
+                // Défi 2: Zone très précise pour souffle délicat (2 pouces = 200 pixels)
+                val zoneHeight = 200f
+                val centerY = screenHeight / 2f
+                y >= centerY - zoneHeight / 2f && y <= centerY + zoneHeight / 2f
+            }
+            3 -> {
+                // Défi 3: Pas de zone spécifique (patience)
+                true
+            }
+            else -> false
         }
     }
     
@@ -281,7 +310,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
         when (challenge.id) {
             1 -> {
                 // Défi 1: Saccades régulières - vérifier zone
-                if (definitions.isInOrchideeZone(flowerY, screenHeight, 1)) {
+                if (isInOrchideeZone(flowerY, screenHeight, 1)) {
                     if (!orchideeData.orchideeFlowersInZone.contains(flowerId)) {
                         orchideeData.orchideeFlowersInZone.add(flowerId)
                         println("Orchidée - Fleur dans la zone! Total: ${orchideeData.orchideeFlowersInZone.size}/8")
@@ -290,7 +319,7 @@ class ChallengeDataManager(private val context: Context?, private val definition
             }
             2 -> {
                 // Défi 2: Souffle délicat - zone très précise
-                if (definitions.isInOrchideeZone(flowerY, screenHeight, 2)) {
+                if (isInOrchideeZone(flowerY, screenHeight, 2)) {
                     if (!orchideeData.orchideeFlowersInZone.contains(flowerId)) {
                         orchideeData.orchideeFlowersInZone.add(flowerId)
                         println("Orchidée - Fleur délicate en zone! Total: ${orchideeData.orchideeFlowersInZone.size}/5")
@@ -300,6 +329,60 @@ class ChallengeDataManager(private val context: Context?, private val definition
             3 -> {
                 // Défi 3: 6 espèces différentes - pas de zone spécifique
                 println("Orchidée - Fleur pour défi patience! Total: ${orchideeData.orchideeTotalFlowers.size}/20")
+            }
+        }
+    }
+    
+    // ✅ NOUVEAU: Notification spécifique aux orchidées avec espèce
+    fun notifyOrchideeCreated(
+        challenge: ChallengeDefinitions.Challenge?,
+        flowerType: String,
+        flowerY: Float,
+        challengeData: Map<String, Any>,
+        orchideeId: String,
+        species: String,
+        definitions: ChallengeDefinitions
+    ) {
+        challenge ?: return
+        val screenHeight = challengeData["screenHeight"] as? Float ?: 2000f
+        
+        // Ajouter à la liste totale
+        if (!orchideeData.orchideeTotalFlowers.contains(orchideeId)) {
+            orchideeData.orchideeTotalFlowers.add(orchideeId)
+            println("Orchidée - Fleur créée! Total: ${orchideeData.orchideeTotalFlowers.size}")
+        }
+        
+        // Ajouter l'espèce créée
+        orchideeData.orchideeSpeciesCreated.add(species)
+        
+        // Compter par espèce
+        val currentCount = orchideeData.orchideeSpeciesCollected[species] ?: 0
+        orchideeData.orchideeSpeciesCollected[species] = currentCount + 1
+        
+        when (challenge.id) {
+            1 -> {
+                // Défi 1: Saccades régulières - vérifier zone
+                if (isInOrchideeZone(flowerY, screenHeight, 1)) {
+                    if (!orchideeData.orchideeFlowersInZone.contains(orchideeId)) {
+                        orchideeData.orchideeFlowersInZone.add(orchideeId)
+                        println("Orchidée - Fleur dans la zone! Total: ${orchideeData.orchideeFlowersInZone.size}/8")
+                    }
+                }
+                println("Orchidée - Espèce $species créée! Espèces uniques: ${orchideeData.orchideeSpeciesCreated.size}/6")
+            }
+            2 -> {
+                // Défi 2: Souffle délicat - zone très précise
+                if (isInOrchideeZone(flowerY, screenHeight, 2)) {
+                    if (!orchideeData.orchideeFlowersInZone.contains(orchideeId)) {
+                        orchideeData.orchideeFlowersInZone.add(orchideeId)
+                        println("Orchidée - Fleur délicate en zone! Total: ${orchideeData.orchideeFlowersInZone.size}/5")
+                    }
+                }
+            }
+            3 -> {
+                // Défi 3: 6 espèces différentes - pas de zone spécifique
+                val totalSpecies = orchideeData.orchideeSpeciesCreated.size
+                println("Orchidée - Patience: $totalSpecies/6 espèces, ${orchideeData.orchideeTotalFlowers.size}/20 fleurs")
             }
         }
     }
@@ -323,41 +406,6 @@ class ChallengeDataManager(private val context: Context?, private val definition
                     lupinData.lupinCompleteStems.add(stemId)
                     println("Lupin - Tige complète! Total: ${lupinData.lupinCompleteStems.size}/5")
                 }
-            }
-        }
-    }
-    
-    // ✅ NOUVEAU: Notification spécifique aux orchidées
-    fun notifyOrchideeCreated(
-        challenge: ChallengeDefinitions.Challenge?,
-        species: String,
-        stemId: String
-    ) {
-        challenge ?: return
-        
-        // Ajouter l'espèce créée
-        orchideeData.orchideeSpeciesCreated.add(species)
-        
-        // Compter par espèce
-        val currentCount = orchideeData.orchideeSpeciesCollected[species] ?: 0
-        orchideeData.orchideeSpeciesCollected[species] = currentCount + 1
-        
-        when (challenge.id) {
-            1 -> {
-                // Défi 1: Saccades - vérifier les espèces créées
-                println("Orchidée - Espèce $species créée! Espèces uniques: ${orchideeData.orchideeSpeciesCreated.size}/6")
-            }
-            2 -> {
-                // Défi 2: Souffle délicat - tige complète
-                if (!orchideeData.orchideeCompleteStems.contains(stemId)) {
-                    orchideeData.orchideeCompleteStems.add(stemId)
-                    println("Orchidée - Tige délicate complète! Total: ${orchideeData.orchideeCompleteStems.size}/3")
-                }
-            }
-            3 -> {
-                // Défi 3: Patience - toutes espèces
-                val totalSpecies = orchideeData.orchideeSpeciesCreated.size
-                println("Orchidée - Patience: $totalSpecies/6 espèces, ${orchideeData.orchideeTotalFlowers.size}/20 fleurs")
             }
         }
     }
