@@ -283,7 +283,13 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
         // Créer les feuilles basales immédiatement
         createBasalLeaves(stem)
         
-        challengeManager?.notifyOrchideeCreated(species.displayName, stem.id)
+        // ✅ CORRIGÉ: Notification avec paramètres corrects
+        challengeManager?.notifyOrchideeCreated(
+            orchideeX = stemX,
+            orchideeY = stemY,
+            orchideeId = stem.id,
+            species = species.displayName
+        )
     }
     
     // ==================== CROISSANCE DES TIGES ====================
@@ -506,6 +512,7 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
         // Une seule fleur pour Phalaenopsis, Cattleya, Vanda
         val genetics = OrchideeGeneticsGenerator.generate()
         val flowerPosition = getFlowerPosition(stem)
+        val flowerId = generateOrchideeFlowerId()
         
         val flower = OrchideeFlower(
             genetics = genetics,
@@ -520,8 +527,8 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
         flowers.add(flower)
         stem.flowerSpikes.add(flower)
         
-        challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, 
-                                           generateOrchideeFlowerId())
+        // ✅ CORRIGÉ: Notification avec paramètres corrects
+        challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
     }
     
     private fun createDendrobiumCluster(stem: OrchideeStem) {
@@ -537,6 +544,7 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
                 basePosition.x + (Random.nextFloat() - 0.5f) * 30f,
                 basePosition.y + (Random.nextFloat() - 0.5f) * 20f
             )
+            val flowerId = generateOrchideeFlowerId()
             
             val flower = OrchideeFlower(
                 genetics = genetics,
@@ -550,6 +558,8 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
             
             flowers.add(flower)
             stem.flowerSpikes.add(flower)
+            
+            challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
         }
     }
     
@@ -569,6 +579,7 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
                 spikeStart.x + (Random.nextFloat() - 0.5f) * 10f,
                 spikeStart.y - ratio * spikeLength
             )
+            val flowerId = generateOrchideeFlowerId()
             
             val flower = OrchideeFlower(
                 genetics = genetics,
@@ -582,6 +593,8 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
             
             flowers.add(flower)
             stem.flowerSpikes.add(flower)
+            
+            challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
         }
     }
     
@@ -607,6 +620,7 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
                     basePosition.x + (cos(angleRad) * distance).toFloat(),
                     basePosition.y + (sin(angleRad) * distance).toFloat()
                 )
+                val flowerId = generateOrchideeFlowerId()
                 
                 val flower = OrchideeFlower(
                     genetics = genetics,
@@ -620,6 +634,8 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
                 
                 flowers.add(flower)
                 stem.flowerSpikes.add(flower)
+                
+                challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
             }
         }
     }
@@ -645,11 +661,8 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
                 val growth = force * 400f * 0.008f
                 flower.bloomProgress = (flower.bloomProgress + growth).coerceAtMost(1f)
                 
-                // Notifier le challenge manager lors de l'épanouissement
-                if (flower.bloomProgress >= 0.8f && flower.bloomProgress - growth < 0.8f) {
-                    challengeManager?.notifyFlowerBloom(flower.position.x, flower.position.y, 
-                                                     flower.genetics.species.displayName)
-                }
+                // ✅ SUPPRIMÉ: notifyFlowerBloom qui n'existe pas
+                // La notification se fait déjà dans challengeManager?.notifyFlowerCreated()
             }
         }
     }
