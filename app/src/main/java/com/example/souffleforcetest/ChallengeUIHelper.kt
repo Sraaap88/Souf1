@@ -3,7 +3,7 @@ package com.example.souffleforcetest
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
-
+ 
 class ChallengeUIHelper(private val screenWidth: Int, private val screenHeight: Int) {
     
     // ==================== FONCTIONS POUR LES DÉFIS ====================
