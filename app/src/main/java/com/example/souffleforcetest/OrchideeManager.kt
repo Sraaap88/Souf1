@@ -519,16 +519,18 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
             position = flowerPosition,
             sizeMultiplier = 0.8f + Random.nextFloat() * 0.4f,
             angle = Random.nextFloat() * 360f,
-            bloomProgress = 0f,
+            bloomProgress = 0.001f, // ✅ DÉMARRER AVEC UN TRÈS PETIT BOURGEON
             renderLayer = 30 + Random.nextInt(20),
-            clusterId = stem.id
+            clusterId = stem.id,
+            attachmentStemId = stem.id, // ✅ LIER À LA TIGE
+            relativePosition = calculateRelativePosition(stem, flowerPosition) // ✅ POSITION RELATIVE
         )
         
         flowers.add(flower)
         stem.flowerSpikes.add(flower)
         
-        // ✅ CORRIGÉ: Notification avec paramètres corrects
-        challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
+        // ✅ Notification seulement quand la fleur devient visible (bloomProgress > 0.1)
+        // La notification se fera dans growExistingFlowers()
     }
     
     private fun createDendrobiumCluster(stem: OrchideeStem) {
@@ -551,15 +553,17 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
                 position = clusterOffset,
                 sizeMultiplier = 0.6f + Random.nextFloat() * 0.3f,
                 angle = Random.nextFloat() * 360f,
-                bloomProgress = 0f,
+                bloomProgress = 0.001f, // ✅ DÉMARRER AVEC UN TRÈS PETIT BOURGEON
                 renderLayer = 25 + Random.nextInt(15),
-                clusterId = stem.id
+                clusterId = stem.id,
+                attachmentStemId = stem.id, // ✅ LIER À LA TIGE
+                relativePosition = calculateRelativePosition(stem, clusterOffset) // ✅ POSITION RELATIVE
             )
             
             flowers.add(flower)
             stem.flowerSpikes.add(flower)
             
-            challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
+            // ✅ Notification différée
         }
     }
     
@@ -586,15 +590,17 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
                 position = flowerPosition,
                 sizeMultiplier = 1.0f + Random.nextFloat() * 0.3f,
                 angle = Random.nextFloat() * 360f,
-                bloomProgress = 0f,
+                bloomProgress = 0.001f, // ✅ DÉMARRER AVEC UN TRÈS PETIT BOURGEON
                 renderLayer = 35 + Random.nextInt(20),
-                clusterId = stem.id
+                clusterId = stem.id,
+                attachmentStemId = stem.id, // ✅ LIER À LA TIGE
+                relativePosition = calculateRelativePosition(stem, flowerPosition) // ✅ POSITION RELATIVE
             )
             
             flowers.add(flower)
             stem.flowerSpikes.add(flower)
             
-            challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
+            // ✅ Notification différée
         }
     }
     
@@ -627,15 +633,17 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
                     position = flowerPosition,
                     sizeMultiplier = 0.5f + Random.nextFloat() * 0.2f,
                     angle = Random.nextFloat() * 360f,
-                    bloomProgress = 0f,
+                    bloomProgress = 0.001f, // ✅ DÉMARRER AVEC UN TRÈS PETIT BOURGEON
                     renderLayer = 20 + Random.nextInt(15),
-                    clusterId = stem.id
+                    clusterId = stem.id,
+                    attachmentStemId = stem.id, // ✅ LIER À LA TIGE
+                    relativePosition = calculateRelativePosition(stem, flowerPosition) // ✅ POSITION RELATIVE
                 )
                 
                 flowers.add(flower)
                 stem.flowerSpikes.add(flower)
                 
-                challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
+                // ✅ Notification différée
             }
         }
     }
@@ -658,24 +666,55 @@ class OrchideeManager(private val screenWidth: Int, private val screenHeight: In
         
         for (flower in flowers) {
             if (flower.bloomProgress < 1f) {
-                val growth = force * 400f * 0.008f
+                // ✅ CROISSANCE PLUS LENTE ET PROGRESSIVE
+                val growth = force * 200f * 0.008f // Réduit de 400f à 200f
+                val oldProgress = flower.bloomProgress
                 flower.bloomProgress = (flower.bloomProgress + growth).coerceAtMost(1f)
                 
-                // ✅ SUPPRIMÉ: notifyFlowerBloom qui n'existe pas
-                // La notification se fait déjà dans challengeManager?.notifyFlowerCreated()
+                // ✅ Notification seulement quand la fleur devient visible (seuil 0.15)
+                if (oldProgress < 0.15f && flower.bloomProgress >= 0.15f) {
+                    val flowerId = generateOrchideeFlowerId()
+                    challengeManager?.notifyFlowerCreated(flower.position.x, flower.position.y, flowerId)
+                }
             }
         }
     }
     
     private fun updateFlowerPositions() {
-        // Synchroniser les positions des fleurs avec leur tige
+        // ✅ FIXER LES POSITIONS RELATIVES AUX TIGES - PLUS DE DÉPLACEMENT
         for (flower in flowers) {
-            val stem = stems.find { it.id == flower.clusterId } ?: continue
+            val stem = stems.find { it.id == flower.attachmentStemId } ?: continue
             
-            // Mise à jour légère pour mouvement naturel
-            val windEffect = sin(System.currentTimeMillis() * 0.001f) * 0.5f
-            flower.position.x += windEffect
+            // ✅ Recalculer la position absolue basée sur la position relative fixe
+            val attachmentPoint = getAttachmentPointFromRelative(stem, flower.relativePosition)
+            
+            // ✅ Mise à jour sans mouvement aléatoire
+            flower.position.x = attachmentPoint.x
+            flower.position.y = attachmentPoint.y
+            
+            // ✅ SUPPRIMÉ: Effet de vent qui causait le déplacement
+            // val windEffect = sin(System.currentTimeMillis() * 0.001f) * 0.5f
+            // flower.position.x += windEffect
         }
+    }
+    
+    // ✅ NOUVELLES FONCTIONS POUR POSITIONS RELATIVES
+    private fun calculateRelativePosition(stem: OrchideeStem, absolutePosition: PointF): PointF {
+        if (stem.segments.isEmpty()) return PointF(0f, 0f)
+        
+        // Calculer la position relative par rapport à la base de la tige
+        return PointF(
+            absolutePosition.x - stem.baseX,
+            absolutePosition.y - stem.baseY
+        )
+    }
+    
+    private fun getAttachmentPointFromRelative(stem: OrchideeStem, relativePosition: PointF): PointF {
+        // Retourner la position absolue basée sur la position relative fixe
+        return PointF(
+            stem.baseX + relativePosition.x,
+            stem.baseY + relativePosition.y
+        )
     }
     
     // ==================== STATS ET DEBUGGING ====================
@@ -716,7 +755,9 @@ data class OrchideeFlower(
     val angle: Float,
     var bloomProgress: Float,
     val renderLayer: Int,
-    val clusterId: String
+    val clusterId: String,
+    val attachmentStemId: String, // ✅ ID de la tige d'attachement
+    val relativePosition: PointF // ✅ Position relative fixe par rapport à la tige
 )
 
 data class OrchideeLeaf(
