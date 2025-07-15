@@ -122,25 +122,26 @@ class ChallengeDefinitions {
         )
     )
 
+    // ✅ CORRIGÉ: Défis orchidées avec descriptions cohérentes
     val orchideeChallenges = listOf(
         Challenge(
             id = 1,
-            title = "Défi 1: Orchidée Royale",
-            description = "Faire éclore 2 orchidées parfaites en zone centrale",
-            briefText = "Défi 1: 2 orchidées parfaites"
+            title = "Défi 1: Saccades Régulières",
+            description = "Réussir 10 saccades, créer 6 espèces différentes et placer 8 orchidées dans la zone élégante",
+            briefText = "Défi 1: 10 saccades + 6 espèces + 8 en zone"
         ),
         Challenge(
             id = 2,
-            title = "Défi 2: Collection Exotique", 
-            description = "Cultiver 5 orchidées avec contrôle précis",
-            briefText = "Défi 2: 5 orchidées précises",
+            title = "Défi 2: Souffle Délicat", 
+            description = "Créer 3 tiges complètes délicates et placer 5 orchidées dans la zone de précision",
+            briefText = "Défi 2: 3 tiges délicates + 5 en zone précise",
             isUnlocked = false
         ),
         Challenge(
             id = 3,
-            title = "Défi 3: Jardinier Expert",
-            description = "8 orchidées + ramifications + zone parfaite", 
-            briefText = "Défi 3: Maîtrise totale",
+            title = "Défi 3: Patience du Maître",
+            description = "Cultiver les 6 espèces d'orchidées et créer 20 fleurs au total avec patience", 
+            briefText = "Défi 3: 6 espèces + 20 fleurs totales",
             isUnlocked = false
         )
     )
@@ -215,20 +216,21 @@ class ChallengeDefinitions {
         return irisHandler.getFailMessage(challengeId, irisFlowersInZone, irisRamifications, irisTotalFlowers)
     }
     
+    // ✅ CORRIGÉ: Logique orchidées avec signature cohérente
     fun updateOrchideeChallenge(challengeId: Int, force: Float, plantState: String, challengeData: MutableMap<String, Any>) {
         orchideeHandler.updateChallenge(challengeId, force, plantState, challengeData)
     }
     
-    fun checkOrchideeChallenge(challengeId: Int, orchideeFlowers: List<String>, orchideeRamifications: List<String>, orchideeInZone: List<String>): Boolean {
-        return orchideeHandler.checkChallenge(challengeId, orchideeFlowers, orchideeRamifications, orchideeInZone)
+    fun checkOrchideeChallenge(challengeId: Int, orchideeFlowersInZone: List<String>, orchideeSpeciesCount: Int, orchideeTotalFlowers: List<String>): Boolean {
+        return orchideeHandler.checkChallenge(challengeId, orchideeFlowersInZone, orchideeSpeciesCount, orchideeTotalFlowers)
     }
     
-    fun getOrchideeSuccessMessage(challengeId: Int, orchideeFlowers: List<String>, orchideeRamifications: List<String>, orchideeInZone: List<String>): String {
-        return orchideeHandler.getSuccessMessage(challengeId, orchideeFlowers, orchideeRamifications, orchideeInZone)
+    fun getOrchideeSuccessMessage(challengeId: Int, orchideeFlowersInZone: List<String>, orchideeSpeciesCount: Int, orchideeTotalFlowers: List<String>): String {
+        return orchideeHandler.getSuccessMessage(challengeId, orchideeFlowersInZone, orchideeSpeciesCount, orchideeTotalFlowers)
     }
     
-    fun getOrchideeFailMessage(challengeId: Int, orchideeFlowers: List<String>, orchideeRamifications: List<String>, orchideeInZone: List<String>): String {
-        return orchideeHandler.getFailMessage(challengeId, orchideeFlowers, orchideeRamifications, orchideeInZone)
+    fun getOrchideeFailMessage(challengeId: Int, orchideeFlowersInZone: List<String>, orchideeSpeciesCount: Int, orchideeTotalFlowers: List<String>): String {
+        return orchideeHandler.getFailMessage(challengeId, orchideeFlowersInZone, orchideeSpeciesCount, orchideeTotalFlowers)
     }
     
     // ==================== GESTION DES ZONES CORRIGÉES ====================
@@ -251,6 +253,11 @@ class ChallengeDefinitions {
     
     fun isInIrisZone(flowerY: Float, screenHeight: Float): Boolean {
         return zoneHelper.isInIrisZone(flowerY, screenHeight)
+    }
+    
+    // ✅ AJOUTÉ: Zone orchidées
+    fun isInOrchideeZone(flowerY: Float, screenHeight: Float, challengeId: Int): Boolean {
+        return zoneHelper.isInOrchideeZone(flowerY, screenHeight, challengeId)
     }
     
     // ==================== DÉBLOCAGE DES DÉFIS ====================
